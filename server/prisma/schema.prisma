@@ -1,0 +1,468 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  PARENT
+  ADMIN
+  SUPER_ADMIN
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  EXPIRED
+  CANCELLED
+  PENDING
+}
+
+enum ConsentType {
+  TERMS
+  PRIVACY
+  PARENTAL
+  MICROPHONE
+  DATA_PROCESSING
+}
+
+enum MediaType {
+  IMAGE
+  AUDIO
+  VIDEO
+  DOCUMENT
+}
+
+enum AttemptType {
+  READING
+  SPELLING
+  SPEECH
+  QUIZ
+  DICTATION
+  LISTENING
+  MATCHING
+  MEMORY
+  ALPHABET
+  PHONICS
+  GRAMMAR
+}
+
+enum PaymentStatus {
+  PENDING
+  SUCCEEDED
+  FAILED
+  REFUNDED
+}
+
+enum PublishStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+model User {
+  id           String   @id @default(cuid())
+  name         String
+  email        String   @unique
+  passwordHash String
+  role         UserRole @default(PARENT)
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  children          Child[]
+  subscriptions     Subscription[]
+  payments          Payment[]
+  parentalConsents  ParentalConsent[]
+  adminRoleBindings AdminRoleBinding[]
+  certificatesIssued Certificate[] @relation("IssuedByAdmin")
+
+  @@index([role])
+}
+
+model Child {
+  id          String   @id @default(cuid())
+  parentId    String
+  displayName String
+  birthYear   Int
+  levelId     String?
+  ageGroupId  String?
+  avatarUrl   String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  parent   User            @relation(fields: [parentId], references: [id], onDelete: Cascade)
+  level    LearningLevel?  @relation(fields: [levelId], references: [id])
+  ageGroup AgeGroup?       @relation(fields: [ageGroupId], references: [id])
+
+  attempts           LearningAttempt[]
+  progress           LearningProgress?
+  speechAssessments  SpeechAssessment[]
+  rewards            Reward[]
+  certificates       Certificate[]
+
+  @@index([parentId])
+}
+
+model ParentalConsent {
+  id          String      @id @default(cuid())
+  userId      String
+  consentType ConsentType
+  version     String
+  acceptedAt  DateTime    @default(now())
+  ipAddress   String?
+  userAgent   String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, consentType])
+}
+
+model AgeGroup {
+  id          String   @id @default(cuid())
+  code        String   @unique
+  label       String
+  ageMin      Int
+  ageMax      Int
+  description String?
+  createdAt   DateTime @default(now())
+
+  children Child[]
+  lessons  Lesson[]
+}
+
+model LearningLevel {
+  id          String   @id @default(cuid())
+  code        String   @unique
+  label       String
+  sortOrder   Int      @default(0)
+  description String?
+  createdAt   DateTime @default(now())
+
+  children Child[]
+  lessons  Lesson[]
+}
+
+model Subject {
+  id          String   @id @default(cuid())
+  code        String   @unique
+  name        String
+  description String?
+  createdAt   DateTime @default(now())
+
+  lessons Lesson[]
+}
+
+model Lesson {
+  id           String        @id @default(cuid())
+  title        String
+  description  String?
+  subjectId    String?
+  ageGroupId   String?
+  levelId      String?
+  category     String
+  difficulty   Int           @default(1)
+  status       PublishStatus @default(DRAFT)
+  isPublished  Boolean       @default(false)
+  sortOrder    Int           @default(0)
+  instructions String?
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  subject  Subject?       @relation(fields: [subjectId], references: [id])
+  ageGroup AgeGroup?      @relation(fields: [ageGroupId], references: [id])
+  level    LearningLevel? @relation(fields: [levelId], references: [id])
+
+  lessonWords LessonWord[]
+  media       MediaAsset[]
+  attempts    LearningAttempt[]
+  quizzes     Quiz[]
+  stories     Story[]
+
+  @@index([category, isPublished])
+  @@index([status])
+}
+
+model Word {
+  id           String   @id @default(cuid())
+  text         String
+  phonetic     String?
+  definition   String?
+  difficulty   Int      @default(1)
+  ageMin       Int      @default(3)
+  ageMax       Int      @default(12)
+  imageAssetId String?
+  audioAssetId String?
+  createdAt    DateTime @default(now())
+
+  lessonWords LessonWord[]
+  imageAsset  MediaAsset?  @relation("WordImage", fields: [imageAssetId], references: [id])
+  audioAsset  MediaAsset?  @relation("WordAudio", fields: [audioAssetId], references: [id])
+
+  @@unique([text])
+  @@index([difficulty])
+}
+
+model Phonic {
+  id           String   @id @default(cuid())
+  grapheme     String
+  phoneme      String
+  exampleWord  String?
+  description  String?
+  audioAssetId String?
+  sortOrder    Int      @default(0)
+  createdAt    DateTime @default(now())
+
+  audioAsset MediaAsset? @relation(fields: [audioAssetId], references: [id])
+
+  @@unique([grapheme, phoneme])
+}
+
+model LessonWord {
+  id       String @id @default(cuid())
+  lessonId String
+  wordId   String
+  sortOrder Int   @default(0)
+
+  lesson Lesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  word   Word   @relation(fields: [wordId], references: [id], onDelete: Cascade)
+
+  @@unique([lessonId, wordId])
+}
+
+model MediaAsset {
+  id           String    @id @default(cuid())
+  type         MediaType
+  url          String
+  fileName     String?
+  mimeType     String?
+  sizeBytes    Int?
+  altText      String?
+  provider     String    @default("local")
+  providerRef  String?
+  createdAt    DateTime  @default(now())
+
+  lessonId String?
+  lesson   Lesson? @relation(fields: [lessonId], references: [id], onDelete: SetNull)
+
+  wordsAsImage Word[]   @relation("WordImage")
+  wordsAsAudio Word[]   @relation("WordAudio")
+  phonics      Phonic[]
+  stories      Story[]  @relation("StoryCover")
+}
+
+model Story {
+  id           String        @id @default(cuid())
+  title        String
+  summary      String?
+  content      String
+  ageMin       Int           @default(3)
+  ageMax       Int           @default(12)
+  status       PublishStatus @default(DRAFT)
+  isPublished  Boolean       @default(false)
+  coverAssetId String?
+  lessonId     String?
+  audioAssetId String?
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  coverAsset MediaAsset? @relation("StoryCover", fields: [coverAssetId], references: [id])
+  lesson     Lesson?     @relation(fields: [lessonId], references: [id])
+}
+
+model Quiz {
+  id          String        @id @default(cuid())
+  title       String
+  description String?
+  lessonId    String?
+  ageMin      Int           @default(3)
+  ageMax      Int           @default(12)
+  status      PublishStatus @default(DRAFT)
+  isPublished Boolean       @default(false)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  lesson    Lesson?         @relation(fields: [lessonId], references: [id])
+  questions QuizQuestion[]
+}
+
+model QuizQuestion {
+  id            String   @id @default(cuid())
+  quizId        String
+  prompt        String
+  optionsJson   String
+  correctAnswer String
+  explanation   String?
+  sortOrder     Int      @default(0)
+  createdAt     DateTime @default(now())
+
+  quiz Quiz @relation(fields: [quizId], references: [id], onDelete: Cascade)
+
+  @@index([quizId])
+}
+
+model LearningAttempt {
+  id          String      @id @default(cuid())
+  childId     String
+  lessonId    String?
+  attemptType AttemptType
+  score       Float?
+  completed   Boolean     @default(false)
+  payloadJson String?
+  durationSec Int?
+  createdAt   DateTime    @default(now())
+
+  child  Child   @relation(fields: [childId], references: [id], onDelete: Cascade)
+  lesson Lesson? @relation(fields: [lessonId], references: [id])
+
+  speechAssessments SpeechAssessment[]
+
+  @@index([childId, createdAt])
+  @@index([lessonId])
+}
+
+model SpeechAssessment {
+  id               String   @id @default(cuid())
+  childId          String
+  attemptId        String?
+  expectedText     String
+  transcribedText  String?
+  confidence       Float?
+  accuracyScore    Float?
+  feedback         String?
+  phonemeJson      String?
+  provider         String?
+  /// Voice audio is assessed ephemerally; only scores/text are stored.
+  createdAt        DateTime @default(now())
+
+  child   Child            @relation(fields: [childId], references: [id], onDelete: Cascade)
+  attempt LearningAttempt? @relation(fields: [attemptId], references: [id], onDelete: SetNull)
+
+  @@index([childId, createdAt])
+}
+
+model LearningProgress {
+  id              String   @id @default(cuid())
+  childId         String   @unique
+  wordsLearned    Int      @default(0)
+  readingScore    Float    @default(0)
+  spellingScore   Float    @default(0)
+  pronunciationScore Float @default(0)
+  minutesLearned  Int      @default(0)
+  weakWordsJson   String?
+  updatedAt       DateTime @updatedAt
+
+  child Child @relation(fields: [childId], references: [id], onDelete: Cascade)
+}
+
+model Reward {
+  id          String   @id @default(cuid())
+  childId     String
+  title       String
+  description String?
+  badgeCode   String?
+  points      Int      @default(0)
+  earnedAt    DateTime @default(now())
+
+  child Child @relation(fields: [childId], references: [id], onDelete: Cascade)
+
+  @@index([childId])
+}
+
+model Subscription {
+  id          String             @id @default(cuid())
+  userId      String
+  plan        String
+  status      SubscriptionStatus
+  startedAt   DateTime
+  expiresAt   DateTime
+  cancelledAt DateTime?
+  provider    String
+  providerRef String?            @unique
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  payments Payment[]
+
+  @@index([userId, status])
+}
+
+model Payment {
+  id             String        @id @default(cuid())
+  userId         String
+  subscriptionId String?
+  amountCents    Int
+  currency       String        @default("USD")
+  status         PaymentStatus
+  provider       String
+  providerRef    String?       @unique
+  invoiceUrl     String?
+  paidAt         DateTime?
+  createdAt      DateTime      @default(now())
+
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  subscription Subscription? @relation(fields: [subscriptionId], references: [id])
+
+  @@index([userId, createdAt])
+}
+
+model Certificate {
+  id          String   @id @default(cuid())
+  childId     String
+  title       String
+  description String?
+  issuedAt    DateTime @default(now())
+  issuedById  String?
+  templateCode String?
+
+  child    Child @relation(fields: [childId], references: [id], onDelete: Cascade)
+  issuedBy User? @relation("IssuedByAdmin", fields: [issuedById], references: [id])
+
+  @@index([childId])
+}
+
+model AdminRole {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  description String?
+  createdAt   DateTime @default(now())
+
+  bindings    AdminRoleBinding[]
+  permissions RolePermission[]
+}
+
+model Permission {
+  id          String   @id @default(cuid())
+  code        String   @unique
+  description String?
+  createdAt   DateTime @default(now())
+
+  roles RolePermission[]
+}
+
+model RolePermission {
+  id           String @id @default(cuid())
+  adminRoleId  String
+  permissionId String
+
+  adminRole  AdminRole  @relation(fields: [adminRoleId], references: [id], onDelete: Cascade)
+  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@unique([adminRoleId, permissionId])
+}
+
+model AdminRoleBinding {
+  id          String   @id @default(cuid())
+  userId      String
+  adminRoleId String
+  assignedAt  DateTime @default(now())
+
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  adminRole AdminRole @relation(fields: [adminRoleId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, adminRoleId])
+}

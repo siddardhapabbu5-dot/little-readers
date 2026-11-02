@@ -1,0 +1,33 @@
+{
+  "name": "@little-readers/api",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "node ../../node_modules/tsx/dist/cli.mjs watch src/main.ts",
+    "build": "node ../../node_modules/typescript/bin/tsc -p tsconfig.json",
+    "start": "node dist/main.js",
+    "start:prod": "node dist/main.js",
+    "test": "node ../../node_modules/vitest/vitest.mjs run",
+    "typecheck": "node ../../node_modules/typescript/bin/tsc --noEmit"
+  },
+  "dependencies": {
+    "@little-readers/config": "*",
+    "@little-readers/shared": "*",
+    "@little-readers/tenant": "*",
+    "@little-readers/types": "*",
+    "@nestjs/common": "^11.0.7",
+    "@nestjs/config": "^4.0.0",
+    "@nestjs/core": "^11.0.7",
+    "@nestjs/platform-express": "^11.0.7",
+    "reflect-metadata": "^0.2.2",
+    "rxjs": "^7.8.1"
+  },
+  "devDependencies": {
+    "@nestjs/cli": "^11.0.2",
+    "@nestjs/testing": "^11.0.7",
+    "@types/express": "^5.0.0",
+    "@types/node": "^22.13.1",
+    "typescript": "^5.7.3",
+    "vitest": "^3.0.5"
+  }
+}

@@ -1,0 +1,52 @@
+{
+  "name": "@little-readers/server",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node ../node_modules/tsx/dist/cli.mjs watch src/index.ts",
+    "build": "node ../node_modules/typescript/bin/tsc -p tsconfig.json",
+    "start": "node dist/index.js",
+    "db:generate": "node ../node_modules/prisma/build/index.js generate",
+    "db:migrate": "node ../node_modules/prisma/build/index.js migrate dev",
+    "db:migrate:deploy": "node ../node_modules/prisma/build/index.js migrate deploy",
+    "db:seed": "node ../node_modules/tsx/dist/cli.mjs prisma/seed.ts",
+    "db:studio": "node ../node_modules/prisma/build/index.js studio",
+    "test": "node ../node_modules/vitest/vitest.mjs run",
+    "test:watch": "node ../node_modules/vitest/vitest.mjs",
+    "typecheck": "node ../node_modules/typescript/bin/tsc --noEmit",
+    "lint": "node ../node_modules/typescript/bin/tsc --noEmit"
+  },
+  "prisma": {
+    "seed": "node ../node_modules/tsx/dist/cli.mjs prisma/seed.ts"
+  },
+  "dependencies": {
+    "@little-readers/shared": "*",
+    "@little-readers/types": "*",
+    "@little-readers/validation": "*",
+    "@prisma/client": "^6.3.1",
+    "bcryptjs": "^2.4.3",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "express-rate-limit": "^7.5.0",
+    "helmet": "^8.0.0",
+    "jsonwebtoken": "^9.0.2",
+    "morgan": "^1.10.0",
+    "zod": "^3.24.1"
+  },
+  "devDependencies": {
+    "@types/bcryptjs": "^2.4.6",
+    "@types/cors": "^2.8.17",
+    "@types/express": "^5.0.0",
+    "@types/jsonwebtoken": "^9.0.8",
+    "@types/morgan": "^1.9.9",
+    "@types/node": "^22.13.1",
+    "@types/supertest": "^6.0.2",
+    "prisma": "^6.3.1",
+    "supertest": "^7.0.0",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.3",
+    "vitest": "^3.0.5"
+  }
+}

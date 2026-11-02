@@ -1,0 +1,36 @@
+{
+  "name": "little-readers",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Little Readers – multi-school educational SaaS platform",
+  "workspaces": [
+    "apps/web",
+    "apps/api",
+    "packages/*",
+    "server"
+  ],
+  "scripts": {
+    "dev:api": "npm run dev --workspace=@little-readers/api",
+    "dev:legacy-server": "npm run dev --workspace=@little-readers/server",
+    "dev:web": "npm run dev --workspace=@little-readers/web",
+    "dev:mobile": "npm run start --workspace=@little-readers/mobile",
+    "build": "npm run build --workspaces --if-present",
+    "db:generate": "npm run db:generate --workspace=@little-readers/server",
+    "db:migrate": "npm run db:migrate --workspace=@little-readers/server",
+    "db:seed": "npm run db:seed --workspace=@little-readers/server",
+    "db:studio": "npm run db:studio --workspace=@little-readers/server",
+    "test": "npm run test --workspace=@little-readers/api && npm run test --workspace=@little-readers/server",
+    "test:api": "npm run test --workspace=@little-readers/api",
+    "test:legacy": "npm run test --workspace=@little-readers/server",
+    "lint": "npm run lint --workspaces --if-present",
+    "typecheck": "npm run typecheck --workspaces --if-present"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "overrides": {
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
+  "license": "UNLICENSED"
+}

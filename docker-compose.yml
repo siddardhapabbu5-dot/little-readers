@@ -1,0 +1,36 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: little-readers-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-little_readers}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change_me_strong_password}
+      POSTGRES_DB: ${POSTGRES_DB:-little_readers}
+    ports:
+      - "${POSTGRES_PORT:-5437}:5432"
+    volumes:
+      - little_readers_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-little_readers} -d ${POSTGRES_DB:-little_readers}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    container_name: little-readers-redis
+    restart: unless-stopped
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - little_readers_redis:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  little_readers_pgdata:
+  little_readers_redis:

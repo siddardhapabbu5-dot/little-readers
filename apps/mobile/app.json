@@ -1,0 +1,18 @@
+{
+  "expo": {
+    "name": "Little Readers",
+    "slug": "little-readers",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "scheme": "littlereaders",
+    "userInterfaceStyle": "light",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.littlereaders.app"
+    },
+    "android": {
+      "package": "com.littlereaders.app"
+    },
+    "plugins": ["expo-router"]
+  }
+}

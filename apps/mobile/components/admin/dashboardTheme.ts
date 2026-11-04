@@ -1,0 +1,22 @@
+/** Design tokens for the modern Admin Dashboard (mockup-aligned). */
+export const dash = {
+  headerStart: "#6B4EFF",
+  headerMid: "#5B3FE8",
+  headerEnd: "#7C5CFF",
+  pageBg: "#F5F3FF",
+  card: "#FFFFFF",
+  text: "#1E1B4B",
+  textMuted: "#6B7280",
+  textSoft: "#9CA3AF",
+  border: "#EDE9FE",
+  purple: "#6D28D9",
+  purpleSoft: "#EDE9FE",
+  blue: "#3B82F6",
+  blueSoft: "#DBEAFE",
+  green: "#10B981",
+  greenSoft: "#D1FAE5",
+  orange: "#F59E0B",
+  orangeSoft: "#FEF3C7",
+  red: "#EF4444",
+  welcomeCard: "#F3F0FF",
+};

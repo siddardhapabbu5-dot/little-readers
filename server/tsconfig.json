@@ -9,6 +9,6 @@
     "noUnusedLocals": false,
     "noUnusedParameters": false
   },
-  "include": ["src/**/*", "prisma/seed.ts", "tests/**/*"],
+  "include": ["src/**/*", "src/types/**/*.d.ts", "prisma/seed.ts", "tests/**/*"],
   "exclude": ["dist", "node_modules"]
 }

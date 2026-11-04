@@ -1,0 +1,2 @@
+-- AlterTable
+ALTER TABLE "Child" ADD COLUMN IF NOT EXISTS "birthDate" TEXT;

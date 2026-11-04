@@ -1,0 +1,144 @@
+import { beforeAll, describe, expect, it } from "vitest";
+import request from "supertest";
+import { createApp } from "../src/app.js";
+import { prisma } from "../src/lib/prisma.js";
+import { ensureFourGrades } from "../src/dictionary/dictionary.service.js";
+import { classifySense, CLASSIFICATION_VERSION } from "../src/dictionary/classify.js";
+import type { CategoryHint, GradeCode } from "../src/dictionary/classify.js";
+
+const app = createApp();
+const hasDb = Boolean(process.env.DATABASE_URL);
+
+describe.skipIf(!hasDb)("Four-grade dictionary classification", () => {
+  let adminToken = "";
+
+  beforeAll(async () => {
+    process.env.JWT_SECRET =
+      process.env.JWT_SECRET ?? "dev_only_change_me_to_a_long_random_secret_value";
+    await ensureFourGrades();
+
+    const login = await request(app).post("/api/auth/login").send({
+      email: "admin@littlereaders.test",
+      password: "AdminDemo1",
+    });
+    expect(login.status).toBe(200);
+    adminToken = login.body.data.tokens.accessToken;
+  });
+
+  it("classify-v1 uses mixed signals and can suggest multi-grade near boundaries", () => {
+    const fakeCat = (grade: GradeCode, gradeId: string, levelId: string): CategoryHint => ({
+      id: `cat_${grade}`,
+      code: "FAMILY",
+      label: "Family and People",
+      gradeCode: grade,
+      gradeId,
+      levelId,
+    });
+    const byGrade: Record<GradeCode, CategoryHint[]> = {
+      GRADE_1: [fakeCat("GRADE_1", "g1", "l1")],
+      GRADE_2: [fakeCat("GRADE_2", "g2", "l2")],
+      GRADE_3: [fakeCat("GRADE_3", "g3", "l3")],
+      GRADE_4: [fakeCat("GRADE_4", "g4", "l4")],
+    };
+
+    const easy = classifySense(
+      { headword: "cat", definition: "A small pet animal that lives with people." },
+      byGrade
+    );
+    expect(easy[0].gradeCode).toBe("GRADE_1");
+    expect(easy[0].explanation).toContain(CLASSIFICATION_VERSION);
+    expect(easy[0].explanation.toLowerCase()).toContain("not a guarantee");
+
+    const hard = classifySense(
+      {
+        headword: "photosynthesis",
+        definition:
+          "A complex biological process by which plants convert light into chemical energy; an abstract scientific concept.",
+        wordType: "noun",
+      },
+      byGrade
+    );
+    expect(["GRADE_3", "GRADE_4"]).toContain(hard[0].gradeCode);
+  });
+
+  it("imports JSON dictionary, classifies, approves and publishes without duplicating headword entries", async () => {
+    const payload = [
+      {
+        headword: `dicttest${Date.now()}`,
+        pronunciation: "test",
+        senses: [
+          { definition: "A small family pet that children know.", wordType: "noun", synonyms: ["kitty"] },
+          { definition: "A large wild feline in nature.", wordType: "noun" },
+        ],
+      },
+    ];
+    const buf = Buffer.from(JSON.stringify(payload), "utf8");
+
+    const upload = await request(app)
+      .post("/api/admin/dictionary/uploads")
+      .set("Authorization", `Bearer ${adminToken}`)
+      .attach("file", buf, "mini-dict.json")
+      .field("sourceName", "Test English-English Dictionary")
+      .field("licence", "test-licence");
+    expect(upload.status).toBe(201);
+    const batchId = upload.body.data.id as string;
+    expect(upload.body.data.senseCount).toBeGreaterThanOrEqual(2);
+
+    const entryCount = await prisma.dictionaryEntry.count({
+      where: { normalizedHeadword: payload[0].headword.toLowerCase() },
+    });
+    expect(entryCount).toBe(1);
+
+    const classified = await request(app)
+      .post(`/api/admin/dictionary/imports/${batchId}/classify`)
+      .set("Authorization", `Bearer ${adminToken}`);
+    expect(classified.status).toBe(200);
+    expect(classified.body.data.status).toBe("CLASSIFIED");
+
+    const pending = await request(app)
+      .get("/api/admin/dictionary/assignments?status=PENDING&take=20")
+      .set("Authorization", `Bearer ${adminToken}`);
+    expect(pending.status).toBe(200);
+    const mine = (pending.body.data as Array<{ id: string; sense: { entry: { headword: string } } }>).filter(
+      (a) => a.sense.entry.headword === payload[0].headword
+    );
+    expect(mine.length).toBeGreaterThan(0);
+
+    const first = mine[0];
+    const approve = await request(app)
+      .post(`/api/admin/dictionary/assignments/${first.id}/approve`)
+      .set("Authorization", `Bearer ${adminToken}`);
+    expect(approve.status).toBe(200);
+    expect(approve.body.data.status).toBe("APPROVED");
+
+    const publish = await request(app)
+      .post(`/api/admin/dictionary/assignments/${first.id}/publish`)
+      .set("Authorization", `Bearer ${adminToken}`);
+    expect(publish.status).toBe(200);
+    expect(publish.body.data.status).toBe("PUBLISHED");
+    expect(publish.body.data.publishedWordId).toBeTruthy();
+
+    const word = await prisma.vocabularyWord.findUnique({
+      where: { id: publish.body.data.publishedWordId },
+    });
+    expect(word?.isActive).toBe(true);
+    expect(word?.origin).toBe("DICTIONARY");
+    expect(word?.text).toBe(payload[0].headword);
+  });
+
+  it("lists four grades for admin", async () => {
+    const res = await request(app)
+      .get("/api/admin/dictionary/grades")
+      .set("Authorization", `Bearer ${adminToken}`);
+    expect(res.status).toBe(200);
+    const codes = (res.body.data as Array<{ code: string }>).map((g) => g.code);
+    // Seeded four grades must exist; Admin CRUD may add temporary grades in parallel tests.
+    expect(codes).toEqual(expect.arrayContaining([
+      "GRADE_1",
+      "GRADE_2",
+      "GRADE_3",
+      "GRADE_4",
+    ]));
+    expect(codes.filter((c) => c.startsWith("GRADE_")).length).toBeGreaterThanOrEqual(4);
+  });
+});

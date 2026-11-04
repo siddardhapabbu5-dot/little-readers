@@ -1,45 +1,58 @@
-import { StyleSheet, Text, View } from "react-native";
-import { StatusBar } from "expo-status-bar";
-import { APP_NAME, APP_TAGLINE } from "@little-readers/shared";
+import { useEffect, useState } from "react";
+import { ActivityIndicator, View } from "react-native";
+import { Redirect } from "expo-router";
+import { apiRequest, ApiError } from "../services/api";
+import { routeForRole } from "../services/auth-errors";
+import { clearSession, getToken, getUser, saveUser } from "../services/secure";
+import { colors } from "../theme";
 
-export default function MobileHome() {
-  return (
-    <View style={styles.container}>
-      <StatusBar style="dark" />
-      <Text style={styles.brand}>{APP_NAME}</Text>
-      <Text style={styles.tag}>{APP_TAGLINE}</Text>
-      <Text style={styles.body}>
-        Phase 1 mobile scaffold is ready. Auth screens and kids navigation arrive
-        in Phase 2 and Phase 9.
-      </Text>
-    </View>
-  );
+type AuthUser = { id: string; name: string; email: string; role: string };
+
+export default function Index() {
+  const [ready, setReady] = useState(false);
+  const [href, setHref] = useState("/login");
+
+  useEffect(() => {
+    void (async () => {
+      const token = await getToken();
+      const cached = await getUser<AuthUser>();
+      if (!token || !cached) {
+        setHref("/login");
+        setReady(true);
+        return;
+      }
+
+      try {
+        const me = await apiRequest<AuthUser>("/auth/me", { mobile: false });
+        await saveUser(me);
+        setHref(routeForRole(me.role));
+      } catch (err) {
+        if (err instanceof ApiError && (err.status === 401 || err.status === 403)) {
+          await clearSession();
+          setHref("/login");
+        } else {
+          // Offline / transient: use last verified cached role.
+          setHref(routeForRole(cached.role));
+        }
+      }
+      setReady(true);
+    })();
+  }, []);
+
+  if (!ready) {
+    return (
+      <View
+        style={{
+          flex: 1,
+          alignItems: "center",
+          justifyContent: "center",
+          backgroundColor: colors.bg,
+        }}
+      >
+        <ActivityIndicator color={colors.primary} size="large" />
+      </View>
+    );
+  }
+
+  return <Redirect href={href as any} />;
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#FFF4E8",
-    alignItems: "center",
-    justifyContent: "center",
-    padding: 24,
-  },
-  brand: {
-    fontSize: 32,
-    fontWeight: "800",
-    color: "#C2410C",
-  },
-  tag: {
-    marginTop: 8,
-    fontSize: 16,
-    fontWeight: "600",
-    color: "#9A3412",
-  },
-  body: {
-    marginTop: 20,
-    fontSize: 16,
-    textAlign: "center",
-    color: "#4B5563",
-    lineHeight: 24,
-  },
-});

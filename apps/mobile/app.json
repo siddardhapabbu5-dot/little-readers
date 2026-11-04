@@ -13,6 +13,11 @@
     "android": {
       "package": "com.littlereaders.app"
     },
-    "plugins": ["expo-router"]
+    "plugins": ["expo-router", "expo-secure-store"],
+    "extra": {
+      "eas": {
+        "projectId": "replace-with-eas-project-id"
+      }
+    }
   }
 }

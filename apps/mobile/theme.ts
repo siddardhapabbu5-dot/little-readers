@@ -1,0 +1,83 @@
+export const colors = {
+  bg: "#F3F0FF",
+  bgSoft: "#EDE9FE",
+  card: "#FFFFFF",
+  primary: "#7B61FF",
+  primaryDark: "#5B45D6",
+  primarySoft: "#EDE9FF",
+  primaryGradientEnd: "#9B87FF",
+  accent: "#FF8A5B",
+  accentSoft: "#FFE8DE",
+  mint: "#2DD4A8",
+  mintSoft: "#D1FAE5",
+  mintDeep: "#059669",
+  sky: "#4DA3FF",
+  skySoft: "#E0F2FE",
+  pink: "#FF6BA8",
+  pinkSoft: "#FFE4F1",
+  yellow: "#FFC857",
+  yellowSoft: "#FFF4D6",
+  teal: "#14B8A6",
+  tealSoft: "#CCFBF1",
+  text: "#1F1635",
+  textMuted: "#6B7280",
+  border: "#E8E4F8",
+  danger: "#EF4444",
+  success: "#10B981",
+  tabInactive: "#9CA3AF",
+  bannerTeal: "#5EEAD4",
+  bannerPurple: "#8B7CFF",
+};
+
+/** Admin dashboard design tokens (aligned to Admin mockup). */
+export const adminColors = {
+  primary: "#5D3FD3",
+  secondary: "#7555EA",
+  background: "#FFFFFF",
+  card: "#FFFFFF",
+  text: "#17152F",
+  textSecondary: "#666783",
+  border: "#E7E7F3",
+  schools: "#3B82F6",
+  schoolsSoft: "#DBEAFE",
+  students: "#10B981",
+  studentsSoft: "#D1FAE5",
+  teachers: "#7C3AED",
+  teachersSoft: "#EDE9FE",
+  payments: "#F59E0B",
+  paymentsSoft: "#FEF3C7",
+  classroomsSoft: "#E0E7FF",
+  tabInactive: "#9CA3AF",
+};
+
+export const radii = {
+  sm: 12,
+  md: 18,
+  lg: 24,
+  xl: 32,
+  pill: 999,
+};
+
+export const shadow = {
+  card: {
+    shadowColor: "#7B61FF",
+    shadowOpacity: 0.1,
+    shadowRadius: 18,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 4,
+  },
+  soft: {
+    shadowColor: "#1F1635",
+    shadowOpacity: 0.06,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 2,
+  },
+  tab: {
+    shadowColor: "#1F1635",
+    shadowOpacity: 0.08,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: -4 },
+    elevation: 10,
+  },
+};

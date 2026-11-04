@@ -1,0 +1,15 @@
+-- AlterTable LearningGrade
+ALTER TABLE "LearningGrade" ADD COLUMN IF NOT EXISTS "description" TEXT;
+ALTER TABLE "LearningGrade" ADD COLUMN IF NOT EXISTS "isActive" BOOLEAN NOT NULL DEFAULT true;
+ALTER TABLE "LearningGrade" ADD COLUMN IF NOT EXISTS "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP;
+
+-- AlterTable LearningLevel
+ALTER TABLE "LearningLevel" ADD COLUMN IF NOT EXISTS "isActive" BOOLEAN NOT NULL DEFAULT true;
+ALTER TABLE "LearningLevel" ADD COLUMN IF NOT EXISTS "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP;
+CREATE INDEX IF NOT EXISTS "LearningLevel_isActive_idx" ON "LearningLevel"("isActive");
+
+-- AlterTable LearningGroup
+ALTER TABLE "LearningGroup" ADD COLUMN IF NOT EXISTS "description" TEXT;
+ALTER TABLE "LearningGroup" ADD COLUMN IF NOT EXISTS "isActive" BOOLEAN NOT NULL DEFAULT true;
+ALTER TABLE "LearningGroup" ADD COLUMN IF NOT EXISTS "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP;
+CREATE INDEX IF NOT EXISTS "LearningGroup_isActive_idx" ON "LearningGroup"("isActive");

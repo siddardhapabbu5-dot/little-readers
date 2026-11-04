@@ -11,7 +11,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@little-readers/types": "*"
+    "@little-readers/types": "file:../types"
   },
   "devDependencies": {
     "typescript": "^5.7.3"

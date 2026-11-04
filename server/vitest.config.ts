@@ -5,5 +5,13 @@ export default defineConfig({
     environment: "node",
     include: ["tests/**/*.test.ts"],
     testTimeout: 30000,
+    // Shared Postgres seed DB — run files sequentially to avoid cross-suite pollution
+    // (deactivate/unpublish in one file breaking Level-1 assertions in another).
+    fileParallelism: false,
+    pool: "forks",
+    poolOptions: {
+      forks: { singleFork: true },
+    },
   },
 });
+

@@ -1,0 +1,3880 @@
+{
+  "report": {
+    "total": 750,
+    "unique": 750,
+    "categories": [
+      {
+        "code": "family_people",
+        "count": 75
+      },
+      {
+        "code": "animals",
+        "count": 75
+      },
+      {
+        "code": "fruits_vegetables",
+        "count": 75
+      },
+      {
+        "code": "colors_shapes",
+        "count": 75
+      },
+      {
+        "code": "body_parts",
+        "count": 75
+      },
+      {
+        "code": "school_classroom",
+        "count": 75
+      },
+      {
+        "code": "household_objects",
+        "count": 75
+      },
+      {
+        "code": "food_drinks",
+        "count": 75
+      },
+      {
+        "code": "nature_environment",
+        "count": 75
+      },
+      {
+        "code": "action_words",
+        "count": 75
+      }
+    ]
+  },
+  "categories": [
+    {
+      "code": "family_people",
+      "label": "Family and People",
+      "emoji": "👨‍👩‍👧",
+      "group": "A",
+      "words": [
+        {
+          "text": "mom",
+          "meaning": "a mother",
+          "emoji": "👩"
+        },
+        {
+          "text": "dad",
+          "meaning": "a father",
+          "emoji": "👨"
+        },
+        {
+          "text": "baby",
+          "meaning": "a very young child",
+          "emoji": "👶"
+        },
+        {
+          "text": "brother",
+          "meaning": "a boy sibling",
+          "emoji": "👦"
+        },
+        {
+          "text": "sister",
+          "meaning": "a girl sibling",
+          "emoji": "👧"
+        },
+        {
+          "text": "grandma",
+          "meaning": "mother's or father's mother",
+          "emoji": "👵"
+        },
+        {
+          "text": "grandpa",
+          "meaning": "mother's or father's father",
+          "emoji": "👴"
+        },
+        {
+          "text": "aunt",
+          "meaning": "parent's sister",
+          "emoji": "👩"
+        },
+        {
+          "text": "uncle",
+          "meaning": "parent's brother",
+          "emoji": "👨"
+        },
+        {
+          "text": "cousin",
+          "meaning": "aunt or uncle's child",
+          "emoji": "🧒"
+        },
+        {
+          "text": "friend",
+          "meaning": "someone you like",
+          "emoji": "🧑"
+        },
+        {
+          "text": "boy",
+          "meaning": "a male child",
+          "emoji": "👦"
+        },
+        {
+          "text": "girl",
+          "meaning": "a female child",
+          "emoji": "👧"
+        },
+        {
+          "text": "man",
+          "meaning": "an adult male",
+          "emoji": "👨"
+        },
+        {
+          "text": "woman",
+          "meaning": "an adult female",
+          "emoji": "👩"
+        },
+        {
+          "text": "child",
+          "meaning": "a young person",
+          "emoji": "🧒"
+        },
+        {
+          "text": "family",
+          "meaning": "people who live together",
+          "emoji": "👨‍👩‍👧"
+        },
+        {
+          "text": "teacher",
+          "meaning": "a person who teaches",
+          "emoji": "👩‍🏫"
+        },
+        {
+          "text": "doctor",
+          "meaning": "a person who helps sick people",
+          "emoji": "🧑‍⚕️"
+        },
+        {
+          "text": "nurse",
+          "meaning": "a person who cares for patients",
+          "emoji": "👩‍⚕️"
+        },
+        {
+          "text": "police",
+          "meaning": "a person who keeps us safe",
+          "emoji": "👮"
+        },
+        {
+          "text": "firefighter",
+          "meaning": "a person who stops fires",
+          "emoji": "🧑‍🚒"
+        },
+        {
+          "text": "farmer",
+          "meaning": "a person who grows food",
+          "emoji": "👨‍🌾"
+        },
+        {
+          "text": "chef",
+          "meaning": "a person who cooks",
+          "emoji": "👨‍🍳"
+        },
+        {
+          "text": "driver",
+          "meaning": "a person who drives",
+          "emoji": "🧑‍✈️"
+        },
+        {
+          "text": "neighbor",
+          "meaning": "a person living nearby",
+          "emoji": "🏠"
+        },
+        {
+          "text": "guest",
+          "meaning": "a visitor",
+          "emoji": "🛎️"
+        },
+        {
+          "text": "king",
+          "meaning": "a male ruler",
+          "emoji": "🤴"
+        },
+        {
+          "text": "queen",
+          "meaning": "a female ruler",
+          "emoji": "👸"
+        },
+        {
+          "text": "prince",
+          "meaning": "a king's son",
+          "emoji": "🤴"
+        },
+        {
+          "text": "princess",
+          "meaning": "a king's daughter",
+          "emoji": "👸"
+        },
+        {
+          "text": "hero",
+          "meaning": "a brave person",
+          "emoji": "🦸"
+        },
+        {
+          "text": "helper",
+          "meaning": "someone who helps",
+          "emoji": "🤝"
+        },
+        {
+          "text": "parent",
+          "meaning": "a mom or dad",
+          "emoji": "👪"
+        },
+        {
+          "text": "son",
+          "meaning": "a male child of parents",
+          "emoji": "👦"
+        },
+        {
+          "text": "daughter",
+          "meaning": "a female child of parents",
+          "emoji": "👧"
+        },
+        {
+          "text": "twin",
+          "meaning": "one of two born together",
+          "emoji": "👯"
+        },
+        {
+          "text": "toddler",
+          "meaning": "a small walking child",
+          "emoji": "🧒"
+        },
+        {
+          "text": "infant",
+          "meaning": "a newborn baby",
+          "emoji": "🍼"
+        },
+        {
+          "text": "adult",
+          "meaning": "a grown-up person",
+          "emoji": "🧑"
+        },
+        {
+          "text": "person",
+          "meaning": "a human being",
+          "emoji": "🧍"
+        },
+        {
+          "text": "crowd",
+          "meaning": "many people together",
+          "emoji": "👥"
+        },
+        {
+          "text": "team",
+          "meaning": "people working together",
+          "emoji": "🧑‍🤝‍🧑"
+        },
+        {
+          "text": "class",
+          "meaning": "students learning together",
+          "emoji": "🏫"
+        },
+        {
+          "text": "student",
+          "meaning": "a person who learns",
+          "emoji": "🎒"
+        },
+        {
+          "text": "principal",
+          "meaning": "school leader",
+          "emoji": "🏫"
+        },
+        {
+          "text": "coach",
+          "meaning": "sports teacher",
+          "emoji": "🏅"
+        },
+        {
+          "text": "singer",
+          "meaning": "a person who sings",
+          "emoji": "🎤"
+        },
+        {
+          "text": "dancer",
+          "meaning": "a person who dances",
+          "emoji": "💃"
+        },
+        {
+          "text": "artist",
+          "meaning": "a person who draws",
+          "emoji": "🎨"
+        },
+        {
+          "text": "writer",
+          "meaning": "a person who writes",
+          "emoji": "✍️"
+        },
+        {
+          "text": "pilot",
+          "meaning": "a person who flies planes",
+          "emoji": "✈️"
+        },
+        {
+          "text": "sailor",
+          "meaning": "a person on a boat",
+          "emoji": "⛵"
+        },
+        {
+          "text": "builder",
+          "meaning": "a person who builds",
+          "emoji": "🧱"
+        },
+        {
+          "text": "gardener",
+          "meaning": "a person who grows plants",
+          "emoji": "🪴"
+        },
+        {
+          "text": "cleaner",
+          "meaning": "a person who cleans",
+          "emoji": "🧹"
+        },
+        {
+          "text": "baker",
+          "meaning": "a person who bakes",
+          "emoji": "🥖"
+        },
+        {
+          "text": "tailor",
+          "meaning": "a person who sews clothes",
+          "emoji": "🧵"
+        },
+        {
+          "text": "barber",
+          "meaning": "a person who cuts hair",
+          "emoji": "💈"
+        },
+        {
+          "text": "dentist",
+          "meaning": "a tooth doctor",
+          "emoji": "🦷"
+        },
+        {
+          "text": "vet",
+          "meaning": "an animal doctor",
+          "emoji": "🐾"
+        },
+        {
+          "text": "clerk",
+          "meaning": "a shop helper",
+          "emoji": "🧾"
+        },
+        {
+          "text": "waiter",
+          "meaning": "a restaurant helper",
+          "emoji": "🍽️"
+        },
+        {
+          "text": "guard",
+          "meaning": "a person who watches",
+          "emoji": "🛡️"
+        },
+        {
+          "text": "leader",
+          "meaning": "a person who guides",
+          "emoji": "⭐"
+        },
+        {
+          "text": "member",
+          "meaning": "one person in a group",
+          "emoji": "👤"
+        },
+        {
+          "text": "partner",
+          "meaning": "someone who works with you",
+          "emoji": "🤝"
+        },
+        {
+          "text": "visitor",
+          "meaning": "someone who visits",
+          "emoji": "🚪"
+        },
+        {
+          "text": "stranger",
+          "meaning": "someone you do not know",
+          "emoji": "❓"
+        },
+        {
+          "text": "crowdmate",
+          "meaning": "a person in a crowd",
+          "emoji": "👥"
+        },
+        {
+          "text": "playmate",
+          "meaning": "a friend to play with",
+          "emoji": "🧸"
+        },
+        {
+          "text": "classmate",
+          "meaning": "a friend in class",
+          "emoji": "📘"
+        },
+        {
+          "text": "roommate",
+          "meaning": "someone sharing a room",
+          "emoji": "🛏️"
+        },
+        {
+          "text": "host",
+          "meaning": "a person who welcomes guests",
+          "emoji": "🏠"
+        },
+        {
+          "text": "bride",
+          "meaning": "a woman getting married",
+          "emoji": "👰"
+        }
+      ]
+    },
+    {
+      "code": "animals",
+      "label": "Animals",
+      "emoji": "🐶",
+      "group": "A",
+      "words": [
+        {
+          "text": "cat",
+          "meaning": "a soft pet that meows",
+          "emoji": "🐱"
+        },
+        {
+          "text": "dog",
+          "meaning": "a friendly pet that barks",
+          "emoji": "🐶"
+        },
+        {
+          "text": "bird",
+          "meaning": "an animal that flies",
+          "emoji": "🐦"
+        },
+        {
+          "text": "fish",
+          "meaning": "an animal that swims",
+          "emoji": "🐟"
+        },
+        {
+          "text": "cow",
+          "meaning": "a farm animal that gives milk",
+          "emoji": "🐮"
+        },
+        {
+          "text": "pig",
+          "meaning": "a pink farm animal",
+          "emoji": "🐷"
+        },
+        {
+          "text": "sheep",
+          "meaning": "a woolly farm animal",
+          "emoji": "🐑"
+        },
+        {
+          "text": "goat",
+          "meaning": "a farm animal with horns",
+          "emoji": "🐐"
+        },
+        {
+          "text": "horse",
+          "meaning": "an animal people ride",
+          "emoji": "🐴"
+        },
+        {
+          "text": "duck",
+          "meaning": "a bird that quacks",
+          "emoji": "🦆"
+        },
+        {
+          "text": "hen",
+          "meaning": "a farm bird",
+          "emoji": "🐔"
+        },
+        {
+          "text": "rooster",
+          "meaning": "a bird that crows",
+          "emoji": "🐓"
+        },
+        {
+          "text": "chick",
+          "meaning": "a baby chicken",
+          "emoji": "🐤"
+        },
+        {
+          "text": "rabbit",
+          "meaning": "a soft animal with long ears",
+          "emoji": "🐰"
+        },
+        {
+          "text": "mouse",
+          "meaning": "a tiny animal",
+          "emoji": "🐭"
+        },
+        {
+          "text": "rat",
+          "meaning": "a small animal with a long tail",
+          "emoji": "🐀"
+        },
+        {
+          "text": "frog",
+          "meaning": "a jumping green animal",
+          "emoji": "🐸"
+        },
+        {
+          "text": "turtle",
+          "meaning": "an animal with a shell",
+          "emoji": "🐢"
+        },
+        {
+          "text": "snake",
+          "meaning": "a long animal with no legs",
+          "emoji": "🐍"
+        },
+        {
+          "text": "lizard",
+          "meaning": "a small reptile",
+          "emoji": "🦎"
+        },
+        {
+          "text": "ant",
+          "meaning": "a tiny insect",
+          "emoji": "🐜"
+        },
+        {
+          "text": "bee",
+          "meaning": "an insect that makes honey",
+          "emoji": "🐝"
+        },
+        {
+          "text": "butterfly",
+          "meaning": "an insect with pretty wings",
+          "emoji": "🦋"
+        },
+        {
+          "text": "spider",
+          "meaning": "an insect that makes webs",
+          "emoji": "🕷️"
+        },
+        {
+          "text": "worm",
+          "meaning": "a soft crawling animal",
+          "emoji": "🪱"
+        },
+        {
+          "text": "lion",
+          "meaning": "a big wild cat",
+          "emoji": "🦁"
+        },
+        {
+          "text": "tiger",
+          "meaning": "a striped wild cat",
+          "emoji": "🐯"
+        },
+        {
+          "text": "bear",
+          "meaning": "a large furry animal",
+          "emoji": "🐻"
+        },
+        {
+          "text": "elephant",
+          "meaning": "a huge animal with a trunk",
+          "emoji": "🐘"
+        },
+        {
+          "text": "giraffe",
+          "meaning": "a tall animal with a long neck",
+          "emoji": "🦒"
+        },
+        {
+          "text": "zebra",
+          "meaning": "a striped horse-like animal",
+          "emoji": "🦓"
+        },
+        {
+          "text": "monkey",
+          "meaning": "a climbing animal",
+          "emoji": "🐵"
+        },
+        {
+          "text": "gorilla",
+          "meaning": "a large ape",
+          "emoji": "🦍"
+        },
+        {
+          "text": "panda",
+          "meaning": "a black and white bear",
+          "emoji": "🐼"
+        },
+        {
+          "text": "koala",
+          "meaning": "a tree animal from Australia",
+          "emoji": "🐨"
+        },
+        {
+          "text": "kangaroo",
+          "meaning": "an animal that hops",
+          "emoji": "🦘"
+        },
+        {
+          "text": "camel",
+          "meaning": "a desert animal",
+          "emoji": "🐪"
+        },
+        {
+          "text": "deer",
+          "meaning": "a forest animal with antlers",
+          "emoji": "🦌"
+        },
+        {
+          "text": "fox",
+          "meaning": "a clever wild animal",
+          "emoji": "🦊"
+        },
+        {
+          "text": "wolf",
+          "meaning": "a wild dog-like animal",
+          "emoji": "🐺"
+        },
+        {
+          "text": "owl",
+          "meaning": "a night bird",
+          "emoji": "🦉"
+        },
+        {
+          "text": "eagle",
+          "meaning": "a strong bird",
+          "emoji": "🦅"
+        },
+        {
+          "text": "parrot",
+          "meaning": "a colorful talking bird",
+          "emoji": "🦜"
+        },
+        {
+          "text": "penguin",
+          "meaning": "a bird that swims",
+          "emoji": "🐧"
+        },
+        {
+          "text": "swan",
+          "meaning": "a graceful white bird",
+          "emoji": "🦢"
+        },
+        {
+          "text": "goose",
+          "meaning": "a loud farm bird",
+          "emoji": "🪿"
+        },
+        {
+          "text": "turkey",
+          "meaning": "a big farm bird",
+          "emoji": "🦃"
+        },
+        {
+          "text": "crab",
+          "meaning": "a sea animal with claws",
+          "emoji": "🦀"
+        },
+        {
+          "text": "shrimp",
+          "meaning": "a small sea animal",
+          "emoji": "🦐"
+        },
+        {
+          "text": "octopus",
+          "meaning": "a sea animal with many arms",
+          "emoji": "🐙"
+        },
+        {
+          "text": "whale",
+          "meaning": "a huge sea animal",
+          "emoji": "🐋"
+        },
+        {
+          "text": "dolphin",
+          "meaning": "a smart sea animal",
+          "emoji": "🐬"
+        },
+        {
+          "text": "shark",
+          "meaning": "a strong sea fish",
+          "emoji": "🦈"
+        },
+        {
+          "text": "seal",
+          "meaning": "a sea animal that claps",
+          "emoji": "🦭"
+        },
+        {
+          "text": "bat",
+          "meaning": "a flying night animal",
+          "emoji": "🦇"
+        },
+        {
+          "text": "hedgehog",
+          "meaning": "a spiky small animal",
+          "emoji": "🦔"
+        },
+        {
+          "text": "squirrel",
+          "meaning": "a tree animal with a bushy tail",
+          "emoji": "🐿️"
+        },
+        {
+          "text": "hamster",
+          "meaning": "a small cage pet",
+          "emoji": "🐹"
+        },
+        {
+          "text": "pony",
+          "meaning": "a small horse",
+          "emoji": "🐴"
+        },
+        {
+          "text": "donkey",
+          "meaning": "a farm animal that brays",
+          "emoji": "🫏"
+        },
+        {
+          "text": "buffalo",
+          "meaning": "a strong farm animal",
+          "emoji": "🐃"
+        },
+        {
+          "text": "ox",
+          "meaning": "a working farm animal",
+          "emoji": "🐂"
+        },
+        {
+          "text": "lamb",
+          "meaning": "a baby sheep",
+          "emoji": "🐑"
+        },
+        {
+          "text": "calf",
+          "meaning": "a baby cow",
+          "emoji": "🐄"
+        },
+        {
+          "text": "puppy",
+          "meaning": "a baby dog",
+          "emoji": "🐶"
+        },
+        {
+          "text": "kitten",
+          "meaning": "a baby cat",
+          "emoji": "🐱"
+        },
+        {
+          "text": "cub",
+          "meaning": "a baby lion or bear",
+          "emoji": "🐯"
+        },
+        {
+          "text": "foal",
+          "meaning": "a baby horse",
+          "emoji": "🐴"
+        },
+        {
+          "text": "duckling",
+          "meaning": "a baby duck",
+          "emoji": "🐥"
+        },
+        {
+          "text": "tadpole",
+          "meaning": "a baby frog",
+          "emoji": "🫧"
+        },
+        {
+          "text": "goldfish",
+          "meaning": "a small pet fish",
+          "emoji": "🐠"
+        },
+        {
+          "text": "snail",
+          "meaning": "a slow animal with a shell",
+          "emoji": "🐌"
+        },
+        {
+          "text": "mosquito",
+          "meaning": "a tiny biting insect",
+          "emoji": "🦟"
+        },
+        {
+          "text": "ladybug",
+          "meaning": "a red spotted insect",
+          "emoji": "🐞"
+        },
+        {
+          "text": "dragonfly",
+          "meaning": "a flying insect",
+          "emoji": "🪰"
+        }
+      ]
+    },
+    {
+      "code": "fruits_vegetables",
+      "label": "Fruits and Vegetables",
+      "emoji": "🍎",
+      "group": "A",
+      "words": [
+        {
+          "text": "apple",
+          "meaning": "a round red or green fruit",
+          "emoji": "🍎"
+        },
+        {
+          "text": "banana",
+          "meaning": "a long yellow fruit",
+          "emoji": "🍌"
+        },
+        {
+          "text": "orange",
+          "meaning": "a round citrus fruit",
+          "emoji": "🍊"
+        },
+        {
+          "text": "grape",
+          "meaning": "a small sweet fruit",
+          "emoji": "🍇"
+        },
+        {
+          "text": "mango",
+          "meaning": "a sweet tropical fruit",
+          "emoji": "🥭"
+        },
+        {
+          "text": "pear",
+          "meaning": "a green soft fruit",
+          "emoji": "🍐"
+        },
+        {
+          "text": "peach",
+          "meaning": "a soft fuzzy fruit",
+          "emoji": "🍑"
+        },
+        {
+          "text": "plum",
+          "meaning": "a small purple fruit",
+          "emoji": "🟣"
+        },
+        {
+          "text": "cherry",
+          "meaning": "a small red fruit",
+          "emoji": "🍒"
+        },
+        {
+          "text": "strawberry",
+          "meaning": "a red berry fruit",
+          "emoji": "🍓"
+        },
+        {
+          "text": "blueberry",
+          "meaning": "a small blue berry",
+          "emoji": "🫐"
+        },
+        {
+          "text": "watermelon",
+          "meaning": "a big juicy fruit",
+          "emoji": "🍉"
+        },
+        {
+          "text": "melon",
+          "meaning": "a sweet round fruit",
+          "emoji": "🍈"
+        },
+        {
+          "text": "pineapple",
+          "meaning": "a tropical spiky fruit",
+          "emoji": "🍍"
+        },
+        {
+          "text": "kiwi",
+          "meaning": "a brown fuzzy fruit",
+          "emoji": "🥝"
+        },
+        {
+          "text": "lemon",
+          "meaning": "a sour yellow fruit",
+          "emoji": "🍋"
+        },
+        {
+          "text": "lime",
+          "meaning": "a sour green fruit",
+          "emoji": "💚"
+        },
+        {
+          "text": "coconut",
+          "meaning": "a hard tropical fruit",
+          "emoji": "🥥"
+        },
+        {
+          "text": "papaya",
+          "meaning": "a soft orange fruit",
+          "emoji": "🧡"
+        },
+        {
+          "text": "guava",
+          "meaning": "a tropical pink fruit",
+          "emoji": "🟢"
+        },
+        {
+          "text": "fig",
+          "meaning": "a soft sweet fruit",
+          "emoji": "🟫"
+        },
+        {
+          "text": "date",
+          "meaning": "a sweet dried fruit",
+          "emoji": "🌴"
+        },
+        {
+          "text": "raisin",
+          "meaning": "a dried grape",
+          "emoji": "🍇"
+        },
+        {
+          "text": "avocado",
+          "meaning": "a creamy green fruit",
+          "emoji": "🥑"
+        },
+        {
+          "text": "tomato",
+          "meaning": "a red cooking fruit",
+          "emoji": "🍅"
+        },
+        {
+          "text": "carrot",
+          "meaning": "an orange root vegetable",
+          "emoji": "🥕"
+        },
+        {
+          "text": "potato",
+          "meaning": "a brown root vegetable",
+          "emoji": "🥔"
+        },
+        {
+          "text": "onion",
+          "meaning": "a layered cooking vegetable",
+          "emoji": "🧅"
+        },
+        {
+          "text": "garlic",
+          "meaning": "a strong cooking bulb",
+          "emoji": "🧄"
+        },
+        {
+          "text": "ginger",
+          "meaning": "a spicy root",
+          "emoji": "🫚"
+        },
+        {
+          "text": "cucumber",
+          "meaning": "a green watery vegetable",
+          "emoji": "🥒"
+        },
+        {
+          "text": "lettuce",
+          "meaning": "a leafy green",
+          "emoji": "🥬"
+        },
+        {
+          "text": "cabbage",
+          "meaning": "a round leafy vegetable",
+          "emoji": "🥬"
+        },
+        {
+          "text": "spinach",
+          "meaning": "a leafy green vegetable",
+          "emoji": "🌿"
+        },
+        {
+          "text": "broccoli",
+          "meaning": "a green tree-like vegetable",
+          "emoji": "🥦"
+        },
+        {
+          "text": "cauliflower",
+          "meaning": "a white vegetable",
+          "emoji": "⚪"
+        },
+        {
+          "text": "corn",
+          "meaning": "a yellow grain vegetable",
+          "emoji": "🌽"
+        },
+        {
+          "text": "peas",
+          "meaning": "small green seeds",
+          "emoji": "🟢"
+        },
+        {
+          "text": "bean",
+          "meaning": "a protein seed",
+          "emoji": "🫘"
+        },
+        {
+          "text": "pumpkin",
+          "meaning": "a large orange vegetable",
+          "emoji": "🎃"
+        },
+        {
+          "text": "eggplant",
+          "meaning": "a purple vegetable",
+          "emoji": "🍆"
+        },
+        {
+          "text": "pepper",
+          "meaning": "a colorful vegetable",
+          "emoji": "🫑"
+        },
+        {
+          "text": "chili",
+          "meaning": "a spicy pepper",
+          "emoji": "🌶️"
+        },
+        {
+          "text": "radish",
+          "meaning": "a small crunchy root",
+          "emoji": "🔴"
+        },
+        {
+          "text": "beet",
+          "meaning": "a red root vegetable",
+          "emoji": "🟣"
+        },
+        {
+          "text": "turnip",
+          "meaning": "a round root vegetable",
+          "emoji": "⚪"
+        },
+        {
+          "text": "yam",
+          "meaning": "a starchy root",
+          "emoji": "🟤"
+        },
+        {
+          "text": "sweetpotato",
+          "meaning": "a sweet orange root",
+          "emoji": "🍠"
+        },
+        {
+          "text": "mushroom",
+          "meaning": "a soft forest food",
+          "emoji": "🍄"
+        },
+        {
+          "text": "olive",
+          "meaning": "a small oil fruit",
+          "emoji": "🫒"
+        },
+        {
+          "text": "celery",
+          "meaning": "a crunchy green stalk",
+          "emoji": "🌿"
+        },
+        {
+          "text": "asparagus",
+          "meaning": "a thin green vegetable",
+          "emoji": "🟢"
+        },
+        {
+          "text": "zucchini",
+          "meaning": "a green squash",
+          "emoji": "🥒"
+        },
+        {
+          "text": "squash",
+          "meaning": "a cooking vegetable",
+          "emoji": "🎃"
+        },
+        {
+          "text": "okra",
+          "meaning": "a green cooking pod",
+          "emoji": "🟢"
+        },
+        {
+          "text": "artichoke",
+          "meaning": "a leafy vegetable",
+          "emoji": "🪴"
+        },
+        {
+          "text": "leek",
+          "meaning": "a long mild onion",
+          "emoji": "🌱"
+        },
+        {
+          "text": "shallot",
+          "meaning": "a small onion",
+          "emoji": "🧅"
+        },
+        {
+          "text": "scallion",
+          "meaning": "a green onion",
+          "emoji": "🌱"
+        },
+        {
+          "text": "parsley",
+          "meaning": "a green herb",
+          "emoji": "🌿"
+        },
+        {
+          "text": "mint",
+          "meaning": "a fresh herb",
+          "emoji": "🌱"
+        },
+        {
+          "text": "basil",
+          "meaning": "a cooking herb",
+          "emoji": "🌿"
+        },
+        {
+          "text": "cilantro",
+          "meaning": "a leafy herb",
+          "emoji": "🌿"
+        },
+        {
+          "text": "dill",
+          "meaning": "a fragrant herb",
+          "emoji": "🌱"
+        },
+        {
+          "text": "sage",
+          "meaning": "an earthy herb",
+          "emoji": "🌿"
+        },
+        {
+          "text": "thyme",
+          "meaning": "a tiny leaf herb",
+          "emoji": "🌱"
+        },
+        {
+          "text": "rosemary",
+          "meaning": "a needle herb",
+          "emoji": "🌿"
+        },
+        {
+          "text": "berry",
+          "meaning": "a small soft fruit",
+          "emoji": "🫐"
+        },
+        {
+          "text": "apricot",
+          "meaning": "a small orange fruit",
+          "emoji": "🟠"
+        },
+        {
+          "text": "nectarine",
+          "meaning": "a smooth peach-like fruit",
+          "emoji": "🍑"
+        },
+        {
+          "text": "cantaloupe",
+          "meaning": "an orange melon",
+          "emoji": "🍈"
+        },
+        {
+          "text": "honeydew",
+          "meaning": "a green melon",
+          "emoji": "🍈"
+        },
+        {
+          "text": "cranberry",
+          "meaning": "a tart red berry",
+          "emoji": "🔴"
+        },
+        {
+          "text": "blackberry",
+          "meaning": "a dark soft berry",
+          "emoji": "⚫"
+        },
+        {
+          "text": "raspberry",
+          "meaning": "a red soft berry",
+          "emoji": "🍓"
+        }
+      ]
+    },
+    {
+      "code": "colors_shapes",
+      "label": "Colors and Shapes",
+      "emoji": "🌈",
+      "group": "A",
+      "words": [
+        {
+          "text": "red",
+          "meaning": "the color of an apple",
+          "emoji": "🔴"
+        },
+        {
+          "text": "blue",
+          "meaning": "the color of the sky",
+          "emoji": "🔵"
+        },
+        {
+          "text": "green",
+          "meaning": "the color of grass",
+          "emoji": "🟢"
+        },
+        {
+          "text": "yellow",
+          "meaning": "the color of the sun",
+          "emoji": "🟡"
+        },
+        {
+          "text": "amber",
+          "meaning": "a mix of red and yellow",
+          "emoji": "🟠"
+        },
+        {
+          "text": "purple",
+          "meaning": "a mix of red and blue",
+          "emoji": "🟣"
+        },
+        {
+          "text": "pink",
+          "meaning": "a light red color",
+          "emoji": "🩷"
+        },
+        {
+          "text": "black",
+          "meaning": "the darkest color",
+          "emoji": "⚫"
+        },
+        {
+          "text": "white",
+          "meaning": "the lightest color",
+          "emoji": "⚪"
+        },
+        {
+          "text": "brown",
+          "meaning": "the color of wood",
+          "emoji": "🟤"
+        },
+        {
+          "text": "gray",
+          "meaning": "a mix of black and white",
+          "emoji": "🩶"
+        },
+        {
+          "text": "silver",
+          "meaning": "a shiny gray color",
+          "emoji": "🥈"
+        },
+        {
+          "text": "gold",
+          "meaning": "a shiny yellow metal color",
+          "emoji": "🥇"
+        },
+        {
+          "text": "navy",
+          "meaning": "a dark blue color",
+          "emoji": "🔷"
+        },
+        {
+          "text": "teal",
+          "meaning": "a blue-green color",
+          "emoji": "🩵"
+        },
+        {
+          "text": "maroon",
+          "meaning": "a dark red color",
+          "emoji": "🟥"
+        },
+        {
+          "text": "beige",
+          "meaning": "a light brown color",
+          "emoji": "🟫"
+        },
+        {
+          "text": "cream",
+          "meaning": "a soft off-white color",
+          "emoji": "🍦"
+        },
+        {
+          "text": "circle",
+          "meaning": "a round shape",
+          "emoji": "⭕"
+        },
+        {
+          "text": "square",
+          "meaning": "a shape with four equal sides",
+          "emoji": "⬛"
+        },
+        {
+          "text": "triangle",
+          "meaning": "a shape with three sides",
+          "emoji": "🔺"
+        },
+        {
+          "text": "rectangle",
+          "meaning": "a long square shape",
+          "emoji": "▬"
+        },
+        {
+          "text": "oval",
+          "meaning": "an egg-like shape",
+          "emoji": "⬭"
+        },
+        {
+          "text": "diamond",
+          "meaning": "a pointed square shape",
+          "emoji": "💎"
+        },
+        {
+          "text": "star",
+          "meaning": "a pointed night shape",
+          "emoji": "⭐"
+        },
+        {
+          "text": "heart",
+          "meaning": "a love shape",
+          "emoji": "❤️"
+        },
+        {
+          "text": "moon",
+          "meaning": "a night sky shape",
+          "emoji": "🌙"
+        },
+        {
+          "text": "sun",
+          "meaning": "a bright day shape",
+          "emoji": "☀️"
+        },
+        {
+          "text": "cloud",
+          "meaning": "a soft sky shape",
+          "emoji": "☁️"
+        },
+        {
+          "text": "line",
+          "meaning": "a long thin mark",
+          "emoji": "➖"
+        },
+        {
+          "text": "dot",
+          "meaning": "a tiny round mark",
+          "emoji": "🔘"
+        },
+        {
+          "text": "cross",
+          "meaning": "an X or plus shape",
+          "emoji": "➕"
+        },
+        {
+          "text": "arrow",
+          "meaning": "a pointing shape",
+          "emoji": "➡️"
+        },
+        {
+          "text": "spiral",
+          "meaning": "a curling shape",
+          "emoji": "🌀"
+        },
+        {
+          "text": "wave",
+          "meaning": "a curving water shape",
+          "emoji": "🌊"
+        },
+        {
+          "text": "cube",
+          "meaning": "a 3D square",
+          "emoji": "🧊"
+        },
+        {
+          "text": "sphere",
+          "meaning": "a 3D circle",
+          "emoji": "🔵"
+        },
+        {
+          "text": "cone",
+          "meaning": "a pointed 3D shape",
+          "emoji": "🍦"
+        },
+        {
+          "text": "cylinder",
+          "meaning": "a tube shape",
+          "emoji": "🥫"
+        },
+        {
+          "text": "hexagon",
+          "meaning": "a six-sided shape",
+          "emoji": "⬡"
+        },
+        {
+          "text": "pentagon",
+          "meaning": "a five-sided shape",
+          "emoji": "⬠"
+        },
+        {
+          "text": "octagon",
+          "meaning": "an eight-sided shape",
+          "emoji": "🛑"
+        },
+        {
+          "text": "semicircle",
+          "meaning": "half a circle",
+          "emoji": "◐"
+        },
+        {
+          "text": "ring",
+          "meaning": "a round hollow shape",
+          "emoji": "💍"
+        },
+        {
+          "text": "stripe",
+          "meaning": "a long color band",
+          "emoji": "📶"
+        },
+        {
+          "text": "pattern",
+          "meaning": "a repeating design",
+          "emoji": "🔳"
+        },
+        {
+          "text": "bright",
+          "meaning": "full of light",
+          "emoji": "✨"
+        },
+        {
+          "text": "dark",
+          "meaning": "with little light",
+          "emoji": "🌑"
+        },
+        {
+          "text": "light",
+          "meaning": "not dark",
+          "emoji": "💡"
+        },
+        {
+          "text": "colorful",
+          "meaning": "having many colors",
+          "emoji": "🌈"
+        },
+        {
+          "text": "rainbow",
+          "meaning": "many colors in an arc",
+          "emoji": "🌈"
+        },
+        {
+          "text": "shade",
+          "meaning": "a darker tone",
+          "emoji": "🖤"
+        },
+        {
+          "text": "tint",
+          "meaning": "a lighter tone",
+          "emoji": "🤍"
+        },
+        {
+          "text": "pastel",
+          "meaning": "a soft pale color",
+          "emoji": "🎀"
+        },
+        {
+          "text": "neon",
+          "meaning": "a glowing bright color",
+          "emoji": "❇️"
+        },
+        {
+          "text": "matte",
+          "meaning": "not shiny",
+          "emoji": "📦"
+        },
+        {
+          "text": "shiny",
+          "meaning": "bright and glossy",
+          "emoji": "✨"
+        },
+        {
+          "text": "transparent",
+          "meaning": "see-through",
+          "emoji": "🪟"
+        },
+        {
+          "text": "opaque",
+          "meaning": "not see-through",
+          "emoji": "🧱"
+        },
+        {
+          "text": "polka",
+          "meaning": "round dots pattern",
+          "emoji": "🔵"
+        },
+        {
+          "text": "checker",
+          "meaning": "square pattern",
+          "emoji": "🏁"
+        },
+        {
+          "text": "zigzag",
+          "meaning": "a sharp wave line",
+          "emoji": "⚡"
+        },
+        {
+          "text": "curve",
+          "meaning": "a smooth bend",
+          "emoji": "🌙"
+        },
+        {
+          "text": "angle",
+          "meaning": "a corner shape",
+          "emoji": "📐"
+        },
+        {
+          "text": "edge",
+          "meaning": "the side of a shape",
+          "emoji": "📏"
+        },
+        {
+          "text": "corner",
+          "meaning": "where sides meet",
+          "emoji": "📐"
+        },
+        {
+          "text": "center",
+          "meaning": "the middle point",
+          "emoji": "🎯"
+        },
+        {
+          "text": "border",
+          "meaning": "the outer line",
+          "emoji": "🖼️"
+        },
+        {
+          "text": "frame",
+          "meaning": "a border around something",
+          "emoji": "🖼️"
+        },
+        {
+          "text": "outline",
+          "meaning": "the outer edge line",
+          "emoji": "✏️"
+        },
+        {
+          "text": "solid",
+          "meaning": "filled with color",
+          "emoji": "◼️"
+        },
+        {
+          "text": "hollow",
+          "meaning": "empty inside",
+          "emoji": "○"
+        },
+        {
+          "text": "balloon",
+          "meaning": "a floating party toy",
+          "emoji": "🎈"
+        },
+        {
+          "text": "kite",
+          "meaning": "a flying toy on a string",
+          "emoji": "🪁"
+        },
+        {
+          "text": "toy",
+          "meaning": "something fun to play with",
+          "emoji": "🧸"
+        }
+      ]
+    },
+    {
+      "code": "body_parts",
+      "label": "Body Parts",
+      "emoji": "🧍",
+      "group": "A",
+      "words": [
+        {
+          "text": "head",
+          "meaning": "the top of your body",
+          "emoji": "🗣️"
+        },
+        {
+          "text": "hair",
+          "meaning": "grows on your head",
+          "emoji": "💇"
+        },
+        {
+          "text": "face",
+          "meaning": "the front of your head",
+          "emoji": "🙂"
+        },
+        {
+          "text": "eye",
+          "meaning": "you see with it",
+          "emoji": "👁️"
+        },
+        {
+          "text": "ear",
+          "meaning": "you hear with it",
+          "emoji": "👂"
+        },
+        {
+          "text": "nose",
+          "meaning": "you smell with it",
+          "emoji": "👃"
+        },
+        {
+          "text": "mouth",
+          "meaning": "you eat and talk with it",
+          "emoji": "👄"
+        },
+        {
+          "text": "lip",
+          "meaning": "edge of your mouth",
+          "emoji": "💋"
+        },
+        {
+          "text": "tooth",
+          "meaning": "helps you chew",
+          "emoji": "🦷"
+        },
+        {
+          "text": "tongue",
+          "meaning": "helps you taste",
+          "emoji": "👅"
+        },
+        {
+          "text": "cheek",
+          "meaning": "side of your face",
+          "emoji": "😊"
+        },
+        {
+          "text": "chin",
+          "meaning": "bottom of your face",
+          "emoji": "🧔"
+        },
+        {
+          "text": "forehead",
+          "meaning": "top of your face",
+          "emoji": "😊"
+        },
+        {
+          "text": "eyebrow",
+          "meaning": "hair above your eye",
+          "emoji": "🤨"
+        },
+        {
+          "text": "eyelash",
+          "meaning": "hair on your eyelid",
+          "emoji": "👁️"
+        },
+        {
+          "text": "neck",
+          "meaning": "connects head and body",
+          "emoji": "🧣"
+        },
+        {
+          "text": "shoulder",
+          "meaning": "top of your arm",
+          "emoji": "💪"
+        },
+        {
+          "text": "arm",
+          "meaning": "from shoulder to hand",
+          "emoji": "💪"
+        },
+        {
+          "text": "elbow",
+          "meaning": "middle of your arm",
+          "emoji": "🦾"
+        },
+        {
+          "text": "wrist",
+          "meaning": "near your hand",
+          "emoji": "⌚"
+        },
+        {
+          "text": "hand",
+          "meaning": "you hold things with it",
+          "emoji": "✋"
+        },
+        {
+          "text": "finger",
+          "meaning": "part of your hand",
+          "emoji": "👆"
+        },
+        {
+          "text": "thumb",
+          "meaning": "your short strong finger",
+          "emoji": "👍"
+        },
+        {
+          "text": "nail",
+          "meaning": "hard tip of a finger",
+          "emoji": "💅"
+        },
+        {
+          "text": "chest",
+          "meaning": "front of your upper body",
+          "emoji": "👕"
+        },
+        {
+          "text": "back",
+          "meaning": "rear of your body",
+          "emoji": "🔙"
+        },
+        {
+          "text": "stomach",
+          "meaning": "where food goes",
+          "emoji": "🤰"
+        },
+        {
+          "text": "belly",
+          "meaning": "another word for stomach",
+          "emoji": "🫙"
+        },
+        {
+          "text": "waist",
+          "meaning": "middle of your body",
+          "emoji": "🪢"
+        },
+        {
+          "text": "hip",
+          "meaning": "side of your lower body",
+          "emoji": "🕺"
+        },
+        {
+          "text": "leg",
+          "meaning": "from hip to foot",
+          "emoji": "🦵"
+        },
+        {
+          "text": "knee",
+          "meaning": "middle of your leg",
+          "emoji": "🦵"
+        },
+        {
+          "text": "ankle",
+          "meaning": "near your foot",
+          "emoji": "🦶"
+        },
+        {
+          "text": "foot",
+          "meaning": "you stand on it",
+          "emoji": "🦶"
+        },
+        {
+          "text": "toe",
+          "meaning": "part of your foot",
+          "emoji": "🦶"
+        },
+        {
+          "text": "heel",
+          "meaning": "back of your foot",
+          "emoji": "👠"
+        },
+        {
+          "text": "skin",
+          "meaning": "covers your body",
+          "emoji": "🧴"
+        },
+        {
+          "text": "bone",
+          "meaning": "hard part inside you",
+          "emoji": "🦴"
+        },
+        {
+          "text": "muscle",
+          "meaning": "helps you move",
+          "emoji": "💪"
+        },
+        {
+          "text": "loveshape",
+          "meaning": "pumps blood",
+          "emoji": "❤️"
+        },
+        {
+          "text": "lung",
+          "meaning": "helps you breathe",
+          "emoji": "🫁"
+        },
+        {
+          "text": "brain",
+          "meaning": "helps you think",
+          "emoji": "🧠"
+        },
+        {
+          "text": "blood",
+          "meaning": "red liquid in your body",
+          "emoji": "🩸"
+        },
+        {
+          "text": "voice",
+          "meaning": "sound from your mouth",
+          "emoji": "🗣️"
+        },
+        {
+          "text": "breath",
+          "meaning": "air you take in",
+          "emoji": "💨"
+        },
+        {
+          "text": "smile",
+          "meaning": "happy face look",
+          "emoji": "😁"
+        },
+        {
+          "text": "laugh",
+          "meaning": "happy sound",
+          "emoji": "😂"
+        },
+        {
+          "text": "cry",
+          "meaning": "sad tears",
+          "emoji": "😢"
+        },
+        {
+          "text": "tear",
+          "meaning": "water from your eye",
+          "emoji": "💧"
+        },
+        {
+          "text": "yawn",
+          "meaning": "tired open mouth",
+          "emoji": "🥱"
+        },
+        {
+          "text": "sneeze",
+          "meaning": "sudden nose burst",
+          "emoji": "🤧"
+        },
+        {
+          "text": "cough",
+          "meaning": "throat sound",
+          "emoji": "🤒"
+        },
+        {
+          "text": "hug",
+          "meaning": "holding someone close",
+          "emoji": "🤗"
+        },
+        {
+          "text": "kiss",
+          "meaning": "touch with lips",
+          "emoji": "😘"
+        },
+        {
+          "text": "wavyline",
+          "meaning": "hand hello motion",
+          "emoji": "👋"
+        },
+        {
+          "text": "clap",
+          "meaning": "hitting hands together",
+          "emoji": "👏"
+        },
+        {
+          "text": "point",
+          "meaning": "showing with a finger",
+          "emoji": "👉"
+        },
+        {
+          "text": "kick",
+          "meaning": "hitting with a foot",
+          "emoji": "🦵"
+        },
+        {
+          "text": "jump",
+          "meaning": "leaving the ground",
+          "emoji": "🦘"
+        },
+        {
+          "text": "run",
+          "meaning": "moving fast on feet",
+          "emoji": "🏃"
+        },
+        {
+          "text": "walk",
+          "meaning": "moving on feet",
+          "emoji": "🚶"
+        },
+        {
+          "text": "sit",
+          "meaning": "resting on a seat",
+          "emoji": "🪑"
+        },
+        {
+          "text": "stand",
+          "meaning": "being on your feet",
+          "emoji": "🧍"
+        },
+        {
+          "text": "sleep",
+          "meaning": "resting with eyes closed",
+          "emoji": "😴"
+        },
+        {
+          "text": "wake",
+          "meaning": "opening your eyes",
+          "emoji": "⏰"
+        },
+        {
+          "text": "blink",
+          "meaning": "quick eye close",
+          "emoji": "😉"
+        },
+        {
+          "text": "wink",
+          "meaning": "closing one eye",
+          "emoji": "😜"
+        },
+        {
+          "text": "nod",
+          "meaning": "moving head yes",
+          "emoji": "🙂"
+        },
+        {
+          "text": "shake",
+          "meaning": "moving side to side",
+          "emoji": "🫨"
+        },
+        {
+          "text": "ball",
+          "meaning": "a round play object",
+          "emoji": "⚽"
+        },
+        {
+          "text": "block",
+          "meaning": "a building toy cube",
+          "emoji": "🧱"
+        },
+        {
+          "text": "doll",
+          "meaning": "a toy person",
+          "emoji": "🪆"
+        },
+        {
+          "text": "train",
+          "meaning": "linked cars on tracks",
+          "emoji": "🚂"
+        },
+        {
+          "text": "car",
+          "meaning": "a road vehicle",
+          "emoji": "🚗"
+        },
+        {
+          "text": "bike",
+          "meaning": "a two-wheel ride",
+          "emoji": "🚲"
+        }
+      ]
+    },
+    {
+      "code": "school_classroom",
+      "label": "School and Classroom",
+      "emoji": "🏫",
+      "group": "B",
+      "words": [
+        {
+          "text": "school",
+          "meaning": "a place to learn",
+          "emoji": "🏫"
+        },
+        {
+          "text": "classroom",
+          "meaning": "a room for learning",
+          "emoji": "🚪"
+        },
+        {
+          "text": "desk",
+          "meaning": "a student table",
+          "emoji": "🪑"
+        },
+        {
+          "text": "chair",
+          "meaning": "a seat",
+          "emoji": "🪑"
+        },
+        {
+          "text": "board",
+          "meaning": "a writing wall",
+          "emoji": "🧽"
+        },
+        {
+          "text": "chalk",
+          "meaning": "a writing stick",
+          "emoji": "🖍️"
+        },
+        {
+          "text": "marker",
+          "meaning": "a colorful pen",
+          "emoji": "🖊️"
+        },
+        {
+          "text": "pen",
+          "meaning": "a writing tool",
+          "emoji": "🖊️"
+        },
+        {
+          "text": "pencil",
+          "meaning": "a drawing stick",
+          "emoji": "✏️"
+        },
+        {
+          "text": "eraser",
+          "meaning": "removes pencil marks",
+          "emoji": "🧽"
+        },
+        {
+          "text": "sharpener",
+          "meaning": "makes pencils sharp",
+          "emoji": "✏️"
+        },
+        {
+          "text": "crayon",
+          "meaning": "a wax color stick",
+          "emoji": "🖍️"
+        },
+        {
+          "text": "paint",
+          "meaning": "colored liquid for art",
+          "emoji": "🎨"
+        },
+        {
+          "text": "brush",
+          "meaning": "a painting tool",
+          "emoji": "🖌️"
+        },
+        {
+          "text": "paper",
+          "meaning": "a sheet for writing",
+          "emoji": "📄"
+        },
+        {
+          "text": "notebook",
+          "meaning": "a book of blank pages",
+          "emoji": "📓"
+        },
+        {
+          "text": "book",
+          "meaning": "pages with stories",
+          "emoji": "📖"
+        },
+        {
+          "text": "bag",
+          "meaning": "carries school things",
+          "emoji": "🎒"
+        },
+        {
+          "text": "lunchbox",
+          "meaning": "holds school lunch",
+          "emoji": "🍱"
+        },
+        {
+          "text": "bottle",
+          "meaning": "holds water",
+          "emoji": "🍼"
+        },
+        {
+          "text": "uniform",
+          "meaning": "school clothes",
+          "emoji": "👕"
+        },
+        {
+          "text": "bell",
+          "meaning": "rings for class time",
+          "emoji": "🔔"
+        },
+        {
+          "text": "clock",
+          "meaning": "shows time",
+          "emoji": "🕐"
+        },
+        {
+          "text": "map",
+          "meaning": "shows places",
+          "emoji": "🗺️"
+        },
+        {
+          "text": "globe",
+          "meaning": "a round earth map",
+          "emoji": "🌍"
+        },
+        {
+          "text": "ruler",
+          "meaning": "measures length",
+          "emoji": "📏"
+        },
+        {
+          "text": "scissors",
+          "meaning": "cut paper",
+          "emoji": "✂️"
+        },
+        {
+          "text": "glue",
+          "meaning": "sticks things together",
+          "emoji": "🧴"
+        },
+        {
+          "text": "tape",
+          "meaning": "sticky strip",
+          "emoji": "📎"
+        },
+        {
+          "text": "stapler",
+          "meaning": "joins papers",
+          "emoji": "📎"
+        },
+        {
+          "text": "clip",
+          "meaning": "holds papers",
+          "emoji": "📎"
+        },
+        {
+          "text": "folder",
+          "meaning": "holds documents",
+          "emoji": "📁"
+        },
+        {
+          "text": "file",
+          "meaning": "a paper holder",
+          "emoji": "📂"
+        },
+        {
+          "text": "card",
+          "meaning": "a small paper piece",
+          "emoji": "🃏"
+        },
+        {
+          "text": "poster",
+          "meaning": "a big wall picture",
+          "emoji": "🖼️"
+        },
+        {
+          "text": "calendar",
+          "meaning": "shows days",
+          "emoji": "📅"
+        },
+        {
+          "text": "homework",
+          "meaning": "school work at home",
+          "emoji": "📝"
+        },
+        {
+          "text": "test",
+          "meaning": "a school check",
+          "emoji": "🧪"
+        },
+        {
+          "text": "grade",
+          "meaning": "a school score",
+          "emoji": "🅰️"
+        },
+        {
+          "text": "lesson",
+          "meaning": "something you learn",
+          "emoji": "📘"
+        },
+        {
+          "text": "subject",
+          "meaning": "a learning topic",
+          "emoji": "📚"
+        },
+        {
+          "text": "math",
+          "meaning": "numbers learning",
+          "emoji": "🔢"
+        },
+        {
+          "text": "english",
+          "meaning": "language learning",
+          "emoji": "🔤"
+        },
+        {
+          "text": "science",
+          "meaning": "nature learning",
+          "emoji": "🔬"
+        },
+        {
+          "text": "art",
+          "meaning": "drawing learning",
+          "emoji": "🎨"
+        },
+        {
+          "text": "music",
+          "meaning": "song learning",
+          "emoji": "🎵"
+        },
+        {
+          "text": "sport",
+          "meaning": "body games",
+          "emoji": "⚽"
+        },
+        {
+          "text": "recess",
+          "meaning": "play time at school",
+          "emoji": "🛝"
+        },
+        {
+          "text": "library",
+          "meaning": "a book room",
+          "emoji": "📚"
+        },
+        {
+          "text": "lab",
+          "meaning": "a science room",
+          "emoji": "🔬"
+        },
+        {
+          "text": "gym",
+          "meaning": "a sports room",
+          "emoji": "🏋️"
+        },
+        {
+          "text": "canteen",
+          "meaning": "a school food place",
+          "emoji": "🍽️"
+        },
+        {
+          "text": "playground",
+          "meaning": "an outdoor play area",
+          "emoji": "🏞️"
+        },
+        {
+          "text": "gate",
+          "meaning": "school entrance",
+          "emoji": "🚪"
+        },
+        {
+          "text": "bus",
+          "meaning": "takes children to school",
+          "emoji": "🚌"
+        },
+        {
+          "text": "stop",
+          "meaning": "where the bus waits",
+          "emoji": "🚏"
+        },
+        {
+          "text": "queue",
+          "meaning": "students standing in order",
+          "emoji": "🧍"
+        },
+        {
+          "text": "row",
+          "meaning": "a line of desks",
+          "emoji": "🪑"
+        },
+        {
+          "text": "seat",
+          "meaning": "a place to sit",
+          "emoji": "💺"
+        },
+        {
+          "text": "roll",
+          "meaning": "attendance list",
+          "emoji": "📋"
+        },
+        {
+          "text": "badge",
+          "meaning": "a school pin",
+          "emoji": "📛"
+        },
+        {
+          "text": "medal",
+          "meaning": "a prize for winning",
+          "emoji": "🏅"
+        },
+        {
+          "text": "trophy",
+          "meaning": "a prize cup",
+          "emoji": "🏆"
+        },
+        {
+          "text": "certificate",
+          "meaning": "a paper award",
+          "emoji": "📜"
+        },
+        {
+          "text": "project",
+          "meaning": "a learning task",
+          "emoji": "🧩"
+        },
+        {
+          "text": "activity",
+          "meaning": "a fun school task",
+          "emoji": "🎯"
+        },
+        {
+          "text": "storytime",
+          "meaning": "listening to stories",
+          "emoji": "📖"
+        },
+        {
+          "text": "naptime",
+          "meaning": "rest time for little kids",
+          "emoji": "😴"
+        },
+        {
+          "text": "circletime",
+          "meaning": "group sitting time",
+          "emoji": "⭕"
+        },
+        {
+          "text": "teacherdesk",
+          "meaning": "teacher's table",
+          "emoji": "🪑"
+        },
+        {
+          "text": "whiteboard",
+          "meaning": "a wipe board",
+          "emoji": "⬜"
+        },
+        {
+          "text": "projector",
+          "meaning": "shows big pictures",
+          "emoji": "📽️"
+        },
+        {
+          "text": "speaker",
+          "meaning": "makes sound louder",
+          "emoji": "🔊"
+        },
+        {
+          "text": "computer",
+          "meaning": "a learning machine",
+          "emoji": "💻"
+        },
+        {
+          "text": "tablet",
+          "meaning": "a touch screen",
+          "emoji": "📱"
+        }
+      ]
+    },
+    {
+      "code": "household_objects",
+      "label": "Household Objects",
+      "emoji": "🏠",
+      "group": "B",
+      "words": [
+        {
+          "text": "house",
+          "meaning": "a place to live",
+          "emoji": "🏠"
+        },
+        {
+          "text": "home",
+          "meaning": "where your family lives",
+          "emoji": "🏡"
+        },
+        {
+          "text": "room",
+          "meaning": "a space in a house",
+          "emoji": "🚪"
+        },
+        {
+          "text": "door",
+          "meaning": "opens to a room",
+          "emoji": "🚪"
+        },
+        {
+          "text": "window",
+          "meaning": "lets in light",
+          "emoji": "🪟"
+        },
+        {
+          "text": "wall",
+          "meaning": "side of a room",
+          "emoji": "🧱"
+        },
+        {
+          "text": "floor",
+          "meaning": "you walk on it",
+          "emoji": "🟫"
+        },
+        {
+          "text": "roof",
+          "meaning": "top of a house",
+          "emoji": "🏠"
+        },
+        {
+          "text": "kitchen",
+          "meaning": "where we cook",
+          "emoji": "🍳"
+        },
+        {
+          "text": "bedroom",
+          "meaning": "where we sleep",
+          "emoji": "🛏️"
+        },
+        {
+          "text": "bathroom",
+          "meaning": "where we wash",
+          "emoji": "🛁"
+        },
+        {
+          "text": "livingroom",
+          "meaning": "a family sitting room",
+          "emoji": "🛋️"
+        },
+        {
+          "text": "diningroom",
+          "meaning": "where we eat meals",
+          "emoji": "🍽️"
+        },
+        {
+          "text": "garden",
+          "meaning": "outdoor plant space",
+          "emoji": "🏡"
+        },
+        {
+          "text": "yard",
+          "meaning": "outdoor house space",
+          "emoji": "🌳"
+        },
+        {
+          "text": "garage",
+          "meaning": "where a car parks",
+          "emoji": "🚗"
+        },
+        {
+          "text": "stairs",
+          "meaning": "steps between floors",
+          "emoji": "🪜"
+        },
+        {
+          "text": "balcony",
+          "meaning": "an outdoor ledge",
+          "emoji": "🏞️"
+        },
+        {
+          "text": "bed",
+          "meaning": "for sleeping",
+          "emoji": "🛏️"
+        },
+        {
+          "text": "pillow",
+          "meaning": "soft head rest",
+          "emoji": "🛏️"
+        },
+        {
+          "text": "blanket",
+          "meaning": "keeps you warm",
+          "emoji": "🧸"
+        },
+        {
+          "text": "sheet",
+          "meaning": "cloth on a bed",
+          "emoji": "🛏️"
+        },
+        {
+          "text": "sofa",
+          "meaning": "a soft long seat",
+          "emoji": "🛋️"
+        },
+        {
+          "text": "table",
+          "meaning": "a flat surface",
+          "emoji": "🪵"
+        },
+        {
+          "text": "lamp",
+          "meaning": "gives light",
+          "emoji": "💡"
+        },
+        {
+          "text": "fan",
+          "meaning": "moves air",
+          "emoji": "🌀"
+        },
+        {
+          "text": "fridge",
+          "meaning": "keeps food cold",
+          "emoji": "🧊"
+        },
+        {
+          "text": "oven",
+          "meaning": "heats food",
+          "emoji": "🔥"
+        },
+        {
+          "text": "stove",
+          "meaning": "cooks food",
+          "emoji": "🍳"
+        },
+        {
+          "text": "microwave",
+          "meaning": "heats food fast",
+          "emoji": "📡"
+        },
+        {
+          "text": "sink",
+          "meaning": "holds water for washing",
+          "emoji": "🚰"
+        },
+        {
+          "text": "tap",
+          "meaning": "water control",
+          "emoji": "🚰"
+        },
+        {
+          "text": "soap",
+          "meaning": "cleans hands",
+          "emoji": "🧼"
+        },
+        {
+          "text": "towel",
+          "meaning": "dries your body",
+          "emoji": "🛁"
+        },
+        {
+          "text": "mirror",
+          "meaning": "shows your face",
+          "emoji": "🪞"
+        },
+        {
+          "text": "hairbrush",
+          "meaning": "fixes hair",
+          "emoji": "💇"
+        },
+        {
+          "text": "comb",
+          "meaning": "straightens hair",
+          "emoji": "💇"
+        },
+        {
+          "text": "toothbrush",
+          "meaning": "cleans teeth",
+          "emoji": "🪥"
+        },
+        {
+          "text": "toothpaste",
+          "meaning": "tooth cleaning cream",
+          "emoji": "🪥"
+        },
+        {
+          "text": "cup",
+          "meaning": "holds a drink",
+          "emoji": "☕"
+        },
+        {
+          "text": "plate",
+          "meaning": "holds food",
+          "emoji": "🍽️"
+        },
+        {
+          "text": "bowl",
+          "meaning": "deep dish",
+          "emoji": "🥣"
+        },
+        {
+          "text": "spoon",
+          "meaning": "eats soft food",
+          "emoji": "🥄"
+        },
+        {
+          "text": "fork",
+          "meaning": "picks up food",
+          "emoji": "🍴"
+        },
+        {
+          "text": "knife",
+          "meaning": "cuts food",
+          "emoji": "🔪"
+        },
+        {
+          "text": "glass",
+          "meaning": "a clear drink cup",
+          "emoji": "🥛"
+        },
+        {
+          "text": "mug",
+          "meaning": "a big drink cup",
+          "emoji": "☕"
+        },
+        {
+          "text": "pan",
+          "meaning": "for cooking",
+          "emoji": "🍳"
+        },
+        {
+          "text": "pot",
+          "meaning": "a deep cooking pan",
+          "emoji": "🍲"
+        },
+        {
+          "text": "kettle",
+          "meaning": "boils water",
+          "emoji": "🫖"
+        },
+        {
+          "text": "toaster",
+          "meaning": "browns bread",
+          "emoji": "🍞"
+        },
+        {
+          "text": "mixer",
+          "meaning": "stirs food",
+          "emoji": "🥣"
+        },
+        {
+          "text": "broom",
+          "meaning": "sweeps floors",
+          "emoji": "🧹"
+        },
+        {
+          "text": "dustpan",
+          "meaning": "collects dirt",
+          "emoji": "🧹"
+        },
+        {
+          "text": "mop",
+          "meaning": "washes floors",
+          "emoji": "🧹"
+        },
+        {
+          "text": "bucket",
+          "meaning": "holds cleaning water",
+          "emoji": "🪣"
+        },
+        {
+          "text": "trash",
+          "meaning": "waste bin",
+          "emoji": "🗑️"
+        },
+        {
+          "text": "basket",
+          "meaning": "holds things",
+          "emoji": "🧺"
+        },
+        {
+          "text": "box",
+          "meaning": "a storage container",
+          "emoji": "📦"
+        },
+        {
+          "text": "shelf",
+          "meaning": "holds books or toys",
+          "emoji": "📚"
+        },
+        {
+          "text": "drawer",
+          "meaning": "a sliding storage box",
+          "emoji": "🗄️"
+        },
+        {
+          "text": "closet",
+          "meaning": "stores clothes",
+          "emoji": "👕"
+        },
+        {
+          "text": "hanger",
+          "meaning": "holds clothes",
+          "emoji": "👔"
+        },
+        {
+          "text": "curtain",
+          "meaning": "covers a window",
+          "emoji": "🪟"
+        },
+        {
+          "text": "carpet",
+          "meaning": "soft floor cover",
+          "emoji": "🧺"
+        },
+        {
+          "text": "mat",
+          "meaning": "a small floor cover",
+          "emoji": "🧘"
+        },
+        {
+          "text": "key",
+          "meaning": "opens a lock",
+          "emoji": "🔑"
+        },
+        {
+          "text": "lock",
+          "meaning": "keeps doors safe",
+          "emoji": "🔒"
+        },
+        {
+          "text": "doorbell",
+          "meaning": "rings at the door",
+          "emoji": "🔔"
+        },
+        {
+          "text": "phone",
+          "meaning": "for calling people",
+          "emoji": "📱"
+        },
+        {
+          "text": "remote",
+          "meaning": "controls the TV",
+          "emoji": "📺"
+        },
+        {
+          "text": "television",
+          "meaning": "shows videos",
+          "emoji": "📺"
+        },
+        {
+          "text": "radio",
+          "meaning": "plays sound",
+          "emoji": "📻"
+        },
+        {
+          "text": "charger",
+          "meaning": "gives power",
+          "emoji": "🔌"
+        },
+        {
+          "text": "plug",
+          "meaning": "connects to electricity",
+          "emoji": "🔌"
+        }
+      ]
+    },
+    {
+      "code": "food_drinks",
+      "label": "Food and Drinks",
+      "emoji": "🍽️",
+      "group": "B",
+      "words": [
+        {
+          "text": "food",
+          "meaning": "things we eat",
+          "emoji": "🍽️"
+        },
+        {
+          "text": "meal",
+          "meaning": "food at one time",
+          "emoji": "🍱"
+        },
+        {
+          "text": "breakfast",
+          "meaning": "morning meal",
+          "emoji": "🌅"
+        },
+        {
+          "text": "lunch",
+          "meaning": "midday meal",
+          "emoji": "🌞"
+        },
+        {
+          "text": "dinner",
+          "meaning": "evening meal",
+          "emoji": "🌙"
+        },
+        {
+          "text": "snack",
+          "meaning": "a small food",
+          "emoji": "🍪"
+        },
+        {
+          "text": "bread",
+          "meaning": "baked wheat food",
+          "emoji": "🍞"
+        },
+        {
+          "text": "rice",
+          "meaning": "small white grains",
+          "emoji": "🍚"
+        },
+        {
+          "text": "noodles",
+          "meaning": "long soft food",
+          "emoji": "🍜"
+        },
+        {
+          "text": "pasta",
+          "meaning": "Italian noodles",
+          "emoji": "🍝"
+        },
+        {
+          "text": "soup",
+          "meaning": "warm liquid food",
+          "emoji": "🍲"
+        },
+        {
+          "text": "salad",
+          "meaning": "mixed vegetables",
+          "emoji": "🥗"
+        },
+        {
+          "text": "sandwich",
+          "meaning": "food between bread",
+          "emoji": "🥪"
+        },
+        {
+          "text": "burger",
+          "meaning": "a meat sandwich",
+          "emoji": "🍔"
+        },
+        {
+          "text": "pizza",
+          "meaning": "flat baked food",
+          "emoji": "🍕"
+        },
+        {
+          "text": "cake",
+          "meaning": "sweet baked dessert",
+          "emoji": "🎂"
+        },
+        {
+          "text": "cookie",
+          "meaning": "a sweet biscuit",
+          "emoji": "🍪"
+        },
+        {
+          "text": "biscuit",
+          "meaning": "a dry sweet snack",
+          "emoji": "🍪"
+        },
+        {
+          "text": "chocolate",
+          "meaning": "a sweet cocoa treat",
+          "emoji": "🍫"
+        },
+        {
+          "text": "candy",
+          "meaning": "a sweet treat",
+          "emoji": "🍬"
+        },
+        {
+          "text": "icecream",
+          "meaning": "a cold sweet treat",
+          "emoji": "🍦"
+        },
+        {
+          "text": "yogurt",
+          "meaning": "a creamy dairy food",
+          "emoji": "🥛"
+        },
+        {
+          "text": "cheese",
+          "meaning": "a dairy food",
+          "emoji": "🧀"
+        },
+        {
+          "text": "butter",
+          "meaning": "a soft dairy spread",
+          "emoji": "🧈"
+        },
+        {
+          "text": "milk",
+          "meaning": "a white dairy drink",
+          "emoji": "🥛"
+        },
+        {
+          "text": "water",
+          "meaning": "a clear drink",
+          "emoji": "💧"
+        },
+        {
+          "text": "juice",
+          "meaning": "a fruit drink",
+          "emoji": "🧃"
+        },
+        {
+          "text": "tea",
+          "meaning": "a warm leaf drink",
+          "emoji": "🍵"
+        },
+        {
+          "text": "coffee",
+          "meaning": "a warm bean drink",
+          "emoji": "☕"
+        },
+        {
+          "text": "smoothie",
+          "meaning": "a blended fruit drink",
+          "emoji": "🥤"
+        },
+        {
+          "text": "soda",
+          "meaning": "a bubbly drink",
+          "emoji": "🥤"
+        },
+        {
+          "text": "soupbowl",
+          "meaning": "a bowl of soup",
+          "emoji": "🥣"
+        },
+        {
+          "text": "egg",
+          "meaning": "a breakfast food",
+          "emoji": "🥚"
+        },
+        {
+          "text": "omelet",
+          "meaning": "cooked beaten eggs",
+          "emoji": "🍳"
+        },
+        {
+          "text": "meat",
+          "meaning": "food from animals",
+          "emoji": "🥩"
+        },
+        {
+          "text": "chicken",
+          "meaning": "bird meat food",
+          "emoji": "🍗"
+        },
+        {
+          "text": "fishfry",
+          "meaning": "cooked fish food",
+          "emoji": "🐟"
+        },
+        {
+          "text": "tofu",
+          "meaning": "a bean protein food",
+          "emoji": "🍱"
+        },
+        {
+          "text": "nuts",
+          "meaning": "hard seed snacks",
+          "emoji": "🥜"
+        },
+        {
+          "text": "honey",
+          "meaning": "sweet bee food",
+          "emoji": "🍯"
+        },
+        {
+          "text": "jam",
+          "meaning": "sweet fruit spread",
+          "emoji": "🍓"
+        },
+        {
+          "text": "sauce",
+          "meaning": "a flavor liquid",
+          "emoji": "🫙"
+        },
+        {
+          "text": "salt",
+          "meaning": "a white seasoning",
+          "emoji": "🧂"
+        },
+        {
+          "text": "sugar",
+          "meaning": "a sweet powder",
+          "emoji": "🍬"
+        },
+        {
+          "text": "pepperpowder",
+          "meaning": "a spicy seasoning",
+          "emoji": "🌶️"
+        },
+        {
+          "text": "oil",
+          "meaning": "a cooking liquid",
+          "emoji": "🫒"
+        },
+        {
+          "text": "flour",
+          "meaning": "baking powder",
+          "emoji": "🌾"
+        },
+        {
+          "text": "dough",
+          "meaning": "soft baking mix",
+          "emoji": "🍞"
+        },
+        {
+          "text": "pancake",
+          "meaning": "a flat breakfast cake",
+          "emoji": "🥞"
+        },
+        {
+          "text": "waffle",
+          "meaning": "a patterned breakfast cake",
+          "emoji": "🧇"
+        },
+        {
+          "text": "toast",
+          "meaning": "browned bread",
+          "emoji": "🍞"
+        },
+        {
+          "text": "cereal",
+          "meaning": "breakfast grain food",
+          "emoji": "🥣"
+        },
+        {
+          "text": "porridge",
+          "meaning": "warm soft grains",
+          "emoji": "🥣"
+        },
+        {
+          "text": "popcorn",
+          "meaning": "puffed corn snack",
+          "emoji": "🍿"
+        },
+        {
+          "text": "chips",
+          "meaning": "crispy snack slices",
+          "emoji": "🍟"
+        },
+        {
+          "text": "pretzel",
+          "meaning": "a salty baked snack",
+          "emoji": "🥨"
+        },
+        {
+          "text": "cracker",
+          "meaning": "a thin dry snack",
+          "emoji": "🍘"
+        },
+        {
+          "text": "fries",
+          "meaning": "fried potato sticks",
+          "emoji": "🍟"
+        },
+        {
+          "text": "nugget",
+          "meaning": "a small fried bite",
+          "emoji": "🍗"
+        },
+        {
+          "text": "sausage",
+          "meaning": "a meat roll",
+          "emoji": "🌭"
+        },
+        {
+          "text": "hotdog",
+          "meaning": "a sausage in bread",
+          "emoji": "🌭"
+        },
+        {
+          "text": "taco",
+          "meaning": "a folded filled food",
+          "emoji": "🌮"
+        },
+        {
+          "text": "burrito",
+          "meaning": "a wrapped filled food",
+          "emoji": "🌯"
+        },
+        {
+          "text": "sushi",
+          "meaning": "rice with fish",
+          "emoji": "🍣"
+        },
+        {
+          "text": "dumpling",
+          "meaning": "a filled dough bite",
+          "emoji": "🥟"
+        },
+        {
+          "text": "springroll",
+          "meaning": "a thin wrapped snack",
+          "emoji": "🥡"
+        },
+        {
+          "text": "pudding",
+          "meaning": "a soft sweet dessert",
+          "emoji": "🍮"
+        },
+        {
+          "text": "jelly",
+          "meaning": "a wobbly sweet",
+          "emoji": "🍮"
+        },
+        {
+          "text": "custard",
+          "meaning": "a creamy dessert",
+          "emoji": "🍮"
+        },
+        {
+          "text": "pie",
+          "meaning": "a baked filled dessert",
+          "emoji": "🥧"
+        },
+        {
+          "text": "muffin",
+          "meaning": "a small sweet cake",
+          "emoji": "🧁"
+        },
+        {
+          "text": "cupcake",
+          "meaning": "a tiny frosted cake",
+          "emoji": "🧁"
+        },
+        {
+          "text": "donut",
+          "meaning": "a sweet ring pastry",
+          "emoji": "🍩"
+        },
+        {
+          "text": "bagel",
+          "meaning": "a round bread roll",
+          "emoji": "🥯"
+        },
+        {
+          "text": "croissant",
+          "meaning": "a flaky pastry",
+          "emoji": "🥐"
+        }
+      ]
+    },
+    {
+      "code": "nature_environment",
+      "label": "Nature and Environment",
+      "emoji": "🌳",
+      "group": "B",
+      "words": [
+        {
+          "text": "tree",
+          "meaning": "a tall plant with a trunk",
+          "emoji": "🌳"
+        },
+        {
+          "text": "leaf",
+          "meaning": "grows on a tree",
+          "emoji": "🍃"
+        },
+        {
+          "text": "flower",
+          "meaning": "a colorful plant bloom",
+          "emoji": "🌸"
+        },
+        {
+          "text": "grass",
+          "meaning": "green ground plants",
+          "emoji": "🌱"
+        },
+        {
+          "text": "seed",
+          "meaning": "grows into a plant",
+          "emoji": "🌱"
+        },
+        {
+          "text": "plant",
+          "meaning": "a living green thing",
+          "emoji": "🪴"
+        },
+        {
+          "text": "bush",
+          "meaning": "a short leafy plant",
+          "emoji": "🌿"
+        },
+        {
+          "text": "branch",
+          "meaning": "an arm of a tree",
+          "emoji": "🌳"
+        },
+        {
+          "text": "root",
+          "meaning": "holds a plant in soil",
+          "emoji": "🪴"
+        },
+        {
+          "text": "soil",
+          "meaning": "dirt for plants",
+          "emoji": "🟫"
+        },
+        {
+          "text": "rock",
+          "meaning": "a hard stone",
+          "emoji": "🪨"
+        },
+        {
+          "text": "stone",
+          "meaning": "a small rock",
+          "emoji": "🪨"
+        },
+        {
+          "text": "sand",
+          "meaning": "tiny beach grains",
+          "emoji": "🏖️"
+        },
+        {
+          "text": "mud",
+          "meaning": "wet dirt",
+          "emoji": "🟤"
+        },
+        {
+          "text": "hill",
+          "meaning": "a small high land",
+          "emoji": "⛰️"
+        },
+        {
+          "text": "mountain",
+          "meaning": "a very high land",
+          "emoji": "🏔️"
+        },
+        {
+          "text": "valley",
+          "meaning": "low land between hills",
+          "emoji": "🏞️"
+        },
+        {
+          "text": "river",
+          "meaning": "flowing water",
+          "emoji": "🏞️"
+        },
+        {
+          "text": "lake",
+          "meaning": "a big still water",
+          "emoji": "🏞️"
+        },
+        {
+          "text": "pond",
+          "meaning": "a small still water",
+          "emoji": "🐸"
+        },
+        {
+          "text": "sea",
+          "meaning": "a huge salt water",
+          "emoji": "🌊"
+        },
+        {
+          "text": "ocean",
+          "meaning": "the largest sea",
+          "emoji": "🌊"
+        },
+        {
+          "text": "beach",
+          "meaning": "sandy sea side",
+          "emoji": "🏖️"
+        },
+        {
+          "text": "island",
+          "meaning": "land with water around",
+          "emoji": "🏝️"
+        },
+        {
+          "text": "forest",
+          "meaning": "many trees together",
+          "emoji": "🌲"
+        },
+        {
+          "text": "jungle",
+          "meaning": "a thick wild forest",
+          "emoji": "🌴"
+        },
+        {
+          "text": "desert",
+          "meaning": "a dry sandy place",
+          "emoji": "🏜️"
+        },
+        {
+          "text": "rain",
+          "meaning": "water from clouds",
+          "emoji": "🌧️"
+        },
+        {
+          "text": "snow",
+          "meaning": "cold white flakes",
+          "emoji": "❄️"
+        },
+        {
+          "text": "wind",
+          "meaning": "moving air",
+          "emoji": "💨"
+        },
+        {
+          "text": "storm",
+          "meaning": "strong wind and rain",
+          "emoji": "⛈️"
+        },
+        {
+          "text": "thunder",
+          "meaning": "loud storm sound",
+          "emoji": "🌩️"
+        },
+        {
+          "text": "lightning",
+          "meaning": "bright sky flash",
+          "emoji": "⚡"
+        },
+        {
+          "text": "sky",
+          "meaning": "space above us",
+          "emoji": "🌤️"
+        },
+        {
+          "text": "starry",
+          "meaning": "full of stars",
+          "emoji": "✨"
+        },
+        {
+          "text": "sunrise",
+          "meaning": "morning sun light",
+          "emoji": "🌅"
+        },
+        {
+          "text": "sunset",
+          "meaning": "evening sun light",
+          "emoji": "🌇"
+        },
+        {
+          "text": "shadow",
+          "meaning": "a dark shape from light",
+          "emoji": "🌑"
+        },
+        {
+          "text": "day",
+          "meaning": "bright time",
+          "emoji": "🌞"
+        },
+        {
+          "text": "night",
+          "meaning": "dark time",
+          "emoji": "🌃"
+        },
+        {
+          "text": "morning",
+          "meaning": "early day",
+          "emoji": "🌄"
+        },
+        {
+          "text": "evening",
+          "meaning": "late day",
+          "emoji": "🌆"
+        },
+        {
+          "text": "season",
+          "meaning": "a time of year",
+          "emoji": "📅"
+        },
+        {
+          "text": "spring",
+          "meaning": "flower season",
+          "emoji": "🌷"
+        },
+        {
+          "text": "summer",
+          "meaning": "hot season",
+          "emoji": "☀️"
+        },
+        {
+          "text": "autumn",
+          "meaning": "leaf-fall season",
+          "emoji": "🍂"
+        },
+        {
+          "text": "winter",
+          "meaning": "cold season",
+          "emoji": "❄️"
+        },
+        {
+          "text": "weather",
+          "meaning": "sky conditions",
+          "emoji": "🌦️"
+        },
+        {
+          "text": "hot",
+          "meaning": "very warm",
+          "emoji": "🔥"
+        },
+        {
+          "text": "cold",
+          "meaning": "not warm",
+          "emoji": "🧊"
+        },
+        {
+          "text": "warm",
+          "meaning": "gently hot",
+          "emoji": "🌤️"
+        },
+        {
+          "text": "cool",
+          "meaning": "gently cold",
+          "emoji": "🆒"
+        },
+        {
+          "text": "wet",
+          "meaning": "full of water",
+          "emoji": "💧"
+        },
+        {
+          "text": "dry",
+          "meaning": "without water",
+          "emoji": "🏜️"
+        },
+        {
+          "text": "fog",
+          "meaning": "thick low cloud",
+          "emoji": "🌫️"
+        },
+        {
+          "text": "mist",
+          "meaning": "light fog",
+          "emoji": "🌫️"
+        },
+        {
+          "text": "dew",
+          "meaning": "morning water drops",
+          "emoji": "💧"
+        },
+        {
+          "text": "ice",
+          "meaning": "frozen water",
+          "emoji": "🧊"
+        },
+        {
+          "text": "frost",
+          "meaning": "icy white cover",
+          "emoji": "❄️"
+        },
+        {
+          "text": "hail",
+          "meaning": "falling ice balls",
+          "emoji": "🧊"
+        },
+        {
+          "text": "breeze",
+          "meaning": "a soft wind",
+          "emoji": "🍃"
+        },
+        {
+          "text": "gale",
+          "meaning": "a strong wind",
+          "emoji": "💨"
+        },
+        {
+          "text": "tide",
+          "meaning": "sea water rise and fall",
+          "emoji": "🌊"
+        },
+        {
+          "text": "surf",
+          "meaning": "ocean wave sport water",
+          "emoji": "🏄"
+        },
+        {
+          "text": "waterfall",
+          "meaning": "falling river water",
+          "emoji": "🏞️"
+        },
+        {
+          "text": "stream",
+          "meaning": "a small river",
+          "emoji": "🏞️"
+        },
+        {
+          "text": "cave",
+          "meaning": "a hollow in rock",
+          "emoji": "🕳️"
+        },
+        {
+          "text": "cliff",
+          "meaning": "a steep rock side",
+          "emoji": "🧗"
+        },
+        {
+          "text": "path",
+          "meaning": "a walking way outdoors",
+          "emoji": "🛤️"
+        },
+        {
+          "text": "trail",
+          "meaning": "a nature walking path",
+          "emoji": "🥾"
+        },
+        {
+          "text": "camp",
+          "meaning": "an outdoor stay place",
+          "emoji": "⛺"
+        },
+        {
+          "text": "tent",
+          "meaning": "a cloth outdoor shelter",
+          "emoji": "⛺"
+        },
+        {
+          "text": "firepit",
+          "meaning": "a safe outdoor fire",
+          "emoji": "🔥"
+        },
+        {
+          "text": "smoke",
+          "meaning": "from a fire",
+          "emoji": "💨"
+        },
+        {
+          "text": "ash",
+          "meaning": "from burned wood",
+          "emoji": "🌫️"
+        }
+      ]
+    },
+    {
+      "code": "action_words",
+      "label": "Action Words (Verbs)",
+      "emoji": "🏃",
+      "group": "B",
+      "words": [
+        {
+          "text": "eat",
+          "meaning": "put food in your mouth",
+          "emoji": "🍽️"
+        },
+        {
+          "text": "drink",
+          "meaning": "take in liquid",
+          "emoji": "🥤"
+        },
+        {
+          "text": "slumber",
+          "meaning": "rest with eyes closed",
+          "emoji": "😴"
+        },
+        {
+          "text": "awaken",
+          "meaning": "stop sleeping",
+          "emoji": "⏰"
+        },
+        {
+          "text": "play",
+          "meaning": "have fun",
+          "emoji": "🎮"
+        },
+        {
+          "text": "read",
+          "meaning": "look at words",
+          "emoji": "📖"
+        },
+        {
+          "text": "write",
+          "meaning": "make letters",
+          "emoji": "✍️"
+        },
+        {
+          "text": "draw",
+          "meaning": "make a picture",
+          "emoji": "✏️"
+        },
+        {
+          "text": "sing",
+          "meaning": "make music with voice",
+          "emoji": "🎤"
+        },
+        {
+          "text": "dance",
+          "meaning": "move to music",
+          "emoji": "💃"
+        },
+        {
+          "text": "listen",
+          "meaning": "use your ears",
+          "emoji": "👂"
+        },
+        {
+          "text": "look",
+          "meaning": "use your eyes",
+          "emoji": "👀"
+        },
+        {
+          "text": "see",
+          "meaning": "notice with eyes",
+          "emoji": "👁️"
+        },
+        {
+          "text": "hear",
+          "meaning": "notice with ears",
+          "emoji": "👂"
+        },
+        {
+          "text": "smell",
+          "meaning": "notice with nose",
+          "emoji": "👃"
+        },
+        {
+          "text": "taste",
+          "meaning": "notice with tongue",
+          "emoji": "👅"
+        },
+        {
+          "text": "touch",
+          "meaning": "feel with hands",
+          "emoji": "✋"
+        },
+        {
+          "text": "hold",
+          "meaning": "keep in your hand",
+          "emoji": "✊"
+        },
+        {
+          "text": "give",
+          "meaning": "hand something to someone",
+          "emoji": "🎁"
+        },
+        {
+          "text": "take",
+          "meaning": "receive something",
+          "emoji": "🤲"
+        },
+        {
+          "text": "open",
+          "meaning": "make something not closed",
+          "emoji": "📂"
+        },
+        {
+          "text": "close",
+          "meaning": "shut something",
+          "emoji": "📁"
+        },
+        {
+          "text": "push",
+          "meaning": "move away with force",
+          "emoji": "👉"
+        },
+        {
+          "text": "pull",
+          "meaning": "bring closer with force",
+          "emoji": "👈"
+        },
+        {
+          "text": "throw",
+          "meaning": "send through the air",
+          "emoji": "⚾"
+        },
+        {
+          "text": "catch",
+          "meaning": "grab something moving",
+          "emoji": "⚾"
+        },
+        {
+          "text": "footkick",
+          "meaning": "hit with a foot",
+          "emoji": "🦵"
+        },
+        {
+          "text": "climb",
+          "meaning": "go up something",
+          "emoji": "🧗"
+        },
+        {
+          "text": "crawl",
+          "meaning": "move on hands and knees",
+          "emoji": "🧒"
+        },
+        {
+          "text": "swim",
+          "meaning": "move in water",
+          "emoji": "🏊"
+        },
+        {
+          "text": "fly",
+          "meaning": "move in the air",
+          "emoji": "✈️"
+        },
+        {
+          "text": "ride",
+          "meaning": "travel on something",
+          "emoji": "🚲"
+        },
+        {
+          "text": "drive",
+          "meaning": "control a vehicle",
+          "emoji": "🚗"
+        },
+        {
+          "text": "cook",
+          "meaning": "make food hot",
+          "emoji": "🍳"
+        },
+        {
+          "text": "wash",
+          "meaning": "clean with water",
+          "emoji": "🧼"
+        },
+        {
+          "text": "clean",
+          "meaning": "make neat",
+          "emoji": "🧹"
+        },
+        {
+          "text": "combhair",
+          "meaning": "neaten hair",
+          "emoji": "💇"
+        },
+        {
+          "text": "bathe",
+          "meaning": "wash your body",
+          "emoji": "🛁"
+        },
+        {
+          "text": "dress",
+          "meaning": "put on clothes",
+          "emoji": "👕"
+        },
+        {
+          "text": "wear",
+          "meaning": "have clothes on",
+          "emoji": "👔"
+        },
+        {
+          "text": "help",
+          "meaning": "make work easier",
+          "emoji": "🤝"
+        },
+        {
+          "text": "share",
+          "meaning": "give part to others",
+          "emoji": "🤲"
+        },
+        {
+          "text": "wait",
+          "meaning": "stay until later",
+          "emoji": "⏳"
+        },
+        {
+          "text": "halt",
+          "meaning": "do not continue",
+          "emoji": "🛑"
+        },
+        {
+          "text": "start",
+          "meaning": "begin something",
+          "emoji": "▶️"
+        },
+        {
+          "text": "go",
+          "meaning": "move from here",
+          "emoji": "🚶"
+        },
+        {
+          "text": "come",
+          "meaning": "move to here",
+          "emoji": "📍"
+        },
+        {
+          "text": "find",
+          "meaning": "discover something",
+          "emoji": "🔍"
+        },
+        {
+          "text": "lose",
+          "meaning": "cannot find something",
+          "emoji": "😕"
+        },
+        {
+          "text": "hide",
+          "meaning": "go out of sight",
+          "emoji": "🙈"
+        },
+        {
+          "text": "seek",
+          "meaning": "look for something",
+          "emoji": "🔎"
+        },
+        {
+          "text": "build",
+          "meaning": "make by putting parts",
+          "emoji": "🧱"
+        },
+        {
+          "text": "break",
+          "meaning": "make into pieces",
+          "emoji": "💥"
+        },
+        {
+          "text": "fix",
+          "meaning": "repair something",
+          "emoji": "🛠️"
+        },
+        {
+          "text": "make",
+          "meaning": "create something",
+          "emoji": "🛠️"
+        },
+        {
+          "text": "cut",
+          "meaning": "divide with a blade",
+          "emoji": "✂️"
+        },
+        {
+          "text": "paste",
+          "meaning": "stick with glue",
+          "emoji": "📎"
+        },
+        {
+          "text": "count",
+          "meaning": "say numbers in order",
+          "emoji": "🔢"
+        },
+        {
+          "text": "sort",
+          "meaning": "put into groups",
+          "emoji": "🧩"
+        },
+        {
+          "text": "flamestick",
+          "meaning": "find pairs",
+          "emoji": "🃏"
+        },
+        {
+          "text": "stack",
+          "meaning": "put things on top",
+          "emoji": "📦"
+        },
+        {
+          "text": "pour",
+          "meaning": "let liquid fall",
+          "emoji": "🫗"
+        },
+        {
+          "text": "mix",
+          "meaning": "stir things together",
+          "emoji": "🥣"
+        },
+        {
+          "text": "stir",
+          "meaning": "move a spoon around",
+          "emoji": "🥄"
+        },
+        {
+          "text": "bake",
+          "meaning": "cook in an oven",
+          "emoji": "🥖"
+        },
+        {
+          "text": "boil",
+          "meaning": "heat until bubbling",
+          "emoji": "🫧"
+        },
+        {
+          "text": "peel",
+          "meaning": "remove a skin",
+          "emoji": "🍌"
+        },
+        {
+          "text": "slice",
+          "meaning": "cut into pieces",
+          "emoji": "🔪"
+        },
+        {
+          "text": "serve",
+          "meaning": "give food to others",
+          "emoji": "🍽️"
+        },
+        {
+          "text": "grin",
+          "meaning": "show happy face",
+          "emoji": "😁"
+        },
+        {
+          "text": "cuddle",
+          "meaning": "hold someone kindly",
+          "emoji": "🤗"
+        },
+        {
+          "text": "peck",
+          "meaning": "touch with lips gently",
+          "emoji": "😘"
+        },
+        {
+          "text": "thank",
+          "meaning": "say thanks",
+          "emoji": "🙏"
+        },
+        {
+          "text": "ask",
+          "meaning": "say a question",
+          "emoji": "❓"
+        },
+        {
+          "text": "tell",
+          "meaning": "say information",
+          "emoji": "💬"
+        }
+      ]
+    }
+  ]
+}

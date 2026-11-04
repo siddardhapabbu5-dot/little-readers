@@ -4,6 +4,7 @@ import {
   UserRole,
 } from "@prisma/client";
 import bcrypt from "bcryptjs";
+import { seedLevel1Vocabulary } from "./seeds/level1-vocabulary.js";
 
 const prisma = new PrismaClient();
 
@@ -12,25 +13,53 @@ async function main() {
 
   const ageGroups = [
     {
+      code: "LEVEL_1",
+      label: "Grade 1",
+      ageMin: 1,
+      ageMax: 3,
+      description: "Ages 1–3 — Grade 1 vocabulary band",
+    },
+    {
+      code: "LEVEL_2",
+      label: "Grade 2",
+      ageMin: 4,
+      ageMax: 6,
+      description: "Ages 4–6 — Grade 2 vocabulary band",
+    },
+    {
+      code: "LEVEL_3",
+      label: "Grade 3",
+      ageMin: 7,
+      ageMax: 9,
+      description: "Ages 7–9 — Grade 3 vocabulary band",
+    },
+    {
+      code: "LEVEL_4",
+      label: "Grade 4",
+      ageMin: 10,
+      ageMax: 12,
+      description: "Ages 10–12 — Grade 4 vocabulary band",
+    },
+    {
       code: "FOUNDATION",
       label: "Foundation",
       ageMin: 3,
       ageMax: 5,
-      description: "Alphabet, phonics, pictures and listen & repeat",
+      description: "Legacy placement band",
     },
     {
       code: "ELEMENTARY",
       label: "Elementary",
       ageMin: 6,
       ageMax: 8,
-      description: "Word reading, spelling, sentences and listening",
+      description: "Legacy placement band",
     },
     {
       code: "ADVANCED",
       label: "Advanced",
       ageMin: 9,
       ageMax: 12,
-      description: "Paragraphs, comprehension, grammar and pronunciation",
+      description: "Legacy placement band",
     },
   ];
 
@@ -42,10 +71,72 @@ async function main() {
     });
   }
 
+  const grades = [
+    { code: "GRADE_1", label: "Grade 1", ageMin: 1, ageMax: 3, sortOrder: 1 },
+    { code: "GRADE_2", label: "Grade 2", ageMin: 4, ageMax: 6, sortOrder: 2 },
+    { code: "GRADE_3", label: "Grade 3", ageMin: 7, ageMax: 9, sortOrder: 3 },
+    { code: "GRADE_4", label: "Grade 4", ageMin: 10, ageMax: 12, sortOrder: 4 },
+  ];
+  for (const g of grades) {
+    await prisma.learningGrade.upsert({
+      where: { code: g.code },
+      update: g,
+      create: g,
+    });
+  }
+
+  const gradeByCode = Object.fromEntries(
+    (
+      await prisma.learningGrade.findMany({
+        where: { code: { in: grades.map((g) => g.code) } },
+      })
+    ).map((g) => [g.code, g.id])
+  );
+
   const levels = [
-    { code: "FOUNDATION", label: "Foundation", sortOrder: 1 },
-    { code: "ELEMENTARY", label: "Elementary", sortOrder: 2 },
-    { code: "ADVANCED", label: "Advanced", sortOrder: 3 },
+    {
+      code: "LEVEL_1",
+      label: "Level 1 – Ages 1–3 (Grade 1)",
+      sortOrder: 0,
+      ageMin: 1,
+      ageMax: 3,
+      kind: "GRADE_BAND" as const,
+      gradeId: gradeByCode.GRADE_1,
+      description: "Grade 1 age band — vocabulary via dictionary approval or category import",
+    },
+    {
+      code: "LEVEL_2",
+      label: "Level 2 – Ages 4–6 (Grade 2)",
+      sortOrder: 1,
+      ageMin: 4,
+      ageMax: 6,
+      kind: "GRADE_BAND" as const,
+      gradeId: gradeByCode.GRADE_2,
+      description: "Grade 2 age band — vocabulary via dictionary approval",
+    },
+    {
+      code: "LEVEL_3",
+      label: "Level 3 – Ages 7–9 (Grade 3)",
+      sortOrder: 2,
+      ageMin: 7,
+      ageMax: 9,
+      kind: "GRADE_BAND" as const,
+      gradeId: gradeByCode.GRADE_3,
+      description: "Grade 3 age band — vocabulary via dictionary approval",
+    },
+    {
+      code: "LEVEL_4",
+      label: "Level 4 – Ages 10–12 (Grade 4)",
+      sortOrder: 3,
+      ageMin: 10,
+      ageMax: 12,
+      kind: "GRADE_BAND" as const,
+      gradeId: gradeByCode.GRADE_4,
+      description: "Grade 4 age band — vocabulary via dictionary approval",
+    },
+    { code: "FOUNDATION", label: "Foundation", sortOrder: 10, ageMin: 3, ageMax: 5 },
+    { code: "ELEMENTARY", label: "Elementary", sortOrder: 11, ageMin: 6, ageMax: 8 },
+    { code: "ADVANCED", label: "Advanced", sortOrder: 12, ageMin: 9, ageMax: 12 },
   ];
 
   for (const level of levels) {
@@ -55,6 +146,9 @@ async function main() {
       create: level,
     });
   }
+
+  // Categories/groups for Grades 1–4 — do not seed English vocabulary words.
+  await seedLevel1Vocabulary(prisma, { includeWords: false });
 
   const subjects = [
     { code: "ALPHABET", name: "Alphabet Learning" },
@@ -280,6 +374,40 @@ async function main() {
     }
   }
 
+  const existingSub = await prisma.subscription.findFirst({
+    where: { userId: parent.id, providerRef: "seed_demo_parent_yearly" },
+  });
+  if (!existingSub) {
+    const startedAt = new Date();
+    const expiresAt = new Date();
+    expiresAt.setFullYear(expiresAt.getFullYear() + 1);
+    await prisma.subscription.create({
+      data: {
+        userId: parent.id,
+        plan: "YEARLY",
+        status: "ACTIVE",
+        startedAt,
+        expiresAt,
+        provider: "manual_seed",
+        providerRef: "seed_demo_parent_yearly",
+        includedSeats: 2,
+        extraSeats: 0,
+      },
+    });
+  } else {
+    const expiresAt = new Date();
+    expiresAt.setFullYear(expiresAt.getFullYear() + 1);
+    await prisma.subscription.update({
+      where: { id: existingSub.id },
+      data: {
+        status: "ACTIVE",
+        expiresAt,
+        cancelledAt: null,
+        includedSeats: 2,
+      },
+    });
+  }
+
   const adminHash = await bcrypt.hash("AdminDemo1", 12);
   const admin = await prisma.user.upsert({
     where: { email: "admin@littlereaders.test" },
@@ -293,6 +421,23 @@ async function main() {
       email: "admin@littlereaders.test",
       passwordHash: adminHash,
       role: UserRole.ADMIN,
+    },
+  });
+
+  const superHash = await bcrypt.hash("SuperDemo1", 12);
+  await prisma.user.upsert({
+    where: { email: "superadmin@littlereaders.test" },
+    update: {
+      name: "Demo Super Admin",
+      passwordHash: superHash,
+      role: UserRole.SUPER_ADMIN,
+      isActive: true,
+    },
+    create: {
+      name: "Demo Super Admin",
+      email: "superadmin@littlereaders.test",
+      passwordHash: superHash,
+      role: UserRole.SUPER_ADMIN,
     },
   });
 
@@ -322,6 +467,7 @@ async function main() {
         birthYear: new Date().getFullYear() - 5,
         levelId: foundationLevel.id,
         ageGroupId: foundation.id,
+        hasLearningSeat: true,
       },
     });
     await prisma.learningProgress.create({
@@ -333,11 +479,18 @@ async function main() {
         minutesLearned: 40,
       },
     });
+  } else if (!existingChild.hasLearningSeat) {
+    await prisma.child.update({
+      where: { id: existingChild.id },
+      data: { hasLearningSeat: true },
+    });
   }
 
   console.log("Seed complete.");
-  console.log("Demo parent: parent@littlereaders.test / ParentDemo1");
-  console.log("Demo admin:  admin@littlereaders.test / AdminDemo1");
+  console.log("Demo parent:      parent@littlereaders.test / ParentDemo1");
+  console.log("Demo admin:       admin@littlereaders.test / AdminDemo1");
+  console.log("Demo super admin: superadmin@littlereaders.test / SuperDemo1");
+  console.log("Note: TEACHER/STUDENT User roles are deferred (Child profiles = student learning identity).");
 }
 
 main()

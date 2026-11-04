@@ -1,5 +1,10 @@
-/** Legacy Express roles (preserved). Prefer PlatformRole for NestJS multi-school SaaS. */
-export type UserRole = "PARENT" | "ADMIN" | "SUPER_ADMIN";
+/** Express + Prisma roles (Batch 9 adds TEACHER / SCHOOL_ADMIN). */
+export type UserRole =
+  | "PARENT"
+  | "TEACHER"
+  | "SCHOOL_ADMIN"
+  | "ADMIN"
+  | "SUPER_ADMIN";
 
 /** Multi-school SaaS roles (NestJS). */
 export type PlatformRole =
@@ -17,9 +22,20 @@ export type SubscriptionStatus =
   | "GRACE"
   | "SUSPENDED";
 
-export type AgeGroupCode = "FOUNDATION" | "ELEMENTARY" | "ADVANCED";
+export type AgeGroupCode =
+  | "LEVEL_1"
+  | "LEVEL_2"
+  | "LEVEL_3"
+  | "LEVEL_4"
+  | "FOUNDATION"
+  | "ELEMENTARY"
+  | "ADVANCED";
 
 export type LearningLevelCode =
+  | "LEVEL_1"
+  | "LEVEL_2"
+  | "LEVEL_3"
+  | "LEVEL_4"
   | "FOUNDATION"
   | "ELEMENTARY"
   | "ADVANCED";

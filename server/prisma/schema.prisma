@@ -9,15 +9,26 @@ datasource db {
 
 enum UserRole {
   PARENT
+  TEACHER
+  SCHOOL_ADMIN
   ADMIN
   SUPER_ADMIN
 }
 
+enum SchoolStaffRole {
+  TEACHER
+  SCHOOL_ADMIN
+}
+
 enum SubscriptionStatus {
   ACTIVE
+  TRIALING
+  PAST_DUE
   EXPIRED
   CANCELLED
   PENDING
+  SUSPENDED
+  GRACE
 }
 
 enum ConsentType {
@@ -56,10 +67,48 @@ enum PaymentStatus {
   REFUNDED
 }
 
+enum PaymentPurpose {
+  FAMILY_MONTHLY
+  FAMILY_YEARLY
+  EXTRA_SEATS
+  MANUAL_ADMIN
+}
+
 enum PublishStatus {
   DRAFT
   PUBLISHED
   ARCHIVED
+}
+
+enum LearningLevelKind {
+  /// Age-band grade surface (LEVEL_1…LEVEL_4 map to GRADE_1…GRADE_4)
+  GRADE_BAND
+  /// Difficulty progression within a grade
+  DIFFICULTY
+}
+
+enum DictionaryImportStatus {
+  PENDING
+  PARSED
+  CLASSIFIED
+  FAILED
+  CANCELLED
+}
+
+enum VocabAssignmentStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  PUBLISHED
+}
+
+enum VocabWordOrigin {
+  /// Pre-existing / manually created kids vocabulary (never auto-wiped)
+  LEGACY
+  /// Created from an approved dictionary assignment
+  DICTIONARY
+  /// Category-targeted VocabImportBatch
+  CATEGORY_IMPORT
 }
 
 model User {
@@ -78,8 +127,30 @@ model User {
   parentalConsents  ParentalConsent[]
   adminRoleBindings AdminRoleBinding[]
   certificatesIssued Certificate[] @relation("IssuedByAdmin")
+  vocabImports      VocabImportBatch[]
+  dictionaryImports DictionaryImportBatch[]
+  vocabAssignmentsReviewed VocabularyGradeAssignment[] @relation("AssignmentReviewer")
+  passwordResetTokens PasswordResetToken[]
+  schoolStaff         SchoolStaff[]
+  classroomTeaching   ClassroomTeacher[]
+  lessonAssignmentsMade ClassroomLessonAssignment[] @relation("AssignedByTeacher")
 
   @@index([role])
+}
+
+/** One-time password recovery tokens (hashed at rest). */
+model PasswordResetToken {
+  id        String    @id @default(cuid())
+  userId    String
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
 }
 
 model Child {
@@ -87,10 +158,14 @@ model Child {
   parentId    String
   displayName String
   birthYear   Int
+  /// Display/storage as DD/MM/YYYY (e.g. 15/03/2021). birthYear stays for age/level logic.
+  birthDate   String?
   levelId     String?
   ageGroupId  String?
   avatarUrl   String?
   isActive    Boolean  @default(true)
+  /// True when this child occupies one of the parent's subscription learning seats.
+  hasLearningSeat Boolean @default(false)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
@@ -103,6 +178,13 @@ model Child {
   speechAssessments  SpeechAssessment[]
   rewards            Reward[]
   certificates       Certificate[]
+  learningSessions   LearningSession[]
+  categoryProgress   ChildCategoryProgress[]
+  lessonProgress     ChildLessonProgress[]
+  achievements       Achievement[]
+  registeredDevice   StudentDevice?
+  deviceTransfers    DeviceTransferEvent[]
+  classroomEnrollments ClassroomEnrollment[]
 
   @@index([parentId])
 }
@@ -134,16 +216,367 @@ model AgeGroup {
   lessons  Lesson[]
 }
 
-model LearningLevel {
+/// Age-band grade (Grade 1 = ages 1–3 … Grade 4 = ages 10–12).
+model LearningGrade {
   id          String   @id @default(cuid())
   code        String   @unique
   label       String
-  sortOrder   Int      @default(0)
   description String?
+  ageMin      Int
+  ageMax      Int
+  sortOrder   Int      @default(0)
+  isActive    Boolean  @default(true)
   createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
+  levels      LearningLevel[]
+  assignments VocabularyGradeAssignment[]
+  lessons     Lesson[]
+}
+
+model LearningLevel {
+  id          String            @id @default(cuid())
+  code        String            @unique
+  label       String
+  sortOrder   Int               @default(0)
+  description String?
+  ageMin      Int               @default(3)
+  ageMax      Int               @default(12)
+  kind        LearningLevelKind @default(GRADE_BAND)
+  gradeId     String?
+  isActive    Boolean           @default(true)
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+
+  grade    LearningGrade? @relation(fields: [gradeId], references: [id], onDelete: SetNull)
   children Child[]
   lessons  Lesson[]
+  groups   LearningGroup[]
+  vocabImports VocabImportBatch[]
+  assignments  VocabularyGradeAssignment[]
+
+  @@index([gradeId])
+  @@index([isActive])
+}
+
+enum VocabRound {
+  LISTEN
+  SPELL
+  LETTER
+}
+
+enum LearningSessionStatus {
+  IN_PROGRESS
+  COMPLETED
+  ABANDONED
+}
+
+model LearningGroup {
+  id          String   @id @default(cuid())
+  levelId     String
+  code        String
+  label       String
+  description String?
+  sortOrder   Int      @default(0)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  level      LearningLevel      @relation(fields: [levelId], references: [id], onDelete: Cascade)
+  categories LearningCategory[]
+  lessons    Lesson[]
+
+  @@unique([levelId, code])
+  @@index([levelId])
+  @@index([isActive])
+}
+
+model LearningCategory {
+  id          String   @id @default(cuid())
+  groupId     String
+  code        String
+  label       String
+  description String?
+  emoji       String   @default("📚")
+  sortOrder   Int      @default(0)
+  unlockOrder Int      @default(0)
+  isPublished Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  group      LearningGroup           @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  words      VocabularyWord[]
+  sessions   LearningSession[]
+  progress   ChildCategoryProgress[]
+  vocabImports VocabImportBatch[]
+  assignments  VocabularyGradeAssignment[]
+  lessons      Lesson[]
+
+  @@unique([groupId, code])
+  @@index([groupId, sortOrder])
+}
+
+enum VocabImportStatus {
+  PENDING
+  IMPORTED
+  FAILED
+  CANCELLED
+}
+
+model VocabImportBatch {
+  id               String            @id @default(cuid())
+  adminId          String
+  levelId          String
+  categoryId       String
+  originalFilename String
+  storedPath       String
+  mimeType         String
+  fileExt          String
+  fileSize         Int
+  fileHash         String
+  status           VocabImportStatus @default(PENDING)
+  extractedCount   Int               @default(0)
+  validCount       Int               @default(0)
+  invalidCount     Int               @default(0)
+  duplicateCount   Int               @default(0)
+  importedCount    Int               @default(0)
+  skippedCount     Int               @default(0)
+  previewJson      String            @db.Text
+  parseNotes       String?
+  errorMessage     String?
+  createdAt        DateTime          @default(now())
+  importedAt       DateTime?
+
+  admin    User             @relation(fields: [adminId], references: [id], onDelete: Cascade)
+  level    LearningLevel    @relation(fields: [levelId], references: [id], onDelete: Cascade)
+  category LearningCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@index([adminId, createdAt])
+  @@index([categoryId, createdAt])
+  @@index([fileHash])
+  @@index([status])
+}
+
+model VocabularyWord {
+  id          String   @id @default(cuid())
+  categoryId  String
+  /// Canonical vocabulary spelling (API: word)
+  text        String
+  /// Age-appropriate definition (API: simpleMeaning)
+  meaning     String
+  emoji       String
+  imageUrl    String?
+  audioUrl    String?
+  /// Pronunciation guide / IPA hint (API: pronunciation)
+  phonetic    String?
+  firstLetter String   @default("")
+  difficulty  Int      @default(1)
+  /// Display order within category (API: displayOrder)
+  sortOrder   Int      @default(0)
+  isActive    Boolean  @default(true)
+  origin      VocabWordOrigin @default(LEGACY)
+  dictionarySenseId String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  category        LearningCategory   @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  dictionarySense DictionarySense?   @relation(fields: [dictionarySenseId], references: [id], onDelete: SetNull)
+  attempts        QuestionAttempt[]
+  publishedFrom   VocabularyGradeAssignment[]
+  lessonItems     LessonVocabItem[]
+
+  /// Same headword may exist in multiple grade categories; not globally unique.
+  @@unique([categoryId, text])
+  @@index([categoryId, sortOrder])
+  @@index([isActive, categoryId])
+  @@index([firstLetter])
+  @@index([dictionarySenseId])
+}
+
+model DictionaryImportBatch {
+  id               String                 @id @default(cuid())
+  adminId          String
+  originalFilename String
+  storedPath       String
+  mimeType         String
+  fileExt          String
+  fileSize         Int
+  fileHash         String
+  status           DictionaryImportStatus @default(PENDING)
+  sourceName       String?
+  licence          String?
+  extractedCount   Int                    @default(0)
+  entryCount       Int                    @default(0)
+  senseCount       Int                    @default(0)
+  duplicateCount   Int                    @default(0)
+  assignmentCount  Int                    @default(0)
+  parseNotes       String?
+  errorMessage     String?
+  previewJson      String?                @db.Text
+  createdAt        DateTime               @default(now())
+  classifiedAt     DateTime?
+
+  admin   User              @relation(fields: [adminId], references: [id], onDelete: Cascade)
+  entries DictionaryEntry[]
+
+  @@index([adminId, createdAt])
+  @@index([fileHash])
+  @@index([status])
+}
+
+/// One dictionary headword — never duplicated per grade.
+model DictionaryEntry {
+  id                 String   @id @default(cuid())
+  normalizedHeadword String   @unique
+  headword           String
+  pronunciation      String?
+  audioUrl           String?
+  sourceName         String?
+  licence            String?
+  sourceRef          String?
+  importBatchId      String?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  importBatch DictionaryImportBatch? @relation(fields: [importBatchId], references: [id], onDelete: SetNull)
+  senses      DictionarySense[]
+
+  @@index([importBatchId])
+}
+
+model DictionarySense {
+  id             String   @id @default(cuid())
+  entryId        String
+  senseIndex     Int      @default(0)
+  definition     String
+  wordType       String?
+  synonymsJson   String?
+  antonymsJson   String?
+  examplesJson   String?
+  relationsJson  String?
+  rawPayloadJson String?  @db.Text
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  entry       DictionaryEntry             @relation(fields: [entryId], references: [id], onDelete: Cascade)
+  assignments VocabularyGradeAssignment[]
+  words       VocabularyWord[]
+
+  @@unique([entryId, senseIndex])
+  @@index([entryId])
+}
+
+model VocabularyGradeAssignment {
+  id                     String               @id @default(cuid())
+  senseId                String
+  gradeId                String
+  levelId                String
+  categoryId             String
+  status                 VocabAssignmentStatus @default(PENDING)
+  difficultyScore        Float                @default(0)
+  confidenceScore        Float                @default(0)
+  explanation            String               @db.Text
+  classificationVersion  String
+  publishedWordId        String?
+  reviewedById           String?
+  reviewedAt             DateTime?
+  createdAt              DateTime             @default(now())
+  updatedAt              DateTime             @updatedAt
+
+  sense         DictionarySense  @relation(fields: [senseId], references: [id], onDelete: Cascade)
+  grade         LearningGrade    @relation(fields: [gradeId], references: [id], onDelete: Cascade)
+  level         LearningLevel    @relation(fields: [levelId], references: [id], onDelete: Cascade)
+  category      LearningCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  publishedWord VocabularyWord?  @relation(fields: [publishedWordId], references: [id], onDelete: SetNull)
+  reviewedBy    User?            @relation("AssignmentReviewer", fields: [reviewedById], references: [id], onDelete: SetNull)
+
+  @@unique([senseId, gradeId, categoryId])
+  @@index([status, confidenceScore])
+  @@index([gradeId, status])
+  @@index([categoryId, status])
+}
+
+model LearningSession {
+  id              String                @id @default(cuid())
+  childId         String
+  categoryId      String
+  /// When set, word pool comes from LessonVocabItem (Listen/Spell reuse).
+  lessonId        String?
+  status          LearningSessionStatus @default(IN_PROGRESS)
+  listenScore     Int                   @default(0)
+  spellScore      Int                   @default(0)
+  listenCorrect   Int                   @default(0)
+  spellCorrect    Int                   @default(0)
+  questionsTotal  Int                   @default(0)
+  points          Int                   @default(0)
+  stars           Int                   @default(0)
+  wordsLearned    Int                   @default(0)
+  durationSec     Int                   @default(0)
+  startedAt       DateTime              @default(now())
+  completedAt     DateTime?
+
+  child     Child              @relation(fields: [childId], references: [id], onDelete: Cascade)
+  category  LearningCategory   @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  lesson    Lesson?            @relation(fields: [lessonId], references: [id], onDelete: SetNull)
+  attempts  QuestionAttempt[]
+
+  @@index([childId, startedAt])
+  @@index([categoryId])
+  @@index([lessonId, childId, status])
+}
+
+model QuestionAttempt {
+  id           String     @id @default(cuid())
+  sessionId    String
+  wordId       String
+  round        VocabRound
+  isCorrect    Boolean
+  answerGiven  String?
+  usedClue     Boolean    @default(false)
+  pointsAwarded Int       @default(0)
+  createdAt    DateTime   @default(now())
+
+  session LearningSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  word    VocabularyWord  @relation(fields: [wordId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId, round])
+}
+
+model ChildCategoryProgress {
+  id             String   @id @default(cuid())
+  childId        String
+  categoryId     String
+  wordsLearned   Int      @default(0)
+  listenCorrect  Int      @default(0)
+  listenAttempts Int      @default(0)
+  spellCorrect   Int      @default(0)
+  spellAttempts  Int      @default(0)
+  points         Int      @default(0)
+  stars          Int      @default(0)
+  completed      Boolean  @default(false)
+  minutesLearned Int      @default(0)
+  lastPlayedAt   DateTime?
+  updatedAt      DateTime @updatedAt
+
+  child    Child            @relation(fields: [childId], references: [id], onDelete: Cascade)
+  category LearningCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@unique([childId, categoryId])
+  @@index([childId])
+}
+
+model Achievement {
+  id          String   @id @default(cuid())
+  childId     String
+  code        String
+  title       String
+  description String?
+  earnedAt    DateTime @default(now())
+
+  child Child @relation(fields: [childId], references: [id], onDelete: Cascade)
+
+  @@unique([childId, code])
+  @@index([childId])
 }
 
 model Subject {
@@ -163,27 +596,81 @@ model Lesson {
   subjectId    String?
   ageGroupId   String?
   levelId      String?
+  /// Legacy free-text category label (kept for Phase-1 seed compatibility).
   category     String
+  gradeId      String?
+  groupId      String?
+  /// Preferred LearningCategory placement for vocabulary + play.
+  learningCategoryId String?
   difficulty   Int           @default(1)
   status       PublishStatus @default(DRAFT)
   isPublished  Boolean       @default(false)
+  isActive     Boolean       @default(true)
   sortOrder    Int           @default(0)
   instructions String?
+  /// Supported activities JSON, e.g. ["LISTEN","SPELL"] — Matching/Tracing not implemented.
+  activitiesJson String      @default("[\"LISTEN\",\"SPELL\"]")
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
 
-  subject  Subject?       @relation(fields: [subjectId], references: [id])
-  ageGroup AgeGroup?      @relation(fields: [ageGroupId], references: [id])
-  level    LearningLevel? @relation(fields: [levelId], references: [id])
+  subject            Subject?          @relation(fields: [subjectId], references: [id])
+  ageGroup           AgeGroup?         @relation(fields: [ageGroupId], references: [id])
+  level              LearningLevel?    @relation(fields: [levelId], references: [id])
+  grade              LearningGrade?    @relation(fields: [gradeId], references: [id], onDelete: SetNull)
+  group              LearningGroup?    @relation(fields: [groupId], references: [id], onDelete: SetNull)
+  learningCategory   LearningCategory? @relation(fields: [learningCategoryId], references: [id], onDelete: SetNull)
 
-  lessonWords LessonWord[]
-  media       MediaAsset[]
-  attempts    LearningAttempt[]
-  quizzes     Quiz[]
-  stories     Story[]
+  lessonWords   LessonWord[]
+  vocabItems    LessonVocabItem[]
+  media         MediaAsset[]
+  attempts      LearningAttempt[]
+  quizzes       Quiz[]
+  stories       Story[]
+  sessions      LearningSession[]
+  childProgress ChildLessonProgress[]
+  classroomAssignments ClassroomLessonAssignment[]
 
   @@index([category, isPublished])
   @@index([status])
+  @@index([isActive, isPublished])
+  @@index([learningCategoryId])
+  @@index([gradeId, levelId])
+}
+
+/// Kids vocabulary linked into a lesson (does not modify VocabularyWord).
+model LessonVocabItem {
+  id               String @id @default(cuid())
+  lessonId         String
+  vocabularyWordId String
+  sortOrder        Int    @default(0)
+
+  lesson         Lesson         @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  vocabularyWord VocabularyWord @relation(fields: [vocabularyWordId], references: [id], onDelete: Restrict)
+
+  @@unique([lessonId, vocabularyWordId])
+  @@index([lessonId, sortOrder])
+}
+
+model ChildLessonProgress {
+  id            String   @id @default(cuid())
+  childId       String
+  lessonId      String
+  completed     Boolean  @default(false)
+  points        Int      @default(0)
+  stars         Int      @default(0)
+  wordsLearned  Int      @default(0)
+  listenCorrect Int      @default(0)
+  spellCorrect  Int      @default(0)
+  minutesLearned Int     @default(0)
+  lastPlayedAt  DateTime?
+  updatedAt     DateTime @updatedAt
+
+  child  Child  @relation(fields: [childId], references: [id], onDelete: Cascade)
+  lesson Lesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+
+  @@unique([childId, lessonId])
+  @@index([childId])
+  @@index([lessonId])
 }
 
 model Word {
@@ -382,6 +869,11 @@ model Subscription {
   cancelledAt DateTime?
   provider    String
   providerRef String?            @unique
+  graceEndsAt DateTime?
+  /// Base child seats included in the parent plan (standard = 2).
+  includedSeats Int              @default(2)
+  /// Extra paid child seats activated after verified payment / admin grant.
+  extraSeats    Int              @default(0)
   createdAt   DateTime           @default(now())
   updatedAt   DateTime           @updatedAt
 
@@ -389,6 +881,44 @@ model Subscription {
   payments Payment[]
 
   @@index([userId, status])
+}
+
+/// One active registered mobile installation per child (student).
+model StudentDevice {
+  id               String   @id @default(cuid())
+  childId          String   @unique
+  installationId   String
+  platform         String
+  deviceLabel      String?
+  appVersion       String?
+  registeredAt     DateTime @default(now())
+  lastSeenAt       DateTime @default(now())
+  revokedAt        DateTime?
+  isActive         Boolean  @default(true)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  child Child @relation(fields: [childId], references: [id], onDelete: Cascade)
+
+  @@unique([installationId, childId])
+  @@index([installationId])
+  @@index([isActive])
+}
+
+model DeviceTransferEvent {
+  id               String   @id @default(cuid())
+  childId          String
+  approvedByUserId String
+  previousInstallationId String?
+  newInstallationId      String?
+  reason           String?
+  action           String
+  createdAt        DateTime @default(now())
+
+  child Child @relation(fields: [childId], references: [id], onDelete: Cascade)
+
+  @@index([childId, createdAt])
+  @@index([approvedByUserId])
 }
 
 model Payment {
@@ -402,12 +932,23 @@ model Payment {
   providerRef    String?       @unique
   invoiceUrl     String?
   paidAt         DateTime?
+  /// Checkout / admin purpose (Batch 10).
+  purpose          PaymentPurpose @default(MANUAL_ADMIN)
+  seatsPurchased   Int            @default(0)
+  planCode         String?
+  razorpayOrderId  String?
+  razorpayPaymentId String?
+  /// Webhook event id for idempotency (optional).
+  rawEventId       String?        @unique
+  metadataJson     String?
   createdAt      DateTime      @default(now())
 
   user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
   subscription Subscription? @relation(fields: [subscriptionId], references: [id])
 
   @@index([userId, createdAt])
+  @@index([razorpayOrderId])
+  @@index([status, purpose])
 }
 
 model Certificate {
@@ -465,4 +1006,107 @@ model AdminRoleBinding {
   adminRole AdminRole @relation(fields: [adminRoleId], references: [id], onDelete: Cascade)
 
   @@unique([userId, adminRoleId])
+}
+
+/// Multi-school tenant. Parent→Child remains canonical; school is an overlay.
+model School {
+  id           String   @id @default(cuid())
+  name         String
+  code         String?  @unique
+  contactEmail String?
+  contactPhone String?
+  address      String?
+  notes        String?
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  staff       SchoolStaff[]
+  classrooms  Classroom[]
+
+  @@index([isActive, name])
+}
+
+/// Links TEACHER / SCHOOL_ADMIN users to a school (no duplicate Child accounts).
+model SchoolStaff {
+  id        String          @id @default(cuid())
+  schoolId  String
+  userId    String
+  staffRole SchoolStaffRole
+  isActive  Boolean         @default(true)
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
+
+  school School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, schoolId])
+  @@index([schoolId, staffRole])
+  @@index([userId, isActive])
+}
+
+model Classroom {
+  id         String   @id @default(cuid())
+  schoolId   String
+  name       String
+  code       String?
+  gradeLabel String?
+  isActive   Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  school       School                      @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  teachers     ClassroomTeacher[]
+  enrollments  ClassroomEnrollment[]
+  assignments  ClassroomLessonAssignment[]
+
+  @@index([schoolId, isActive])
+  @@unique([schoolId, name])
+}
+
+model ClassroomTeacher {
+  id            String   @id @default(cuid())
+  classroomId   String
+  teacherUserId String
+  assignedAt    DateTime @default(now())
+
+  classroom Classroom @relation(fields: [classroomId], references: [id], onDelete: Cascade)
+  teacher   User      @relation(fields: [teacherUserId], references: [id], onDelete: Cascade)
+
+  @@unique([classroomId, teacherUserId])
+  @@index([teacherUserId])
+}
+
+/// Enrolls an existing Child profile into a classroom (never creates a second child).
+model ClassroomEnrollment {
+  id          String    @id @default(cuid())
+  classroomId String
+  childId     String
+  isActive    Boolean   @default(true)
+  enrolledAt  DateTime  @default(now())
+  leftAt      DateTime?
+
+  classroom Classroom @relation(fields: [classroomId], references: [id], onDelete: Cascade)
+  child     Child     @relation(fields: [childId], references: [id], onDelete: Cascade)
+
+  @@unique([classroomId, childId])
+  @@index([childId, isActive])
+  @@index([classroomId, isActive])
+}
+
+/// Organizational lesson assignment — reuses existing Lesson / ChildLessonProgress.
+model ClassroomLessonAssignment {
+  id               String   @id @default(cuid())
+  classroomId      String
+  lessonId         String
+  assignedByUserId String
+  assignedAt       DateTime @default(now())
+
+  classroom  Classroom @relation(fields: [classroomId], references: [id], onDelete: Cascade)
+  lesson     Lesson    @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  assignedBy User      @relation("AssignedByTeacher", fields: [assignedByUserId], references: [id], onDelete: Cascade)
+
+  @@unique([classroomId, lessonId])
+  @@index([lessonId])
+  @@index([assignedByUserId])
 }

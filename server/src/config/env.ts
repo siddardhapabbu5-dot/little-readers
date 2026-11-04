@@ -14,9 +14,46 @@ const envSchema = z.object({
   JWT_SECRET: z.string().min(32, "JWT_SECRET must be at least 32 characters"),
   JWT_EXPIRES_IN: z.string().default("7d"),
   BCRYPT_ROUNDS: z.coerce.number().int().min(10).max(15).default(12),
-  CORS_ORIGIN: z.string().default("http://localhost:3100"),
+  CORS_ORIGIN: z
+    .string()
+    .default(
+      "http://localhost:3100,http://127.0.0.1:3100,http://localhost:8081,http://127.0.0.1:8081"
+    ),
   RATE_LIMIT_WINDOW_MS: z.coerce.number().default(15 * 60 * 1000),
   RATE_LIMIT_MAX: z.coerce.number().default(100),
+  /** Public web/app origin for reset links (e.g. http://localhost:3100). */
+  APP_PUBLIC_URL: z.string().default("http://localhost:3100"),
+  /** Mobile Expo web — single Metro port 8081 only. */
+  MOBILE_PUBLIC_URL: z.string().default("http://localhost:8081"),
+  PASSWORD_RESET_TOKEN_TTL_MINUTES: z.coerce.number().int().min(5).max(1440).default(60),
+  /**
+   * When true (non-production only), reset emails are logged instead of sent.
+   * Production must use RESEND_API_KEY — never claim success without delivery.
+   */
+  PASSWORD_RESET_LOG_ONLY: z
+    .string()
+    .optional()
+    .transform((v) => v === "true" || v === "1"),
+  RESEND_API_KEY: z.string().optional(),
+  RESEND_FROM_EMAIL: z.string().email().optional(),
+  /** Razorpay (Batch 10) — sandbox keys in development; never commit live secrets. */
+  RAZORPAY_KEY_ID: z.string().optional(),
+  RAZORPAY_KEY_SECRET: z.string().optional(),
+  RAZORPAY_WEBHOOK_SECRET: z.string().optional(),
+  PAYMENT_CURRENCY: z.string().default("INR"),
+  /**
+   * When true and keys + plan amounts are set, checkout orders are allowed.
+   * Prices must be configured explicitly — never invent amounts.
+   */
+  PAYMENT_ENABLED: z
+    .string()
+    .optional()
+    .transform((v) => v === "true" || v === "1"),
+  PLAN_FAMILY_MONTHLY_AMOUNT_PAISE: z.coerce.number().int().nonnegative().optional(),
+  PLAN_FAMILY_YEARLY_AMOUNT_PAISE: z.coerce.number().int().nonnegative().optional(),
+  PLAN_EXTRA_SEAT_AMOUNT_PAISE: z.coerce.number().int().nonnegative().optional(),
+  /** Tax in basis points (1800 = 18%). Applied server-side to configured amounts. */
+  TAX_RATE_BPS: z.coerce.number().int().min(0).max(10000).default(0),
 });
 
 const parsed = envSchema.safeParse(process.env);
@@ -41,4 +78,19 @@ export const env =
         CORS_ORIGIN: "http://localhost:3000",
         RATE_LIMIT_WINDOW_MS: 15 * 60 * 1000,
         RATE_LIMIT_MAX: 1000,
+        APP_PUBLIC_URL: "http://localhost:3100",
+        MOBILE_PUBLIC_URL: "http://localhost:8081",
+        PASSWORD_RESET_TOKEN_TTL_MINUTES: 60,
+        PASSWORD_RESET_LOG_ONLY: true,
+        RESEND_API_KEY: undefined,
+        RESEND_FROM_EMAIL: undefined,
+        RAZORPAY_KEY_ID: undefined,
+        RAZORPAY_KEY_SECRET: undefined,
+        RAZORPAY_WEBHOOK_SECRET: undefined,
+        PAYMENT_CURRENCY: "INR",
+        PAYMENT_ENABLED: false,
+        PLAN_FAMILY_MONTHLY_AMOUNT_PAISE: undefined,
+        PLAN_FAMILY_YEARLY_AMOUNT_PAISE: undefined,
+        PLAN_EXTRA_SEAT_AMOUNT_PAISE: undefined,
+        TAX_RATE_BPS: 0,
       };

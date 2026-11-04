@@ -20,14 +20,16 @@ interface ChildRow {
 }
 
 const MODULES = [
-  { title: "Alphabet", href: "/kids/modules/alphabet", ready: false },
-  { title: "Phonics", href: "/kids/modules/phonics", ready: false },
-  { title: "Vocabulary", href: "/kids/modules/vocabulary", ready: false },
-  { title: "Reading", href: "/kids/modules/reading", ready: false },
-  { title: "Spelling", href: "/kids/modules/spelling", ready: false },
-  { title: "Stories", href: "/kids/modules/stories", ready: false },
-  { title: "Quizzes", href: "/kids/modules/quizzes", ready: false },
-  { title: "Rewards", href: "/kids/modules/rewards", ready: false },
+  { title: "Lessons", href: "/kids/lessons", ready: true, emoji: "📗" },
+  { title: "Level 1 · Ages 1–3", href: "/kids/level-1", ready: true, emoji: "🧸" },
+  { title: "Alphabet", href: "/kids/modules/alphabet", ready: false, emoji: "🔤" },
+  { title: "Phonics", href: "/kids/modules/phonics", ready: false, emoji: "🔊" },
+  { title: "Vocabulary", href: "/kids/modules/vocabulary", ready: false, emoji: "📚" },
+  { title: "Reading", href: "/kids/modules/reading", ready: false, emoji: "📖" },
+  { title: "Spelling", href: "/kids/modules/spelling", ready: false, emoji: "✏️" },
+  { title: "Stories", href: "/kids/modules/stories", ready: false, emoji: "🎬" },
+  { title: "Quizzes", href: "/kids/modules/quizzes", ready: false, emoji: "🧩" },
+  { title: "Rewards", href: "/kids/modules/rewards", ready: false, emoji: "⭐" },
 ];
 
 export default function KidsHomePage() {
@@ -176,12 +178,13 @@ export default function KidsHomePage() {
             <button
               key={mod.title}
               type="button"
-              className="kids-module-btn"
+              className={`kids-module-btn ${mod.ready ? "is-ready" : ""}`}
               onClick={() => {
                 if (mod.ready) router.push(mod.href);
-                else setError(`${mod.title} lessons open in Phase 3.`);
+                else setError(`${mod.title} opens in a later phase.`);
               }}
             >
+              <span style={{ fontSize: 28 }}>{mod.emoji}</span>
               {mod.title}
             </button>
           ))}
@@ -194,8 +197,8 @@ export default function KidsHomePage() {
         ) : null}
 
         <p style={{ marginTop: 18, color: "#6b7280" }}>
-          Learning content is loaded from the database in later phases — not
-          hardcoded here.
+          Level 1 vocabulary is live from the database. Other modules unlock in
+          later phases.
         </p>
       </div>
     </div>

@@ -29,16 +29,176 @@ export const loginSchema = z.object({
   password: z.string().min(1, "Password is required"),
 });
 
-export const createChildSchema = z.object({
-  displayName: z.string().trim().min(1).max(50),
-  birthYear: z.coerce
-    .number()
-    .int()
-    .min(new Date().getFullYear() - 12)
-    .max(new Date().getFullYear() - 3),
-  level: z.enum(["FOUNDATION", "ELEMENTARY", "ADVANCED"]).optional(),
+export const forgotPasswordSchema = z.object({
+  email: z.string().trim().email("Valid email is required"),
+  /** Optional client hint: "web" | "mobile" — chooses reset link base URL. */
+  client: z.enum(["web", "mobile"]).optional(),
+});
+
+export const resetPasswordSchema = z
+  .object({
+    token: z.string().trim().min(20, "Reset token is required"),
+    password: passwordSchema,
+    confirmPassword: z.string().min(1, "Confirm your password"),
+  })
+  .refine((data) => data.password === data.confirmPassword, {
+    message: "Passwords do not match",
+    path: ["confirmPassword"],
+  });
+
+/** Birthday as DD/MM/YYYY (e.g. 15/03/2021). */
+export const birthDateSchema = z
+  .string()
+  .trim()
+  .regex(/^\d{2}\/\d{2}\/\d{4}$/, "Birthday must be DD/MM/YYYY");
+
+export function parseBirthDateDdMmYyyy(value: string): {
+  day: number;
+  month: number;
+  year: number;
+  normalized: string;
+} {
+  const match = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(value.trim());
+  if (!match) {
+    throw new Error("Birthday must be DD/MM/YYYY");
+  }
+  const day = Number(match[1]);
+  const month = Number(match[2]);
+  const year = Number(match[3]);
+  const dt = new Date(year, month - 1, day);
+  if (
+    dt.getFullYear() !== year ||
+    dt.getMonth() !== month - 1 ||
+    dt.getDate() !== day
+  ) {
+    throw new Error("Birthday is not a valid calendar date");
+  }
+  const minYear = new Date().getFullYear() - 12;
+  const maxYear = new Date().getFullYear() - 1;
+  if (year < minYear || year > maxYear) {
+    throw new Error(`Birth year must be between ${minYear} and ${maxYear}`);
+  }
+  return {
+    day,
+    month,
+    year,
+    normalized: `${String(day).padStart(2, "0")}/${String(month).padStart(2, "0")}/${year}`,
+  };
+}
+
+export const createChildSchema = z
+  .object({
+    displayName: z.string().trim().min(1).max(50),
+    /** Preferred: full birthday DD/MM/YYYY */
+    birthDate: birthDateSchema.optional(),
+    /** Legacy: year only — still accepted if birthDate omitted */
+    birthYear: z.coerce
+      .number()
+      .int()
+      .min(new Date().getFullYear() - 12)
+      .max(new Date().getFullYear() - 1)
+      .optional(),
+    level: z
+      .enum(["LEVEL_1", "LEVEL_2", "LEVEL_3", "LEVEL_4", "FOUNDATION", "ELEMENTARY", "ADVANCED"])
+      .optional(),
+  })
+  .superRefine((data, ctx) => {
+    if (!data.birthDate && data.birthYear == null) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Birthday is required (DD/MM/YYYY)",
+        path: ["birthDate"],
+      });
+      return;
+    }
+    if (data.birthDate) {
+      try {
+        parseBirthDateDdMmYyyy(data.birthDate);
+      } catch (err) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: err instanceof Error ? err.message : "Invalid birthday",
+          path: ["birthDate"],
+        });
+      }
+    }
+  });
+
+export const updateChildSchema = z
+  .object({
+    displayName: z.string().trim().min(1).max(50).optional(),
+    birthDate: birthDateSchema.optional(),
+    birthYear: z.coerce
+      .number()
+      .int()
+      .min(new Date().getFullYear() - 12)
+      .max(new Date().getFullYear() - 1)
+      .optional(),
+    level: z
+      .enum(["LEVEL_1", "LEVEL_2", "LEVEL_3", "LEVEL_4", "FOUNDATION", "ELEMENTARY", "ADVANCED"])
+      .optional(),
+  })
+  .refine(
+    (data) =>
+      data.displayName !== undefined ||
+      data.birthDate !== undefined ||
+      data.birthYear !== undefined ||
+      data.level !== undefined,
+    {
+      message: "Provide at least one field to update",
+    }
+  )
+  .superRefine((data, ctx) => {
+    if (data.birthDate) {
+      try {
+        parseBirthDateDdMmYyyy(data.birthDate);
+      } catch (err) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: err instanceof Error ? err.message : "Invalid birthday",
+          path: ["birthDate"],
+        });
+      }
+    }
+  });
+
+export const startLearningSessionSchema = z
+  .object({
+    childId: z.string().min(1),
+    categoryId: z.string().min(1).optional(),
+    lessonId: z.string().min(1).optional(),
+    questionCount: z.coerce.number().int().min(5).max(20).optional(),
+    resume: z.boolean().optional(),
+  })
+  .superRefine((val, ctx) => {
+    if (!val.categoryId && !val.lessonId) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "categoryId or lessonId is required",
+        path: ["categoryId"],
+      });
+    }
+  });
+
+export const submitQuestionAttemptSchema = z.object({
+  wordId: z.string().min(1),
+  round: z.enum(["LISTEN", "SPELL", "LETTER"]),
+  isCorrect: z.boolean(),
+  answerGiven: z.string().max(100).optional(),
+  usedClue: z.boolean().optional(),
+  pointsAwarded: z.coerce.number().int().min(0).max(100).optional(),
+});
+
+export const completeLearningSessionSchema = z.object({
+  durationSec: z.coerce.number().int().min(0).max(86_400).optional(),
 });
 
 export type RegisterInput = z.infer<typeof registerSchema>;
 export type LoginInput = z.infer<typeof loginSchema>;
+export type ForgotPasswordInput = z.infer<typeof forgotPasswordSchema>;
+export type ResetPasswordInput = z.infer<typeof resetPasswordSchema>;
 export type CreateChildInput = z.infer<typeof createChildSchema>;
+export type UpdateChildInput = z.infer<typeof updateChildSchema>;
+export type StartLearningSessionInput = z.infer<typeof startLearningSessionSchema>;
+export type SubmitQuestionAttemptInput = z.infer<typeof submitQuestionAttemptSchema>;
+export type CompleteLearningSessionInput = z.infer<typeof completeLearningSessionSchema>;

@@ -4,21 +4,32 @@
   "private": true,
   "main": "expo-router/entry",
   "scripts": {
-    "start": "expo start",
-    "android": "expo start --android",
-    "ios": "expo start --ios",
-    "typecheck": "tsc --noEmit"
+    "start": "node ./node_modules/expo/bin/cli start --port 8081",
+    "android": "node ./node_modules/expo/bin/cli start --android --port 8081",
+    "ios": "node ./node_modules/expo/bin/cli start --ios --port 8081",
+    "web": "node ./node_modules/expo/bin/cli start --web --port 8081",
+    "typecheck": "node ./node_modules/typescript/bin/tsc --noEmit"
   },
   "dependencies": {
-    "@little-readers/shared": "*",
-    "@little-readers/types": "*",
+    "@expo/metro-runtime": "~4.0.1",
+    "@little-readers/shared": "file:../../packages/shared",
+    "@little-readers/types": "file:../../packages/types",
     "expo": "~52.0.28",
+    "expo-constants": "~17.0.8",
+    "expo-linear-gradient": "~14.0.2",
+    "expo-linking": "~7.0.5",
     "expo-router": "~4.0.17",
+    "expo-secure-store": "~14.0.1",
+    "expo-speech": "~13.0.1",
     "expo-status-bar": "~2.0.1",
+    "query-string": "^7.1.3",
     "react": "18.3.1",
+    "react-dom": "18.3.1",
     "react-native": "0.76.6",
+    "react-native-gesture-handler": "~2.20.2",
     "react-native-safe-area-context": "4.12.0",
-    "react-native-screens": "~4.4.0"
+    "react-native-screens": "~4.4.0",
+    "react-native-web": "~0.19.13"
   },
   "devDependencies": {
     "@types/react": "~18.3.18",

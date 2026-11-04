@@ -6,6 +6,7 @@
   "workspaces": [
     "apps/web",
     "apps/api",
+    "apps/mobile",
     "packages/*",
     "server"
   ],

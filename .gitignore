@@ -41,6 +41,8 @@ server/prisma/*.db-journal
 # Uploads (keep folder)
 uploads/*
 !uploads/.gitkeep
+server/storage/vocab-uploads/*
+!server/storage/vocab-uploads/.gitkeep
 
 # Misc
 *.pem

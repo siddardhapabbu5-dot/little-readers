@@ -1,71 +1,39 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
-import { Alert, Button } from "@little-readers/ui";
-import { apiRequest } from "@/lib/api";
-import { clearToken, getToken } from "@/lib/auth-storage";
-
-interface MeResponse {
-  name: string;
-  email: string;
-  role: string;
-}
+import Link from "next/link";
+import { Alert } from "@little-readers/ui";
+import { AdminShell } from "@/components/AdminShell";
+import { useAdminGate } from "@/lib/use-admin-gate";
 
 export default function AdminPage() {
-  const router = useRouter();
-  const [me, setMe] = useState<MeResponse | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const { ready, error } = useAdminGate();
 
-  useEffect(() => {
-    const token = getToken();
-    if (!token) {
-      router.replace("/login");
-      return;
-    }
-    void apiRequest<MeResponse>("/auth/me", { token })
-      .then((user) => {
-        if (user.role !== "ADMIN" && user.role !== "SUPER_ADMIN") {
-          setError("Admin role required");
-          return;
-        }
-        setMe(user);
-      })
-      .catch(() => {
-        clearToken();
-        router.replace("/login");
-      });
-  }, [router]);
-
-  return (
-    <div className="admin-shell">
-      <div className="panel" style={{ background: "#111827", color: "#e2e8f0" }}>
-        <h1 style={{ marginTop: 0 }}>Admin dashboard</h1>
-        {error ? <Alert tone="error">{error}</Alert> : null}
-        {me ? (
-          <p>
-            Signed in as {me.name} ({me.email}) · role {me.role}
-          </p>
-        ) : (
-          <p>Checking admin access…</p>
-        )}
-        <Alert tone="info">
-          Content management (lessons, words, phonics, media uploads, quizzes)
-          and analytics land in Phase 7. Database tables and seed content are
-          already in place from Phase 1.
-        </Alert>
-        <div style={{ marginTop: 16 }}>
-          <Button
-            variant="secondary"
-            onClick={() => {
-              clearToken();
-              router.push("/login");
-            }}
-          >
-            Log out
-          </Button>
+  if (!ready && !error) {
+    return (
+      <div className="admin-shell">
+        <div className="panel" style={{ background: "#111827", color: "#e2e8f0" }}>
+          Checking admin access…
         </div>
       </div>
-    </div>
+    );
+  }
+
+  return (
+    <AdminShell title="Admin dashboard">
+      {error ? <Alert tone="error">{error}</Alert> : null}
+      <p style={{ color: "#cbd5e1" }}>
+        Manage learning content. Vocabulary uploads feed Kids Zone automatically
+        after import.
+      </p>
+      <div className="vocab-admin-cards">
+        <Link href="/admin/vocabulary">Vocabulary Management</Link>
+        <Link href="/admin/vocabulary/lessons">Manage Lessons</Link>
+        <Link href="/admin/subscriptions">Subscriptions &amp; Seats</Link>
+        <Link href="/admin/schools">Schools</Link>
+        <Link href="/admin/vocabulary/upload">Upload Vocabulary</Link>
+        <Link href="/admin/vocabulary/imports">Import History</Link>
+        <Link href="/admin/vocabulary/words">Manage Words</Link>
+      </div>
+    </AdminShell>
   );
 }

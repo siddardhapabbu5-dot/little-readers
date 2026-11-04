@@ -48,3 +48,8 @@ server/storage/vocab-uploads/*
 *.pem
 .turbo
 .cache
+
+# Dictionary uploads (keep folder)
+server/storage/dictionary-uploads/*
+!server/storage/dictionary-uploads/.gitkeep
+

@@ -22,7 +22,18 @@ type ChildRow = {
   birthYear: number;
   birthDate?: string | null;
   level: string;
+  levelId?: string | null;
+  gradeId?: string | null;
+  grade?: { id: string; label: string; gradeNumber: number | null } | null;
   hasLearningSeat?: boolean;
+};
+
+type CatalogLevel = { id: string; code: string; label: string };
+type CatalogGrade = {
+  id: string;
+  label: string;
+  gradeNumber: number | null;
+  assignedLevelId: string | null;
 };
 
 type SeatInfo = {
@@ -51,15 +62,24 @@ export default function ParentScreen() {
   const [info, setInfo] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [seats, setSeats] = useState<SeatInfo | null>(null);
+  const [catalogLevels, setCatalogLevels] = useState<CatalogLevel[]>([]);
+  const [catalogGrades, setCatalogGrades] = useState<CatalogGrade[]>([]);
+  const [newLevelId, setNewLevelId] = useState<string | null>(null);
+  const [newGradeId, setNewGradeId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     try {
-      const [kids, sub] = await Promise.all([
+      const [kids, sub, levels, grades] = await Promise.all([
         apiRequest<ChildRow[]>("/children"),
         apiRequest<{ seats?: SeatInfo }>("/subscriptions/me").catch(() => null),
+        apiRequest<CatalogLevel[]>("/parent/catalog/levels").catch(() => []),
+        apiRequest<CatalogGrade[]>("/parent/catalog/grades").catch(() => []),
       ]);
       setChildren(kids);
       setSeats(sub?.seats ?? null);
+      setCatalogLevels(levels);
+      setCatalogGrades(grades);
+      setNewLevelId((cur) => cur ?? levels[0]?.id ?? null);
       const active = await getActiveChild<{ id: string }>();
       setActiveId(active?.id ?? kids[0]?.id ?? null);
       if (!active && kids[0]) {
@@ -106,10 +126,13 @@ export default function ParentScreen() {
         body: JSON.stringify({
           displayName: name.trim(),
           birthDate: birthDate.trim(),
+          ...(newLevelId ? { levelId: newLevelId } : {}),
+          ...(newGradeId ? { gradeId: newGradeId } : {}),
         }),
       });
       setName("");
       setBirthDate("");
+      setNewGradeId(null);
       await saveActiveChild(created);
       setActiveId(created.id);
       setInfo(
@@ -189,7 +212,9 @@ export default function ParentScreen() {
                 {seats.extra ? ` · ${seats.extra} add-on` : ""}
               </Text>
               <Text style={styles.meta}>
-                Base plan covers 2 children. Extra seats need purchase / admin activation.
+                Base plan covers {seats.included} child
+                {seats.included === 1 ? "" : "ren"}. Extra seats need purchase or admin
+                activation.
               </Text>
             </Card>
           ) : null}
@@ -229,7 +254,8 @@ export default function ParentScreen() {
                   </View>
                 </View>
                 <Text style={styles.meta}>
-                  {child.level} · Birthday {birthday}
+                  {child.level}
+                  {child.grade ? ` · ${child.grade.label}` : ""} · Birthday {birthday}
                 </Text>
                 <Text style={styles.meta}>
                   Words {summary?.wordsLearned ?? 0} · Stars {summary?.stars ?? 0} · Points{" "}
@@ -274,6 +300,37 @@ export default function ParentScreen() {
               onChangeText={(v) => setBirthDate(formatBirthdayInput(v))}
               maxLength={10}
             />
+            {catalogLevels.length ? (
+              <>
+                <Text style={styles.meta}>Level (from Admin catalog)</Text>
+                <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+                  {catalogLevels.map((l) => (
+                    <SoftButton
+                      key={l.id}
+                      label={l.label}
+                      active={newLevelId === l.id}
+                      onPress={() => {
+                        setNewLevelId(l.id);
+                        setNewGradeId(null);
+                      }}
+                    />
+                  ))}
+                </View>
+                <Text style={styles.meta}>Grade (optional)</Text>
+                <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+                  {catalogGrades
+                    .filter((g) => !newLevelId || g.assignedLevelId === newLevelId)
+                    .map((g) => (
+                      <SoftButton
+                        key={g.id}
+                        label={g.label}
+                        active={newGradeId === g.id}
+                        onPress={() => setNewGradeId(g.id)}
+                      />
+                    ))}
+                </View>
+              </>
+            ) : null}
             <PrimaryButton label="Save child" onPress={() => void addChild()} loading={busy} />
           </Card>
 

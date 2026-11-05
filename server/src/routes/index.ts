@@ -91,19 +91,35 @@ apiRouter.get(
   }
 );
 
-// Phase stubs — return clear Phase 1 messages (no empty silent failures)
+// Incomplete product surfaces — auth required; never mock success (Phase 10C).
 const phaseStub =
   (feature: string, phase: number) =>
-  (_req: unknown, res: { status: (code: number) => { json: (body: unknown) => void } }) => {
+  (_req: AuthenticatedRequest, res: { status: (code: number) => { json: (body: unknown) => void } }) => {
     res.status(501).json({
-      error: `${feature} will be implemented in Phase ${phase}`,
-      phase: 1,
+      error: `${feature} is not available yet`,
+      code: "FEATURE_NOT_READY",
+      phase,
     });
   };
 
-apiRouter.post("/reading/attempt", phaseStub("Reading attempts", 3));
-apiRouter.post("/spelling/attempt", phaseStub("Spelling attempts", 4));
-apiRouter.post("/speech/assess", phaseStub("Speech assessment", 5));
+apiRouter.post(
+  "/reading/attempt",
+  requireAuth,
+  requireRoles("PARENT", "ADMIN", "SUPER_ADMIN"),
+  phaseStub("Reading attempts", 3)
+);
+apiRouter.post(
+  "/spelling/attempt",
+  requireAuth,
+  requireRoles("PARENT", "ADMIN", "SUPER_ADMIN"),
+  phaseStub("Spelling attempts", 4)
+);
+apiRouter.post(
+  "/speech/assess",
+  requireAuth,
+  requireRoles("PARENT", "ADMIN", "SUPER_ADMIN"),
+  phaseStub("Speech assessment", 5)
+);
 /** Legacy stubs replaced by /payments/* (Batch 10). Keep paths for old clients. */
 apiRouter.post("/subscriptions/verify", (_req, res) => {
   res.status(410).json({

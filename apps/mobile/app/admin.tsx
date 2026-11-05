@@ -157,7 +157,12 @@ export default function AdminScreen() {
       apiRequest<PaymentRow[]>("/payments/admin?take=100"),
       apiRequest<SubRow[]>("/subscriptions/admin"),
       apiRequest<ParentRow[]>("/children/admin/parents").catch(() => [] as ParentRow[]),
-      apiRequest<Array<{ id: string }>>("/admin/content/grades").catch(() => []),
+      // Academic school grades only (gradeNumber set) — avoids dual-catalog inflation.
+      apiRequest<Array<{ id: string; gradeNumber?: number | null }>>(
+        "/admin/academic/grades"
+      )
+        .then((rows) => rows.filter((g) => g.gradeNumber != null))
+        .catch(() => [] as Array<{ id: string }>),
       apiRequest<Array<{ id: string }>>(
         "/admin/dictionary/assignments?status=PENDING&take=200"
       ).catch(() => []),

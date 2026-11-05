@@ -17,7 +17,13 @@ import { getActiveChild, getUser, saveActiveChild } from "../../services/secure"
 import { colors } from "../../theme";
 
 type AuthUser = { id: string; name: string; email: string; role: string };
-type ChildRow = { id: string; displayName: string; birthYear: number; level: string };
+type ChildRow = {
+  id: string;
+  displayName: string;
+  birthYear: number;
+  level: string;
+  levelId?: string | null;
+};
 type Category = {
   id: string;
   label: string;
@@ -47,16 +53,21 @@ export default function HomeTab() {
           let active = await getActiveChild<ChildRow>();
           if (u.role === "PARENT") {
             const kids = await apiRequest<ChildRow[]>("/children");
-            active = active ?? kids[0] ?? null;
+            // Prefer fresh API row so level/grade stay in sync when switching children.
+            const match = active
+              ? kids.find((k) => k.id === active!.id) ?? kids[0]
+              : kids[0];
+            active = match ?? null;
             if (active) await saveActiveChild(active);
           }
           setChild(active);
 
           if (active) {
+            const levelKey = active.level || "LEVEL_1";
             const [p, curriculum] = await Promise.all([
               apiRequest(`/learning/progress/${active.id}`),
               apiRequest<{ groups: Group[] }>(
-                `/learning/levels/1/groups?childId=${encodeURIComponent(active.id)}`
+                `/learning/levels/${encodeURIComponent(levelKey)}/groups?childId=${encodeURIComponent(active.id)}`
               ),
             ]);
             setProgress(p);

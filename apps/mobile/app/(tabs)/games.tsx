@@ -12,21 +12,20 @@ export default function GamesTab() {
       <View style={styles.content}>
         <SectionRow title="Games" />
         <Text style={styles.sub}>
-          Practice with Listen & Spell — open a category from Learn to play.
+          Listen & Spell lives in Learn. Extra game modes are coming soon.
         </Text>
 
         <LearningBanner
-          title="Listen Adventure"
-          body="Hear the word, then tap the matching picture."
+          title="Listen & Spell"
+          body="Open Learn, pick a category, then play Listen and Spell rounds."
           emoji="🎧"
           color={colors.skySoft}
         />
 
         <View style={[styles.card, shadow.card]}>
-          <Text style={styles.cardTitle}>✏️ Spell Fun</Text>
+          <Text style={styles.cardTitle}>More games</Text>
           <Text style={styles.cardBody}>
-            Gentle letter play for little readers — first letter recognition for ages
-            1–3.
+            Matching, Quiz, and Revision are coming soon — not available yet.
           </Text>
           <SoftButton
             label="Open Learn hub"

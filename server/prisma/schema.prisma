@@ -240,6 +240,8 @@ model Child {
   /// Display/storage as DD/MM/YYYY (e.g. 15/03/2021). birthYear stays for age/level logic.
   birthDate   String?
   levelId     String?
+  /// Canonical academic school grade (gradeNumber 1–12). Optional; never auto-cleared on migrate.
+  gradeId     String?
   ageGroupId  String?
   avatarUrl   String?
   isActive    Boolean  @default(true)
@@ -250,6 +252,7 @@ model Child {
 
   parent   User            @relation(fields: [parentId], references: [id], onDelete: Cascade)
   level    LearningLevel?  @relation(fields: [levelId], references: [id])
+  grade    LearningGrade?  @relation(fields: [gradeId], references: [id], onDelete: SetNull)
   ageGroup AgeGroup?       @relation(fields: [ageGroupId], references: [id])
 
   attempts           LearningAttempt[]
@@ -266,6 +269,8 @@ model Child {
   classroomEnrollments ClassroomEnrollment[]
 
   @@index([parentId])
+  @@index([gradeId])
+  @@index([levelId])
 }
 
 model ParentalConsent {
@@ -296,6 +301,7 @@ model AgeGroup {
 }
 
 /// Academic / age-band grade. School grades use gradeNumber (1–12) + assignedLevelId.
+/// Legacy content bands (GRADE_1…) keep gradeNumber null and may point at a canonical academic row.
 model LearningGrade {
   id          String   @id @default(cuid())
   code        String   @unique
@@ -303,10 +309,12 @@ model LearningGrade {
   description String?
   ageMin      Int
   ageMax      Int
-  /// School grade number (1–12). Null for legacy age-band grades.
+  /// School grade number (1–12). Null for legacy age-band / content grades.
   gradeNumber Int?
   /// Level this school grade belongs to (Level-1 / Level-2 / Level-3).
   assignedLevelId String?
+  /// For legacy content grades: link to canonical academic grade (same school year).
+  canonicalGradeId String?
   sortOrder   Int      @default(0)
   isActive    Boolean  @default(true)
   /// Parent app visibility (published catalog).
@@ -316,12 +324,16 @@ model LearningGrade {
 
   levels         LearningLevel[]  @relation("LevelPrimaryGrade")
   assignedLevel  LearningLevel?   @relation("GradesInLevel", fields: [assignedLevelId], references: [id], onDelete: SetNull)
+  canonicalGrade LearningGrade?   @relation("GradeCanonical", fields: [canonicalGradeId], references: [id], onDelete: SetNull)
+  legacyAliases  LearningGrade[]  @relation("GradeCanonical")
+  children       Child[]
   assignments    VocabularyGradeAssignment[]
   lessons        Lesson[]
   programmes     VocabProgramme[]
 
   @@unique([gradeNumber])
   @@index([assignedLevelId])
+  @@index([canonicalGradeId])
   @@index([isActive, isPublished])
 }
 

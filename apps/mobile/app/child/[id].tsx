@@ -29,10 +29,33 @@ type ChildProfile = {
   displayName: string;
   birthYear: number;
   birthDate?: string | null;
-  level?: { code: string; label: string } | null;
+  levelId?: string | null;
+  gradeId?: string | null;
+  level?: { id?: string; code: string; label: string } | null;
+  grade?: {
+    id: string;
+    code: string;
+    label: string;
+    gradeNumber: number | null;
+  } | null;
   ageGroup?: { code: string; label: string } | null;
   parent?: { id: string; name: string; email: string };
   device?: { registered: boolean; platform?: string; deviceLabel?: string | null };
+};
+
+type CatalogLevel = {
+  id: string;
+  code: string;
+  label: string;
+  startGrade: number | null;
+  endGrade: number | null;
+};
+type CatalogGrade = {
+  id: string;
+  code: string;
+  label: string;
+  gradeNumber: number | null;
+  assignedLevelId: string | null;
 };
 
 function formatBirthdayInput(text: string) {
@@ -89,6 +112,10 @@ export default function ChildDetailScreen() {
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState("");
   const [birthDate, setBirthDate] = useState("");
+  const [catalogLevels, setCatalogLevels] = useState<CatalogLevel[]>([]);
+  const [catalogGrades, setCatalogGrades] = useState<CatalogGrade[]>([]);
+  const [editLevelId, setEditLevelId] = useState<string | null>(null);
+  const [editGradeId, setEditGradeId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     if (!childId) {
@@ -107,6 +134,14 @@ export default function ChildDetailScreen() {
       setProgress(prog);
       setName(p.displayName);
       setBirthDate(p.birthDate ?? `01/01/${p.birthYear}`);
+      setEditLevelId(p.levelId ?? p.level?.id ?? null);
+      setEditGradeId(p.gradeId ?? p.grade?.id ?? null);
+      const [levels, grades] = await Promise.all([
+        apiRequest<CatalogLevel[]>("/parent/catalog/levels").catch(() => []),
+        apiRequest<CatalogGrade[]>("/parent/catalog/grades").catch(() => []),
+      ]);
+      setCatalogLevels(levels);
+      setCatalogGrades(grades);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Could not load child");
       setProfile(null);
@@ -131,6 +166,8 @@ export default function ChildDetailScreen() {
         body: JSON.stringify({
           displayName: name.trim(),
           birthDate: birthDate.trim(),
+          ...(editLevelId ? { levelId: editLevelId } : {}),
+          gradeId: editGradeId,
         }),
       });
       setEditing(false);
@@ -142,7 +179,9 @@ export default function ChildDetailScreen() {
           displayName: name.trim(),
           birthYear: updated.birthYear,
           birthDate: updated.birthDate ?? birthDate.trim(),
-          level: profile?.level?.code ?? "LEVEL_1",
+          level: updated.level?.code ?? profile?.level?.code ?? "LEVEL_1",
+          levelId: updated.levelId ?? editLevelId,
+          gradeId: updated.gradeId ?? editGradeId,
         });
       }
     } catch (err) {
@@ -215,6 +254,16 @@ export default function ChildDetailScreen() {
                     <Text style={styles.meta}>
                       Level {profile.level?.label ?? profile.level?.code ?? "—"}
                     </Text>
+                    <Text style={styles.meta}>
+                      Grade{" "}
+                      {profile.grade
+                        ? `${profile.grade.label}${
+                            profile.grade.gradeNumber != null
+                              ? ` (#${profile.grade.gradeNumber})`
+                              : ""
+                          }`
+                        : "Not set"}
+                    </Text>
                     {profile.parent ? (
                       <Text style={styles.meta}>Parent {profile.parent.email}</Text>
                     ) : null}
@@ -253,6 +302,37 @@ export default function ChildDetailScreen() {
                 ) : (
                   <>
                     <Field label="Display name" value={name} onChangeText={setName} />
+                    <Text style={styles.meta}>Learning level</Text>
+                    <View style={styles.row}>
+                      {catalogLevels.map((l) => (
+                        <SoftButton
+                          key={l.id}
+                          label={l.label}
+                          active={editLevelId === l.id}
+                          onPress={() => {
+                            setEditLevelId(l.id);
+                            setEditGradeId(null);
+                          }}
+                        />
+                      ))}
+                    </View>
+                    <Text style={styles.meta}>School grade</Text>
+                    <View style={styles.row}>
+                      {catalogGrades
+                        .filter(
+                          (g) =>
+                            !editLevelId ||
+                            g.assignedLevelId === editLevelId
+                        )
+                        .map((g) => (
+                          <SoftButton
+                            key={g.id}
+                            label={g.label}
+                            active={editGradeId === g.id}
+                            onPress={() => setEditGradeId(g.id)}
+                          />
+                        ))}
+                    </View>
                     <Field
                       label="Birthday (DD/MM/YYYY)"
                       keyboardType="number-pad"

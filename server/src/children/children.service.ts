@@ -27,6 +27,68 @@ function isElevated(role: string) {
   return role === "ADMIN" || role === "SUPER_ADMIN";
 }
 
+/**
+ * Resolve a grade id to the canonical academic grade (gradeNumber set).
+ * New assignments require active + published academic grades that match the level.
+ */
+async function resolveAssignableGradeId(
+  gradeId: string | null | undefined,
+  levelId: string,
+  opts: { forNewAssignment: boolean }
+): Promise<string | null | undefined> {
+  if (gradeId === undefined) return undefined;
+  if (gradeId === null || gradeId === "") return null;
+
+  const grade = await prisma.learningGrade.findUnique({
+    where: { id: gradeId },
+  });
+  if (!grade) throw new AppError("Grade not found", 404);
+
+  let target = grade;
+  if (grade.gradeNumber == null && grade.canonicalGradeId) {
+    const canonical = await prisma.learningGrade.findUnique({
+      where: { id: grade.canonicalGradeId },
+    });
+    if (!canonical) throw new AppError("Canonical grade mapping is broken", 400);
+    target = canonical;
+  }
+
+  if (target.gradeNumber == null) {
+    throw new AppError(
+      "Select an academic school grade (not a legacy content band)",
+      400,
+      { code: "GRADE_NOT_ACADEMIC" }
+    );
+  }
+
+  if (opts.forNewAssignment) {
+    if (!target.isActive || !target.isPublished) {
+      throw new AppError("Grade is not available for assignment", 400, {
+        code: "GRADE_NOT_PUBLISHED",
+      });
+    }
+  }
+
+  const level = await prisma.learningLevel.findUnique({ where: { id: levelId } });
+  if (!level) throw new AppError("Level not found", 400);
+
+  const matchesAssigned =
+    target.assignedLevelId != null && target.assignedLevelId === levelId;
+  const matchesRange =
+    level.startGrade != null &&
+    level.endGrade != null &&
+    target.gradeNumber >= level.startGrade &&
+    target.gradeNumber <= level.endGrade;
+
+  if (!matchesAssigned && !matchesRange) {
+    throw new AppError("Grade does not belong to the selected Level", 400, {
+      code: "GRADE_LEVEL_MISMATCH",
+    });
+  }
+
+  return target.id;
+}
+
 /** Parent must own the child; ADMIN/SUPER_ADMIN may access any active child. */
 export async function assertChildAccess(userId: string, role: string, childId: string) {
   if (isElevated(role)) {
@@ -46,16 +108,26 @@ export async function assertChildAccess(userId: string, role: string, childId: s
 
 export async function createChild(parentId: string, input: CreateChildInput) {
   const { birthYear, birthDate } = resolveBirthFields(input);
-  const levelCode = input.level ?? inferLevelFromBirthYear(birthYear);
 
-  const [level, ageGroup] = await Promise.all([
-    prisma.learningLevel.findUnique({ where: { code: levelCode } }),
-    prisma.ageGroup.findUnique({ where: { code: levelCode } }),
-  ]);
+  let level =
+    input.levelId != null
+      ? await prisma.learningLevel.findUnique({ where: { id: input.levelId } })
+      : null;
+  const levelCode = input.level ?? (level?.code as string | undefined) ?? inferLevelFromBirthYear(birthYear);
+  if (!level) {
+    level = await prisma.learningLevel.findUnique({ where: { code: levelCode } });
+  }
+  const ageGroup = await prisma.ageGroup.findUnique({
+    where: { code: level?.code ?? levelCode },
+  });
 
   if (!level || !ageGroup) {
     throw new AppError("Learning levels are not seeded. Run db:seed.", 500);
   }
+
+  const gradeId = await resolveAssignableGradeId(input.gradeId, level.id, {
+    forNewAssignment: true,
+  });
 
   const child = await prisma.$transaction(async (tx) => {
     const created = await tx.child.create({
@@ -65,11 +137,15 @@ export async function createChild(parentId: string, input: CreateChildInput) {
         birthYear,
         birthDate,
         levelId: level.id,
+        gradeId: gradeId ?? null,
         ageGroupId: ageGroup.id,
         hasLearningSeat: false,
       },
       include: {
-        level: { select: { code: true } },
+        level: { select: { id: true, code: true, label: true } },
+        grade: {
+          select: { id: true, code: true, label: true, gradeNumber: true },
+        },
         ageGroup: { select: { code: true, label: true } },
       },
     });
@@ -88,6 +164,9 @@ export async function createChild(parentId: string, input: CreateChildInput) {
     birthYear: child.birthYear,
     birthDate: child.birthDate,
     level: child.level?.code ?? levelCode,
+    levelId: child.level?.id ?? level.id,
+    gradeId: child.grade?.id ?? null,
+    grade: child.grade,
     ageGroup: child.ageGroup?.code ?? levelCode,
     hasLearningSeat: child.hasLearningSeat,
   };
@@ -97,7 +176,10 @@ export async function listChildrenForParent(parentId: string) {
   const children = await prisma.child.findMany({
     where: { parentId, isActive: true },
     include: {
-      level: { select: { code: true } },
+      level: { select: { id: true, code: true, label: true } },
+      grade: {
+        select: { id: true, code: true, label: true, gradeNumber: true },
+      },
       progress: true,
     },
     orderBy: { createdAt: "asc" },
@@ -109,6 +191,9 @@ export async function listChildrenForParent(parentId: string) {
     birthYear: child.birthYear,
     birthDate: child.birthDate ?? `01/01/${child.birthYear}`,
     level: child.level?.code ?? "FOUNDATION",
+    levelId: child.level?.id ?? null,
+    gradeId: child.grade?.id ?? null,
+    grade: child.grade,
     hasLearningSeat: child.hasLearningSeat,
     progress: child.progress,
   }));
@@ -120,7 +205,10 @@ export async function getChildProfile(userId: string, role: string, childId: str
   const child = await prisma.child.findFirst({
     where: { id: childId, isActive: true },
     include: {
-      level: { select: { code: true, label: true } },
+      level: { select: { id: true, code: true, label: true } },
+      grade: {
+        select: { id: true, code: true, label: true, gradeNumber: true },
+      },
       ageGroup: { select: { code: true, label: true } },
       parent: { select: { id: true, name: true, email: true } },
       registeredDevice: true,
@@ -135,6 +223,9 @@ export async function getChildProfile(userId: string, role: string, childId: str
     birthYear: child.birthYear,
     birthDate: child.birthDate ?? `01/01/${child.birthYear}`,
     level: child.level,
+    levelId: child.level?.id ?? null,
+    grade: child.grade,
+    gradeId: child.grade?.id ?? null,
     ageGroup: child.ageGroup,
     parent: child.parent,
     hasLearningSeat: child.hasLearningSeat,
@@ -166,29 +257,56 @@ export async function updateChild(
         })
       : null;
 
+  const existing = await prisma.child.findUniqueOrThrow({
+    where: { id: childId },
+    select: { birthYear: true, levelId: true, gradeId: true },
+  });
+
   let levelId: string | undefined;
   let ageGroupId: string | undefined;
-  if (input.level || birthPatch) {
+  if (input.levelId || input.level || birthPatch) {
+    let level =
+      input.levelId != null
+        ? await prisma.learningLevel.findUnique({ where: { id: input.levelId } })
+        : null;
     const levelCode =
       input.level ??
-      inferLevelFromBirthYear(
-        birthPatch?.birthYear ??
-          (
-            await prisma.child.findUniqueOrThrow({
-              where: { id: childId },
-              select: { birthYear: true },
-            })
-          ).birthYear
-      );
-    const [level, ageGroup] = await Promise.all([
-      prisma.learningLevel.findUnique({ where: { code: levelCode } }),
-      prisma.ageGroup.findUnique({ where: { code: levelCode } }),
-    ]);
+      level?.code ??
+      inferLevelFromBirthYear(birthPatch?.birthYear ?? existing.birthYear);
+    if (!level) {
+      level = await prisma.learningLevel.findUnique({ where: { code: levelCode } });
+    }
+    const ageGroup = await prisma.ageGroup.findUnique({
+      where: { code: level?.code ?? levelCode },
+    });
     if (!level || !ageGroup) {
       throw new AppError("Learning level not found for update", 400);
     }
     levelId = level.id;
     ageGroupId = ageGroup.id;
+  }
+
+  const nextLevelId = levelId ?? existing.levelId;
+  if (!nextLevelId) {
+    throw new AppError("Child has no learning level", 400);
+  }
+
+  let gradeId = await resolveAssignableGradeId(
+    input.gradeId,
+    nextLevelId,
+    { forNewAssignment: input.gradeId != null && input.gradeId !== "" }
+  );
+
+  // If level changed and caller did not send a grade, drop a mismatched prior grade
+  // (do not invent a new one).
+  if (levelId && input.gradeId === undefined && existing.gradeId) {
+    try {
+      await resolveAssignableGradeId(existing.gradeId, nextLevelId, {
+        forNewAssignment: false,
+      });
+    } catch {
+      gradeId = null;
+    }
   }
 
   const updated = await prisma.child.update({
@@ -199,9 +317,13 @@ export async function updateChild(
         ? { birthYear: birthPatch.birthYear, birthDate: birthPatch.birthDate }
         : {}),
       ...(levelId ? { levelId, ageGroupId } : {}),
+      ...(gradeId !== undefined ? { gradeId } : {}),
     },
     include: {
-      level: { select: { code: true } },
+      level: { select: { id: true, code: true } },
+      grade: {
+        select: { id: true, code: true, label: true, gradeNumber: true },
+      },
       ageGroup: { select: { code: true } },
     },
   });
@@ -212,6 +334,9 @@ export async function updateChild(
     birthYear: updated.birthYear,
     birthDate: updated.birthDate ?? `01/01/${updated.birthYear}`,
     level: updated.level?.code ?? "FOUNDATION",
+    levelId: updated.level?.id ?? null,
+    gradeId: updated.grade?.id ?? null,
+    grade: updated.grade,
     ageGroup: updated.ageGroup?.code ?? "FOUNDATION",
   };
 }

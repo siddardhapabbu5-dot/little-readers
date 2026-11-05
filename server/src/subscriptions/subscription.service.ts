@@ -85,10 +85,12 @@ export async function tryAssignLearningSeat(
   childId: string,
   tx: Prisma.TransactionClient
 ): Promise<boolean> {
+  // Serialize all seat changes for this parent (works even when no subscription row).
+  await tx.$executeRaw`SELECT id FROM "User" WHERE id = ${parentId} FOR UPDATE`;
+
   const subscription = await latestSubscription(parentId, tx);
   const capacity = seatCapacity(subscription);
 
-  // Serialize seat allocation per parent by locking the subscription row when present.
   if (subscription) {
     await tx.$executeRaw`SELECT id FROM "Subscription" WHERE id = ${subscription.id} FOR UPDATE`;
   }
@@ -98,6 +100,9 @@ export async function tryAssignLearningSeat(
   });
   if (!child) throw new AppError("Child not found", 404);
   if (child.hasLearningSeat) return true;
+
+  // No active subscription → no seats to claim.
+  if (!subscription || capacity <= 0) return false;
 
   const assigned = await tx.child.count({
     where: { parentId, isActive: true, hasLearningSeat: true },
@@ -137,6 +142,7 @@ export async function assignLearningSeat(parentId: string, childId: string) {
 
 export async function unassignLearningSeat(parentId: string, childId: string) {
   return prisma.$transaction(async (tx) => {
+    await tx.$executeRaw`SELECT id FROM "User" WHERE id = ${parentId} FOR UPDATE`;
     const child = await tx.child.findFirst({
       where: { id: childId, parentId, isActive: true },
     });

@@ -29,33 +29,30 @@ describe.skipIf(!hasDb)("Child learning seats (base 2 + add-ons)", () => {
 
     const expiresAt = new Date();
     expiresAt.setFullYear(expiresAt.getFullYear() + 1);
-    const existing = await prisma.subscription.findFirst({ where: { userId: parentId } });
-    if (existing) {
-      await prisma.subscription.update({
-        where: { id: existing.id },
-        data: {
-          status: "ACTIVE",
-          expiresAt,
-          cancelledAt: null,
-          includedSeats: 2,
-          extraSeats: 0,
-        },
-      });
-    } else {
-      await prisma.subscription.create({
-        data: {
-          userId: parentId,
-          plan: "MONTHLY",
-          status: "ACTIVE",
-          startedAt: new Date(),
-          expiresAt,
-          provider: "test",
-          providerRef: `seat_test_sub_${Date.now()}`,
-          includedSeats: 2,
-          extraSeats: 0,
-        },
-      });
-    }
+
+    // Normalize all prior subscriptions so capacity is exactly base 2 for this suite.
+    await prisma.subscription.updateMany({
+      where: { userId: parentId },
+      data: {
+        status: "EXPIRED",
+        cancelledAt: new Date(),
+        extraSeats: 0,
+        includedSeats: 2,
+      },
+    });
+    await prisma.subscription.create({
+      data: {
+        userId: parentId,
+        plan: "MONTHLY",
+        status: "ACTIVE",
+        startedAt: new Date(),
+        expiresAt,
+        provider: "test",
+        providerRef: `seat_test_sub_${Date.now()}`,
+        includedSeats: 2,
+        extraSeats: 0,
+      },
+    });
 
     // Reset children for deterministic seat tests
     await prisma.child.updateMany({

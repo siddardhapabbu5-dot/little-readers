@@ -220,9 +220,9 @@ export default function AdminLessonsScreen() {
             <View style={styles.gradeRow}>
               <SoftButton label="✓ Listen" active onPress={() => setInfo("Listen is enabled for lessons")} />
               <SoftButton label="✓ Spell" active onPress={() => setInfo("Spell is enabled for lessons")} />
-              <SoftButton label="Matching (soon)" onPress={() => setInfo("Picture Matching coming soon")} />
-              <SoftButton label="Quiz (soon)" onPress={() => setInfo("Quiz coming soon")} />
-              <SoftButton label="Revision (soon)" onPress={() => setInfo("Revision coming soon")} />
+              <Text style={styles.meta}>
+                Matching / Quiz / Revision — Coming soon (not available yet).
+              </Text>
             </View>
             <SoftButton label="Create draft" onPress={() => void create()} />
             <SoftButton

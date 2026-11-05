@@ -55,8 +55,13 @@ export default function Level1HomePage() {
       return;
     }
 
+    const levelKey =
+      (active as { level?: string }).level ||
+      (active as { levelCode?: string }).levelCode ||
+      "LEVEL_1";
+
     void apiRequest<Level1Data>(
-      `/learning/levels/1/groups?childId=${encodeURIComponent(active.id)}`,
+      `/learning/levels/${encodeURIComponent(levelKey)}/groups?childId=${encodeURIComponent(active.id)}`,
       { token }
     )
       .then(setData)
@@ -64,7 +69,7 @@ export default function Level1HomePage() {
         setError(
           err instanceof ApiClientError
             ? err.message
-            : "Could not load Level 1 curriculum"
+            : "Could not load curriculum for this child’s level"
         );
       })
       .finally(() => setLoading(false));
@@ -73,7 +78,7 @@ export default function Level1HomePage() {
   if (loading) {
     return (
       <div className="kids-shell l1-shell">
-        <div className="kids-card">Loading Level 1…</div>
+        <div className="kids-card">Loading curriculum…</div>
       </div>
     );
   }

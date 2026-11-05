@@ -133,6 +133,10 @@ export const createChildSchema = z
     level: z
       .enum(["LEVEL_1", "LEVEL_2", "LEVEL_3", "LEVEL_4", "FOUNDATION", "ELEMENTARY", "ADVANCED"])
       .optional(),
+    /** Canonical academic LearningLevel id (preferred over level code when set). */
+    levelId: z.string().min(1).optional(),
+    /** Canonical academic LearningGrade id (school grade). */
+    gradeId: z.string().min(1).nullable().optional(),
   })
   .superRefine((data, ctx) => {
     if (!data.birthDate && data.birthYear == null) {
@@ -169,13 +173,17 @@ export const updateChildSchema = z
     level: z
       .enum(["LEVEL_1", "LEVEL_2", "LEVEL_3", "LEVEL_4", "FOUNDATION", "ELEMENTARY", "ADVANCED"])
       .optional(),
+    levelId: z.string().min(1).optional(),
+    gradeId: z.string().min(1).nullable().optional(),
   })
   .refine(
     (data) =>
       data.displayName !== undefined ||
       data.birthDate !== undefined ||
       data.birthYear !== undefined ||
-      data.level !== undefined,
+      data.level !== undefined ||
+      data.levelId !== undefined ||
+      data.gradeId !== undefined,
     {
       message: "Provide at least one field to update",
     }

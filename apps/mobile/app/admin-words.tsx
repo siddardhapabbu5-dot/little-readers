@@ -311,17 +311,8 @@ export default function AdminWordsScreen() {
         mime = asset.mimeType || mime;
       }
 
-      const lower = fileName.toLowerCase();
-      const isAlphabet =
-        /a[_-]?to[_-]?z|alphabet/i.test(fileName) ||
-        lower.endsWith(".xlsx") ||
-        lower.endsWith(".xls");
-      if (isAlphabet && !categoryId) {
-        setError(
-          "Select a category first, then upload the A–Z alphabet sheet (Symbol / Word / Example Sentence)."
-        );
-        return;
-      }
+      // XLSX may contain multiple A–Z tabs (Alphabet, Fruits, …).
+      // With a category selected → matching tab; without → each tab maps by name.
 
       const form = new FormData();
       if (fileBlob) {
@@ -340,9 +331,16 @@ export default function AdminWordsScreen() {
         updated: number;
         failed: number;
         format?: string;
+        sheet?: string;
+        sheetsImported?: string[];
       }>("/admin/vocabulary/words/import-sheet", form);
+      const sheetNote = data.sheet
+        ? ` · ${data.sheet}`
+        : data.sheetsImported?.length
+          ? ` · ${data.sheetsImported.join("; ")}`
+          : "";
       setInfo(
-        `Sheet imported${data.format === "alphabet_az" ? " (A–Z)" : ""}: ${data.created} created, ${data.updated} updated, ${data.failed} failed.`
+        `Sheet imported${data.format?.startsWith("alphabet") ? " (A–Z)" : ""}${sheetNote}: ${data.created} created, ${data.updated} updated, ${data.failed} failed.`
       );
       await load();
     } catch (err) {
@@ -402,8 +400,9 @@ export default function AdminWordsScreen() {
           <SoftButton label="← Back" onPress={() => goAdminBack(router)} />
           <Title>Vocabulary Manager</Title>
           <Text style={styles.note}>
-            Pick a category, then Upload sheet: A–Z Excel (Capital/Small Letter, Symbol, Word,
-            Example Sentence) or grade/level CSV. AI never auto-publishes.
+            One Excel for all categories: tabs like A-Z Alphabet, A-Z Fruits (same columns).
+            Select the category chip (e.g. Fruits), then Upload sheet — matching tab is imported.
+            Or upload with no chip to fill every matching tab. AI never auto-publishes.
           </Text>
           <ErrorText>{error}</ErrorText>
           {info ? <Text style={styles.info}>{info}</Text> : null}

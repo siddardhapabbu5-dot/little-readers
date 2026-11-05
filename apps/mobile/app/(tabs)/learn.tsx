@@ -60,16 +60,21 @@ type LessonRow = {
 };
 
 const DESCRIPTIONS: Record<string, string> = {
-  "Family and People": "Meet family words together",
+  "ABC Learning": "Letters A–Z with picture words",
+  Fruits: "Yummy fruit words A–Z",
+  Colours: "Colour words with bright pictures",
+  Shapes: "Triangles, circles and more",
+  Numbers: "Numbers 1 to 10",
   Animals: "Roar, hop and learn animal names",
-  "Fruits and Vegetables": "Yummy words from the garden",
-  "Colors and Shapes": "Bright colours and simple shapes",
+  Birds: "Friendly bird names",
   "Body Parts": "Point, name and smile",
-  "School and Classroom": "Classroom words for little learners",
+  Vegetables: "Garden vegetable words",
   "Household Objects": "Things we see at home",
-  "Food and Drinks": "Snack-time vocabulary",
-  "Nature and Environment": "Sky, trees and weather words",
   "Action Words": "Jump, clap and move!",
+  "Food and Drinks": "Snack-time vocabulary",
+  Clothes: "Things we wear",
+  Feelings: "Happy, sad and more feelings",
+  "Daily Conversations": "Polite everyday phrases",
 };
 
 export default function LearnTab() {

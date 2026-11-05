@@ -404,9 +404,9 @@ export default function ManageVocabularyWordsPage() {
 
       <div className="panel" style={{ display: "grid", gap: 10, marginBottom: 16 }}>
         <p style={{ color: "#94a3b8", margin: 0 }}>
-          Search and edit kids vocabulary. Upload supports A–Z alphabet XLSX (select a category
-          first: Capital/Small Letter, Symbol, Word, Example Sentence) or the grade/level CSV.
-          Reclassification keeps the same word id so learning history stays linked.
+          Search and edit kids vocabulary. One A–Z XLSX can hold tabs per category (A-Z Alphabet,
+          A-Z Fruits, …). Select a category to import its matching tab, or upload with no filter
+          to fill every matching tab. Reclassification keeps the same word id.
         </p>
         <div
           style={{
@@ -584,18 +584,6 @@ export default function ManageVocabularyWordsPage() {
                   setBusy(true);
                   setError(null);
                   try {
-                    const lower = file.name.toLowerCase();
-                    const looksAz =
-                      /a[_-]?to[_-]?z|alphabet/i.test(file.name) ||
-                      lower.endsWith(".xlsx") ||
-                      lower.endsWith(".xls");
-                    if (looksAz && !categoryId) {
-                      setError(
-                        "Select a category first for A–Z alphabet sheets (Capital Letter, Symbol, Word, Example Sentence)."
-                      );
-                      setBusy(false);
-                      return;
-                    }
                     const form = new FormData();
                     form.append("file", file);
                     if (categoryId) form.append("categoryId", categoryId);
@@ -604,9 +592,16 @@ export default function ManageVocabularyWordsPage() {
                       updated: number;
                       failed: number;
                       format?: string;
+                      sheet?: string;
+                      sheetsImported?: string[];
                     }>("/admin/vocabulary/words/import-sheet", form, token);
+                    const sheetNote = data.sheet
+                      ? ` [${data.sheet}]`
+                      : data.sheetsImported?.length
+                        ? ` [${data.sheetsImported.join("; ")}]`
+                        : "";
                     setMessage(
-                      `Imported${data.format === "alphabet_az" ? " (A–Z)" : ""}: ${data.created} created, ${data.updated} updated, ${data.failed} failed.`
+                      `Imported${data.format?.startsWith("alphabet") ? " (A–Z)" : ""}${sheetNote}: ${data.created} created, ${data.updated} updated, ${data.failed} failed.`
                     );
                     await loadWords();
                   } catch (e) {

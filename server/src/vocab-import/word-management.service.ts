@@ -613,13 +613,49 @@ function normHeader(h: string) {
   return h.trim().toLowerCase().replace(/\s+/g, " ");
 }
 
+const AZ_WORD_HEADERS = [
+  "word",
+  "colour word",
+  "color word",
+  "shape name",
+  "animal name",
+  "bird name",
+  "body part name",
+  "vegetable name",
+  "object name",
+  "action word",
+  "food and drinks name",
+  "food name",
+  "clothes name",
+  "feelings name",
+  "feeling name",
+  "daily conversation",
+  "number word",
+];
+
+function findAzWordCol(header: string[]) {
+  const h = header.map(normHeader);
+  for (const name of AZ_WORD_HEADERS) {
+    const i = h.indexOf(name);
+    if (i >= 0) return i;
+  }
+  // fallback: any column ending with "name" / "word" except letter columns
+  return h.findIndex(
+    (c) =>
+      (c.endsWith("name") || c.endsWith("word") || c === "daily conversation") &&
+      !c.includes("letter") &&
+      c !== "number"
+  );
+}
+
 function isAlphabetHeader(header: string[]) {
   const h = header.map(normHeader);
-  return (
-    h.includes("capital letter") &&
-    h.includes("word") &&
-    (h.includes("symbol") || h.includes("emoji"))
-  );
+  const hasLetter =
+    h.includes("capital letter") ||
+    h.includes("capital") ||
+    h.includes("number");
+  const hasSymbol = h.includes("symbol") || h.includes("emoji");
+  return hasLetter && hasSymbol && findAzWordCol(h) >= 0;
 }
 
 function isGradeLevelHeader(header: string[]) {
@@ -649,13 +685,22 @@ export async function importAlphabetSheetRows(
 
   const header = rows[0].map((c) => normHeader(String(c ?? "")));
   const col = (name: string) => header.indexOf(name);
-  const iCap = col("capital letter");
-  const iSmall = col("small letter");
+  const iCap =
+    col("capital letter") >= 0
+      ? col("capital letter")
+      : col("capital") >= 0
+        ? col("capital")
+        : col("number");
+  const iSmall =
+    col("small letter") >= 0 ? col("small letter") : col("small");
   const iSymbol = col("symbol") >= 0 ? col("symbol") : col("emoji");
-  const iWord = col("word");
-  const iExample = col("example sentence");
+  const iWord = findAzWordCol(header);
+  const iExample =
+    col("example sentence") >= 0
+      ? col("example sentence")
+      : col("example");
 
-  if (iWord < 0) throw new AppError("Missing required column: Word", 400);
+  if (iWord < 0) throw new AppError("Missing required Word / Name column", 400);
 
   let created = 0;
   let updated = 0;
@@ -684,16 +729,18 @@ export async function importAlphabetSheetRows(
     const emoji = resolveAlphabetEmoji({
       symbol,
       word: wordRaw,
-      capitalLetter: capital,
+      capitalLetter: /^[A-Za-z]$/.test(capital) ? capital : word.charAt(0),
       fallback: category.emoji || "🔤",
     });
     const phonetic =
       capital && small
         ? `${capital} / ${small}`
         : capital || small || null;
-    const sortOrder = capital
+    const sortOrder = /^[A-Za-z]$/.test(capital)
       ? capital.toUpperCase().charCodeAt(0) - 64
-      : r;
+      : Number(capital) > 0
+        ? Number(capital)
+        : r;
 
     const existing = await prisma.vocabularyWord.findUnique({
       where: { categoryId_text: { categoryId: category.id, text: word } },
@@ -741,8 +788,81 @@ export async function importAlphabetSheetRows(
   };
 }
 
+function sheetToMatrix(sheet: XLSX.WorkSheet): string[][] {
+  return XLSX.utils.sheet_to_json<string[]>(sheet, {
+    header: 1,
+    defval: "",
+    raw: false,
+  }) as string[][];
+}
+
+function isHowToSheet(name: string) {
+  return /how\s*to|notes|readme|instruction/i.test(name);
+}
+
+function categoryMatchScore(
+  sheetName: string,
+  category: { label: string; code: string }
+) {
+  const sheet = sheetName.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+  const label = category.label.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+  const code = category.code.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+  const labelToken = label.split(" ")[0] || label;
+  let score = 0;
+  if (sheet === label || sheet === code) score += 100;
+  if (sheet.includes(label) || label.includes(sheet)) score += 50;
+  if (labelToken.length >= 3 && sheet.includes(labelToken)) score += 40;
+  if (code && sheet.includes(code)) score += 30;
+  // "A-Z Fruits" / "Fruits A-Z" style tabs
+  if (/fruit/.test(sheet) && /fruit/.test(label)) score += 60;
+  if (/vegetable/.test(sheet) && /vegetable/.test(label)) score += 60;
+  if (/animal/.test(sheet) && /animal/.test(label)) score += 60;
+  if (/bird/.test(sheet) && /bird/.test(label)) score += 60;
+  if (/color|colour/.test(sheet) && /color|colour/.test(label)) score += 60;
+  if (/shape/.test(sheet) && /shape/.test(label)) score += 60;
+  if (/number/.test(sheet) && /number/.test(label)) score += 60;
+  if (/body/.test(sheet) && /body/.test(label)) score += 60;
+  if (/household|object/.test(sheet) && /household|object/.test(label))
+    score += 60;
+  if (/action/.test(sheet) && /action/.test(label)) score += 60;
+  if (/food|drink/.test(sheet) && /food|drink/.test(label)) score += 60;
+  if (/cloth/.test(sheet) && /cloth/.test(label)) score += 60;
+  if (/feeling/.test(sheet) && /feeling/.test(label)) score += 60;
+  if (/conversation|daily/.test(sheet) && /conversation|daily/.test(label))
+    score += 60;
+  if (/family|people/.test(sheet) && /family|people/.test(label)) score += 60;
+  if (
+    /alphabet|abc|letter/.test(sheet) &&
+    /alphabet|abc|letter|learning/.test(label)
+  ) {
+    score += 55;
+  }
+  return score;
+}
+
+function pickAzSheetName(
+  sheetNames: string[],
+  category?: { label: string; code: string } | null
+) {
+  const candidates = sheetNames.filter((n) => !isHowToSheet(n));
+  if (!candidates.length) return sheetNames[0];
+  if (category) {
+    const ranked = candidates
+      .map((n) => ({ n, score: categoryMatchScore(n, category) }))
+      .sort((a, b) => b.score - a.score);
+    if (ranked[0] && ranked[0].score > 0) return ranked[0].n;
+  }
+  return (
+    candidates.find((n) => /alphabet|a-z|a_to_z|abc/i.test(n)) ?? candidates[0]
+  );
+}
+
 /**
- * Auto-detect grade/level CSV or A–Z alphabet xlsx/csv and import.
+ * Auto-detect grade/level CSV or A–Z category xlsx/csv and import.
+ *
+ * One Excel workbook may contain multiple tabs (A-Z Alphabet, A-Z Fruits, …).
+ * - With categoryId selected in Admin → imports the matching tab into that category
+ * - Without categoryId → imports each A–Z tab into the category matching the tab name
  */
 export async function importVocabularySheet(input: {
   buffer?: Buffer;
@@ -753,37 +873,113 @@ export async function importVocabularySheet(input: {
   const name = (input.filename ?? "").toLowerCase();
   const isXlsx = name.endsWith(".xlsx") || name.endsWith(".xls");
 
-  let matrix: string[][] = [];
-
   if (input.buffer?.length && isXlsx) {
     const wb = XLSX.read(input.buffer, { type: "buffer", cellDates: false });
-    const sheetName =
-      wb.SheetNames.find((n) => /alphabet|a-z|a_to_z/i.test(n)) ??
-      wb.SheetNames[0];
-    const sheet = wb.Sheets[sheetName];
-    if (!sheet) throw new AppError("Workbook has no sheets", 400);
-    matrix = XLSX.utils.sheet_to_json<string[]>(sheet, {
-      header: 1,
-      defval: "",
-      raw: false,
-    }) as string[][];
-  } else {
-    const text =
-      input.csvText?.trim() ||
-      (input.buffer?.length ? input.buffer.toString("utf8") : "");
-    if (!text) {
-      throw new AppError(
-        "Upload a CSV/XLSX file (A–Z alphabet or grade/level sheet)",
-        400
-      );
+    const azSheets = wb.SheetNames.filter((n) => {
+      if (isHowToSheet(n)) return false;
+      const matrix = sheetToMatrix(wb.Sheets[n]);
+      return matrix.length > 1 && isAlphabetHeader(matrix[0].map(String));
+    });
+
+    if (azSheets.length) {
+      if (input.categoryId) {
+        const category = await prisma.learningCategory.findUnique({
+          where: { id: input.categoryId },
+        });
+        if (!category) throw new AppError("Category not found", 404);
+        const sheetName = pickAzSheetName(azSheets, category);
+        const matrix = sheetToMatrix(wb.Sheets[sheetName]);
+        const result = await importAlphabetSheetRows(matrix, category.id);
+        return { ...result, sheet: sheetName, sheetsImported: [sheetName] };
+      }
+
+      // One workbook → many categories (sheet name ≈ category label)
+      const categories = await prisma.learningCategory.findMany({
+        select: { id: true, label: true, code: true },
+      });
+      let created = 0;
+      let updated = 0;
+      let failed = 0;
+      const errors: Array<{ row: number; error: string }> = [];
+      const sheetsImported: string[] = [];
+      const skippedSheets: string[] = [];
+
+      for (const sheetName of azSheets) {
+        const ranked = categories
+          .map((c) => ({ c, score: categoryMatchScore(sheetName, c) }))
+          .sort((a, b) => b.score - a.score);
+        const best = ranked[0];
+        if (!best || best.score <= 0) {
+          skippedSheets.push(sheetName);
+          continue;
+        }
+        const matrix = sheetToMatrix(wb.Sheets[sheetName]);
+        const part = await importAlphabetSheetRows(matrix, best.c.id);
+        created += part.created;
+        updated += part.updated;
+        failed += part.failed;
+        errors.push(...part.errors);
+        sheetsImported.push(`${sheetName} → ${best.c.label}`);
+      }
+
+      if (!sheetsImported.length) {
+        throw new AppError(
+          "No sheet matched a category. Select a category in Admin, or name tabs like “A-Z Fruits”, “A-Z Alphabet”.",
+          400
+        );
+      }
+
+      return {
+        format: "alphabet_az_multi" as const,
+        created,
+        updated,
+        failed,
+        errors: errors.slice(0, 40),
+        sheetsImported,
+        skippedSheets,
+      };
     }
-    matrix = text
-      .replace(/^\uFEFF/, "")
-      .split(/\r?\n/)
-      .map((l) => l.trim())
-      .filter(Boolean)
-      .map((line) => parseCsvLine(line));
+
+    // Non A–Z workbook: first sheet as grade/level CSV path
+    const sheetName = wb.SheetNames[0];
+    const matrix = sheetToMatrix(wb.Sheets[sheetName]);
+    if (!matrix.length) throw new AppError("Sheet is empty", 400);
+    const header = matrix[0].map((c) => String(c ?? ""));
+    if (isGradeLevelHeader(header) || header.some((h) => /grade_code/i.test(h))) {
+      const csv = matrix
+        .map((row) =>
+          row
+            .map((cell) => {
+              const s = String(cell ?? "");
+              return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+            })
+            .join(",")
+        )
+        .join("\n");
+      const result = await importGradeLevelWordsCsv(csv);
+      return { format: "grade_level" as const, ...result };
+    }
+    throw new AppError(
+      "Unrecognized sheet. Use A–Z tabs (Capital Letter, Small Letter, Symbol, Word, Example Sentence) or the grade/level template.",
+      400
+    );
   }
+
+  const text =
+    input.csvText?.trim() ||
+    (input.buffer?.length ? input.buffer.toString("utf8") : "");
+  if (!text) {
+    throw new AppError(
+      "Upload a CSV/XLSX file (A–Z category sheets or grade/level sheet)",
+      400
+    );
+  }
+  const matrix = text
+    .replace(/^\uFEFF/, "")
+    .split(/\r?\n/)
+    .map((l) => l.trim())
+    .filter(Boolean)
+    .map((line) => parseCsvLine(line));
 
   if (!matrix.length) throw new AppError("Sheet is empty", 400);
   const header = matrix[0].map((c) => String(c ?? ""));
@@ -792,7 +988,6 @@ export async function importVocabularySheet(input: {
     return importAlphabetSheetRows(matrix, input.categoryId ?? "");
   }
   if (isGradeLevelHeader(header) || header.some((h) => /grade_code/i.test(h))) {
-    // Rebuild CSV text for existing importer
     const csv = matrix
       .map((row) =>
         row

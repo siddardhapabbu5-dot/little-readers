@@ -2,11 +2,21 @@
 
 Use these from **phone Admin** (Vocabulary Manager) or **website Admin**.
 
-## 0) A–Z alphabet sheet (Symbol + Word + Example Sentence)
+## 0) A–Z category sheet (one Excel for all categories)
 
 **Files**
-- `A_to_Z_Alphabet_with_Symbols.xlsx` (preferred)
-- `A_to_Z_Alphabet_with_Symbols.csv`
+- `A_to_Z_Alphabet_with_Symbols.xlsx` (preferred — **multiple tabs**)
+- `A_to_Z_Alphabet_with_Symbols.csv` (single category)
+
+Keep **one workbook** with a tab per category. Supported tabs include:
+`A-Z Alphabet`, `A-Z Fruits`, `A-Z Colour`, `A-Z Shapes`, `Numbers 1–10`,
+`A-Z Animals`, `A-Z Birds`, `A-Z Body Parts`, `A-Z Vegetables`,
+`A-Z Household Objects`, `A-Z Action Words`, `A-Z Food and Drinks`,
+`A-Z Clothes`, `A-Z Feelings`, `A-Z Daily Conversations`.
+
+Word column may be named `Word`, `Animal Name`, `Colour word`, etc.
+
+Bulk load (server): `node scripts/import-all-az-topics.mjs path/to/file.xlsx`
 
 ### Columns
 | Column | Required | Notes |
@@ -14,21 +24,25 @@ Use these from **phone Admin** (Vocabulary Manager) or **website Admin**.
 | Capital Letter | Recommended | Used for sort order / phonetic |
 | Small Letter | Optional | Combined with capital as phonetic |
 | Symbol | Optional | Use a real emoji (🍎). Excel Wingdings/private glyphs show as □ on phones and are auto-replaced by word/letter emoji |
-| Word | Yes | Headword (e.g. Apple) |
+| Word | Yes | Headword (e.g. Apple / Banana) |
 | Example Sentence | Recommended | Stored as the kid-friendly meaning |
 
 ### How to upload
-1. **Structure** → create/select the target category (e.g. Alphabet)
-2. **Vocabulary Manager** → select that **category** chip
-3. **Upload sheet** → pick this XLSX (or CSV)
-4. Words land in the selected category (create or update by word text)
+**Option A — one category (recommended)**  
+1. Structure → create **Fruits** (or open existing)  
+2. Vocabulary Manager → select **Fruits** chip  
+3. Upload sheet → same XLSX  
+4. App imports the **A-Z Fruits** tab into Fruits (not Alphabet)
+
+**Option B — whole workbook**  
+1. Upload the XLSX without a category selected  
+2. Each A–Z tab imports into the matching category by tab name
 
 ### How to download the live version
-1. Vocabulary Manager → select **ABC Learning** (or other A–Z category)
-2. **Download CSV** → exports the **live** A–Z sheet (`Capital Letter, Small Letter, Symbol, Word, Example Sentence`) with real emoji (UTF-8)
-3. Do not reuse an old Downloads copy of the original Excel — that file had private font glyphs that show as □ on phones
+1. Vocabulary Manager → select the category  
+2. **Download CSV** → live A–Z sheet with real emoji (UTF-8)
 
-Does **not** invent new categories. Grade/level CSV still works for bulk edits across the tree.
+Does **not** invent new categories — create Fruits / Animals in Structure first.
 
 ---
 

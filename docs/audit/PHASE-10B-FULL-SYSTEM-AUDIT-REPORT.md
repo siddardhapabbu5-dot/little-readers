@@ -287,6 +287,11 @@ tests/auth.test.ts
 | D-06 | P2 | Demo login ensure on API start unsafe for production |
 | D-07 | P2 | Parent email JWT without `sid` bypasses device binding |
 | D-08 | P3 | Admin lessons still hardcodes Grade 1–4 picker labels |
+| D-09 | P1 | Kids **Home** + web `/kids/level-1` hardcode learning level path `/levels/1` (Learn tab is API-driven) |
+| D-10 | P2 | No frontend consumer of `GET /parent/catalog/grades` — parent cannot pick Admin school grades |
+| D-11 | P3 | Games tab / rewards challenge / daily goal use client placeholders |
+| D-12 | P2 | `/api/reading|spelling|speech` stubs have **no auth** (501 today; must gate before implement) |
+| D-13 | P2 | Overlapping plan discovery: `/payments/plans` vs `/parent/catalog/subscription-plans` vs admin academic plans |
 
 ---
 
@@ -333,12 +338,56 @@ tests/auth.test.ts
 2. Resolve dual-grade Admin UX (separate Structure content grades vs Academic Setup school grades in counts/lists).  
 3. Design + implement Child↔Grade persistence using published catalog (schema + Parent UI) as a dedicated feature ticket — not a silent schema drop.  
 4. Fix or quarantine `child-seats` failures with evidence on clean DB.  
-5. Replace 501 learning stubs only when product phase plans require — do not fake PASS.  
-6. Disable demo login ensure and DEV OTP logging in production configs.
+5. Replace 501 learning stubs only when product phase plans require — do not fake PASS; add auth when implementing.  
+6. Disable demo login ensure and DEV OTP logging in production configs.  
+7. Remove hardcoded Level-1 paths on Home / web kids (`D-09`); keep Learn hub catalog-driven.  
+8. Wire Parent grade selection to `/parent/catalog/grades` once Child has `gradeId` (`D-01`/`D-10`).
 
 ---
 
-## Appendix — commands executed
+## Appendix A — Deep inventory (subagent evidence)
+
+Inventories produced on branch `audit/phase-10b-full-system` (read-only). Sources: [Backend inventory](6e8b0017-de42-402f-a1f8-236283bce6eb), [Frontend inventory](4211b8c0-8a3f-43fd-8baf-a5d50b1be639).
+
+### A.1 Backend module status (condensed)
+
+| Module | Status | Tests |
+|--------|--------|-------|
+| auth / parent-auth / admin-auth | IMPLEMENTED | auth, password-reset, parent-otp-device, admin-password-reset |
+| academic (Level/Grade/Plan) | IMPLEMENTED | phase10b-academic-plans |
+| content-structure | IMPLEMENTED | content-structure |
+| dictionary / vocab-import | IMPLEMENTED | dictionary-grade, vocab-import, word-management, sheet |
+| learning (listen/spell sessions) | IMPLEMENTED | learning, learning-play |
+| lessons / programmes / publisher | IMPLEMENTED | lesson-management, vocab-programme*, publisher* |
+| payments / subscriptions / devices / schools / children | IMPLEMENTED | batch10, child-seats, device-subscription, batch9, children-admin-authz |
+| reading / speech / quizzes / stories / reports routers | **STUB** | NONE (501 or empty index) |
+| spelling dedicated router | PARTIAL | Spell rounds live under `/api/learning` |
+
+**Overlaps:** Content age-band grades (`GRADE_*`) vs academic `gradeNumber` 1–12 on same `LearningGrade`; `/payments/plans` vs `/parent/catalog/subscription-plans`; legacy `Word`/`LessonWord` vs `VocabularyWord`/`LessonVocabItem`.
+
+**Demo credentials** (seed / `ensure-demo-logins`): `parent@littlereaders.test` / `ParentDemo1`, `admin@littlereaders.test` / `AdminDemo1`, `superadmin@littlereaders.test` / `SuperDemo1` — auto-restored non-prod unless `ENSURE_DEMO_LOGINS=0`.
+
+### A.2 Frontend / mobile (condensed)
+
+| Surface | Notes |
+|---------|-------|
+| Mobile auth | OTP default for parents; email alternate; Admin/Teacher/Super portals gated by `AuthGate` |
+| Web auth | Email/password only (no OTP) |
+| Subscription prices | From `/payments/plans` (not hardcoded) |
+| Catalog levels | Mobile subscription uses `/parent/catalog/levels` |
+| Catalog grades | **No app consumer** of `/parent/catalog/grades` |
+| Learn hub | API `/learning/levels` |
+| Home / web kids Level-1 | **Hardcoded** `/learning/levels/1/...` and `/kids/level-1` |
+| TTS | `expo-speech` / web `speechSynthesis`; no STT in play flows |
+| Stubs / placeholders | Games tab, rewards weekly challenge (client fake), web `/student` & `/super-admin` portals, Matching/Quiz/Revision “soon” |
+
+### A.3 Auth-less sensitive stubs
+
+`POST /api/reading/attempt`, `/spelling/attempt`, `/speech/assess` — no JWT, return 501. Low risk while stubbed; **must** add `requireAuth` before real implementation (`D-12`).
+
+---
+
+## Appendix B — commands executed
 
 ```text
 git checkout -b audit/phase-10b-full-system
@@ -353,4 +402,5 @@ cd server && node ../node_modules/typescript/bin/tsc --noEmit
 ```
 
 **Report file:** `docs/audit/PHASE-10B-FULL-SYSTEM-AUDIT-REPORT.md`  
-**Raw full test capture:** `docs/audit/phase10b-test-run-raw.txt`
+**Raw full test capture:** `docs/audit/phase10b-test-run-raw.txt`  
+**Inventory agents:** [Backend inventory](6e8b0017-de42-402f-a1f8-236283bce6eb), [Frontend inventory](4211b8c0-8a3f-43fd-8baf-a5d50b1be639)

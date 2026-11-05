@@ -46,6 +46,7 @@ const gradeCreateSchema = z.object({
 });
 
 const gradePatchSchema = z.object({
+  code: z.string().min(1).max(40).optional(),
   label: z.string().min(1).max(120).optional(),
   ageMin: z.coerce.number().int().optional(),
   ageMax: z.coerce.number().int().optional(),

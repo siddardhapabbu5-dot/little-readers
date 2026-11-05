@@ -58,11 +58,18 @@ describe.skipIf(!hasDb)("Admin content structure CRUD", () => {
     expect(created.status).toBe(201);
     const id = created.body.data.id as string;
 
+    const renamedCode = `GRADE_R${stamp}`.slice(0, 40);
     const patched = await request(app)
       .patch(`/api/admin/content/grades/${id}`)
       .set("Authorization", `Bearer ${adminToken}`)
-      .send({ label: "Temp Grade Renamed", ageMin: 2, ageMax: 5 });
+      .send({
+        code: renamedCode,
+        label: "Temp Grade Renamed",
+        ageMin: 2,
+        ageMax: 5,
+      });
     expect(patched.status).toBe(200);
+    expect(patched.body.data.code).toBe(renamedCode);
     expect(patched.body.data.label).toBe("Temp Grade Renamed");
 
     const badAge = await request(app)

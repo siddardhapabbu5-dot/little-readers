@@ -41,6 +41,19 @@ export async function registerParent(
     throw new AppError("An account with this email already exists", 409);
   }
 
+  let mobileE164: string | undefined;
+  if (input.mobile) {
+    const { normalizeMobileE164 } = await import("../parent-auth/mobile.js");
+    mobileE164 = normalizeMobileE164(input.mobile, input.countryCode);
+    const mobileTaken = await prisma.user.findUnique({ where: { mobileE164 } });
+    if (mobileTaken) {
+      throw new AppError(
+        "This mobile number is already linked to another account",
+        409
+      );
+    }
+  }
+
   const passwordHash = await hashPassword(input.password);
 
   const user = await prisma.$transaction(async (tx) => {
@@ -50,6 +63,7 @@ export async function registerParent(
         email,
         passwordHash,
         role: UserRole.PARENT,
+        ...(mobileE164 ? { mobileE164 } : {}),
       },
     });
 

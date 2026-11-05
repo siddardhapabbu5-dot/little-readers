@@ -2,9 +2,11 @@ import * as SecureStore from "expo-secure-store";
 import { Platform } from "react-native";
 
 const TOKEN_KEY = "lr_access_token";
+const REFRESH_KEY = "lr_refresh_token";
 const INSTALL_KEY = "lr_installation_id";
 const USER_KEY = "lr_user_json";
 const CHILD_KEY = "lr_active_child";
+const SESSION_REVOKED_MSG_KEY = "lr_session_revoked_msg";
 /** Bump when shipping a client “fresh app” so old demo sessions are cleared once. */
 const FRESH_BUILD_KEY = "lr_fresh_build_marker";
 export const CLIENT_FRESH_BUILD_MARKER = "client-v1";
@@ -77,6 +79,28 @@ export async function clearToken() {
   await deleteItem(TOKEN_KEY);
 }
 
+export async function saveRefreshToken(token: string) {
+  await setItem(REFRESH_KEY, token);
+}
+
+export async function getRefreshToken() {
+  return getItem(REFRESH_KEY);
+}
+
+export async function clearRefreshToken() {
+  await deleteItem(REFRESH_KEY);
+}
+
+export async function saveSessionRevokedMessage(message: string) {
+  await setItem(SESSION_REVOKED_MSG_KEY, message);
+}
+
+export async function consumeSessionRevokedMessage() {
+  const msg = await getItem(SESSION_REVOKED_MSG_KEY);
+  await deleteItem(SESSION_REVOKED_MSG_KEY);
+  return msg;
+}
+
 export async function saveUser(user: unknown) {
   await setItem(USER_KEY, JSON.stringify(user));
 }
@@ -115,6 +139,7 @@ export async function clearActiveChild() {
 
 export async function clearSession() {
   await clearToken();
+  await clearRefreshToken();
   await clearUser();
   await clearActiveChild();
   // Intentionally keep INSTALL_KEY so reinstall-without-secure-wipe still binds,

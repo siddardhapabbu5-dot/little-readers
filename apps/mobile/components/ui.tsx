@@ -103,14 +103,17 @@ export function SoftButton({
 }
 
 export function Field(props: TextInputProps & { label: string }) {
-  const { label, style, ...rest } = props;
+  const { label, style, editable = true, ...rest } = props;
+  const locked = editable === false;
   return (
     <View style={{ gap: 8 }}>
       <Text style={styles.fieldLabel}>{label}</Text>
       <TextInput
-        placeholderTextColor="#A1A1AA"
-        style={[styles.input, style]}
         {...rest}
+        placeholderTextColor="#A1A1AA"
+        editable={!locked}
+        selectTextOnFocus={!locked}
+        style={[styles.input, locked && styles.inputLocked, style]}
       />
     </View>
   );
@@ -250,6 +253,10 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     fontSize: 16,
     color: colors.text,
+  },
+  inputLocked: {
+    backgroundColor: "#F4F4F5",
+    color: colors.textMuted,
   },
   progressTrack: {
     height: 10,

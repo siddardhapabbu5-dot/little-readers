@@ -17,8 +17,25 @@ const ACADEMIC: Array<{
   href: string;
   icon: keyof typeof Ionicons.glyphMap;
 }> = [
+  { label: "Levels", href: "/admin-levels", icon: "layers-outline" },
+  { label: "Grades", href: "/admin-grades", icon: "school-outline" },
   { label: "Students & Progress", href: "/admin-schools", icon: "people-outline" },
   { label: "Reports", href: "/admin-reports", icon: "bar-chart-outline" },
+];
+
+const SUBSCRIPTION_MGMT: Array<{
+  label: string;
+  href: string;
+  icon: keyof typeof Ionicons.glyphMap;
+}> = [
+  {
+    label: "Subscription Plans",
+    href: "/admin-subscription-plans",
+    icon: "pricetag-outline",
+  },
+  { label: "Payments", href: "/admin-payments", icon: "card-outline" },
+  { label: "Child seats", href: "/admin-seats", icon: "people-outline" },
+  { label: "Subscriptions overview", href: "/subscription", icon: "diamond-outline" },
 ];
 
 const OPERATIONS: Array<{
@@ -27,10 +44,12 @@ const OPERATIONS: Array<{
   icon: keyof typeof Ionicons.glyphMap;
 }> = [
   { label: "Schools", href: "/admin-schools", icon: "business-outline" },
-  { label: "Payments", href: "/admin-payments", icon: "card-outline" },
-  { label: "Child seats", href: "/admin-seats", icon: "people-outline" },
-  { label: "Subscriptions", href: "/subscription", icon: "diamond-outline" },
   { label: "Devices", href: "/devices", icon: "phone-portrait-outline" },
+  {
+    label: "Parent device sessions",
+    href: "/admin-parent-devices",
+    icon: "phone-portrait-outline",
+  },
   { label: "Super Admin", href: "/super-admin", icon: "shield-checkmark-outline" },
 ];
 
@@ -96,8 +115,11 @@ export default function AdminSettingsScreen() {
             </View>
           </View>
 
-          <Text style={styles.section}>Students & reports</Text>
+          <Text style={styles.section}>Academic Setup</Text>
           {renderLinks(ACADEMIC)}
+
+          <Text style={styles.section}>Subscription Management</Text>
+          {renderLinks(SUBSCRIPTION_MGMT)}
 
           <Text style={styles.section}>Operations</Text>
           {renderLinks(OPERATIONS)}

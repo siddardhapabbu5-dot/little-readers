@@ -18,4 +18,6 @@ app.listen(env.PORT, () => {
     .catch((err) => {
       console.warn("Demo login ensure failed:", err);
     });
+  // Do NOT auto-seed G1–G12 on boot — that resurrected deleted grades every restart.
+  // Empty DBs get grades from `prisma db seed`; admins can POST /admin/academic/ensure-defaults.
 });

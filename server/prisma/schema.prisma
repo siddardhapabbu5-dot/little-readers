@@ -70,6 +70,8 @@ enum PaymentStatus {
 enum PaymentPurpose {
   FAMILY_MONTHLY
   FAMILY_YEARLY
+  FAMILY_3_MONTH
+  FAMILY_6_MONTH
   EXTRA_SEATS
   MANUAL_ADMIN
 }
@@ -111,13 +113,23 @@ enum VocabWordOrigin {
   CATEGORY_IMPORT
 }
 
+enum ParentSessionStatus {
+  ACTIVE
+  REVOKED
+  EXPIRED
+}
+
 model User {
   id           String   @id @default(cuid())
   name         String
   email        String   @unique
+  /// E.164 mobile for Parent OTP login (e.g. +9198XXXXXXXX). Optional for Admin.
+  mobileE164   String?  @unique
   passwordHash String
   role         UserRole @default(PARENT)
   isActive     Boolean  @default(true)
+  /// Bumped on Admin password reset so prior JWTs (iat before this) are rejected.
+  passwordChangedAt DateTime?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
@@ -131,6 +143,7 @@ model User {
   dictionaryImports DictionaryImportBatch[]
   vocabAssignmentsReviewed VocabularyGradeAssignment[] @relation("AssignmentReviewer")
   passwordResetTokens PasswordResetToken[]
+  adminPasswordResetTokens AdminPasswordResetToken[]
   schoolStaff         SchoolStaff[]
   classroomTeaching   ClassroomTeacher[]
   lessonAssignmentsMade ClassroomLessonAssignment[] @relation("AssignedByTeacher")
@@ -139,8 +152,54 @@ model User {
   programmesActivated VocabProgramme[] @relation("ProgrammeActivatedBy")
   publisherConfigUpdates VocabPublisherConfig[] @relation("PublisherConfigUpdatedBy")
   adminAlerts         AdminAlert[]
+  parentOtpVerifications ParentOtpVerification[]
+  parentDeviceSessions   ParentDeviceSession[]
 
   @@index([role])
+  @@index([mobileE164])
+}
+
+/// Hashed OTP challenges for Parent mobile login (never store plaintext OTP).
+model ParentOtpVerification {
+  id           String    @id @default(cuid())
+  parentId     String?
+  mobileE164   String
+  otpHash      String
+  expiresAt    DateTime
+  attempts     Int       @default(0)
+  verifiedAt   DateTime?
+  consumedAt   DateTime?
+  invalidatedAt DateTime?
+  createdAt    DateTime  @default(now())
+
+  parent User? @relation(fields: [parentId], references: [id], onDelete: Cascade)
+
+  @@index([mobileE164, createdAt])
+  @@index([parentId])
+  @@index([expiresAt])
+}
+
+/// One ACTIVE parent app session per parent (single-device policy). History retained.
+model ParentDeviceSession {
+  id               String              @id @default(cuid())
+  parentId         String
+  deviceId         String
+  deviceName       String?
+  platform         String
+  appVersion       String?
+  refreshTokenHash String
+  status           ParentSessionStatus @default(ACTIVE)
+  createdAt        DateTime            @default(now())
+  lastSeenAt       DateTime            @default(now())
+  expiresAt        DateTime
+  revokedAt        DateTime?
+  revokedReason    String?
+
+  parent User @relation(fields: [parentId], references: [id], onDelete: Cascade)
+
+  @@index([parentId, status])
+  @@index([deviceId])
+  @@index([expiresAt])
 }
 
 /** One-time password recovery tokens (hashed at rest). */
@@ -155,6 +214,21 @@ model PasswordResetToken {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
+  @@index([expiresAt])
+}
+
+/** Admin-only password reset tokens (hashed at rest). Separate from parent/general reset. */
+model AdminPasswordResetToken {
+  id        String    @id @default(cuid())
+  adminId   String
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  admin User @relation(fields: [adminId], references: [id], onDelete: Cascade)
+
+  @@index([adminId])
   @@index([expiresAt])
 }
 
@@ -221,7 +295,7 @@ model AgeGroup {
   lessons  Lesson[]
 }
 
-/// Age-band grade (Grade 1 = ages 1–3 … Grade 4 = ages 10–12).
+/// Academic / age-band grade. School grades use gradeNumber (1–12) + assignedLevelId.
 model LearningGrade {
   id          String   @id @default(cuid())
   code        String   @unique
@@ -229,15 +303,26 @@ model LearningGrade {
   description String?
   ageMin      Int
   ageMax      Int
+  /// School grade number (1–12). Null for legacy age-band grades.
+  gradeNumber Int?
+  /// Level this school grade belongs to (Level-1 / Level-2 / Level-3).
+  assignedLevelId String?
   sortOrder   Int      @default(0)
   isActive    Boolean  @default(true)
+  /// Parent app visibility (published catalog).
+  isPublished Boolean  @default(false)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  levels      LearningLevel[]
-  assignments VocabularyGradeAssignment[]
-  lessons     Lesson[]
-  programmes  VocabProgramme[]
+  levels         LearningLevel[]  @relation("LevelPrimaryGrade")
+  assignedLevel  LearningLevel?   @relation("GradesInLevel", fields: [assignedLevelId], references: [id], onDelete: SetNull)
+  assignments    VocabularyGradeAssignment[]
+  lessons        Lesson[]
+  programmes     VocabProgramme[]
+
+  @@unique([gradeNumber])
+  @@index([assignedLevelId])
+  @@index([isActive, isPublished])
 }
 
 model LearningLevel {
@@ -248,21 +333,55 @@ model LearningLevel {
   description String?
   ageMin      Int               @default(3)
   ageMax      Int               @default(12)
+  /// Inclusive school grade range for this level (e.g. 1–3).
+  startGrade  Int?
+  endGrade    Int?
   kind        LearningLevelKind @default(GRADE_BAND)
   gradeId     String?
   isActive    Boolean           @default(true)
+  /// Parent app visibility (published catalog).
+  isPublished Boolean           @default(false)
   createdAt   DateTime          @default(now())
   updatedAt   DateTime          @updatedAt
 
-  grade    LearningGrade? @relation(fields: [gradeId], references: [id], onDelete: SetNull)
-  children Child[]
-  lessons  Lesson[]
-  groups   LearningGroup[]
-  vocabImports VocabImportBatch[]
-  assignments  VocabularyGradeAssignment[]
+  grade            LearningGrade?      @relation("LevelPrimaryGrade", fields: [gradeId], references: [id], onDelete: SetNull)
+  schoolGrades     LearningGrade[]     @relation("GradesInLevel")
+  children         Child[]
+  lessons          Lesson[]
+  groups           LearningGroup[]
+  vocabImports     VocabImportBatch[]
+  assignments      VocabularyGradeAssignment[]
+  subscriptionPlans SubscriptionPlan[]
 
   @@index([gradeId])
-  @@index([isActive])
+  @@index([isActive, isPublished])
+}
+
+/// Admin-managed parent subscription catalog (amounts in paise). Historical payments keep snapshots.
+model SubscriptionPlan {
+  id               String   @id @default(cuid())
+  name             String
+  code             String   @unique
+  description      String?
+  /// 1 | 3 | 6 | 12
+  durationMonths   Int
+  amountPaise      Int
+  currency         String   @default("INR")
+  /// LEVEL_1 | LEVEL_2 | LEVEL_3 | ALL
+  applicableLevel  String   @default("ALL")
+  levelId          String?
+  includedSeats    Int      @default(2)
+  sortOrder        Int      @default(0)
+  isActive         Boolean  @default(true)
+  isPublished      Boolean  @default(false)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  level LearningLevel? @relation(fields: [levelId], references: [id], onDelete: SetNull)
+
+  @@index([isActive, isPublished])
+  @@index([applicableLevel])
+  @@index([levelId])
 }
 
 enum VocabRound {

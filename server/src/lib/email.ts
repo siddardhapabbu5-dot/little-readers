@@ -20,7 +20,9 @@ export async function sendPasswordResetEmail(
   }
 
   if (env.PASSWORD_RESET_LOG_ONLY && env.NODE_ENV !== "production") {
-    console.info(`[password-reset] to=${to} url=${resetUrl}`);
+    // Never log the raw reset token — redact query string.
+    const safeUrl = resetUrl.replace(/([?&]token=)[^&]+/i, "$1[REDACTED]");
+    console.info(`[password-reset] to=${to} url=${safeUrl}`);
     return { delivered: true, channel: "log" };
   }
 

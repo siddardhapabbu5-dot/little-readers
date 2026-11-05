@@ -10,24 +10,30 @@ import { prisma } from "./prisma.js";
  *   admin@littlereaders.test  / AdminDemo1
  *   superadmin@littlereaders.test / SuperDemo1
  */
+/** Demo parent OTP mobile (E.164). Local console SMS prints OTP when OTP_DEV_MODE=1. */
+export const DEMO_PARENT_MOBILE_E164 = "+919876543210";
+
 export const DEMO_LOGINS = [
   {
     email: "parent@littlereaders.test",
     password: "ParentDemo1",
     name: "Demo Parent",
     role: "PARENT" as const,
+    mobileE164: DEMO_PARENT_MOBILE_E164,
   },
   {
     email: "admin@littlereaders.test",
     password: "AdminDemo1",
     name: "Demo Admin",
     role: "ADMIN" as const,
+    mobileE164: undefined as string | undefined,
   },
   {
     email: "superadmin@littlereaders.test",
     password: "SuperDemo1",
     name: "Demo Super Admin",
     role: "SUPER_ADMIN" as const,
+    mobileE164: undefined as string | undefined,
   },
 ] as const;
 
@@ -54,6 +60,7 @@ export async function ensureDemoLogins() {
         passwordHash,
         role: demo.role,
         isActive: true,
+        ...(demo.mobileE164 ? { mobileE164: demo.mobileE164 } : {}),
       },
       create: {
         name: demo.name,
@@ -61,9 +68,14 @@ export async function ensureDemoLogins() {
         passwordHash,
         role: demo.role,
         isActive: true,
+        ...(demo.mobileE164 ? { mobileE164: demo.mobileE164 } : {}),
       },
     });
-    accounts.push(`${demo.email} / ${demo.password}`);
+    accounts.push(
+      demo.mobileE164
+        ? `${demo.email} / ${demo.password} (OTP ${demo.mobileE164})`
+        : `${demo.email} / ${demo.password}`
+    );
   }
 
   const parent = await prisma.user.findUnique({

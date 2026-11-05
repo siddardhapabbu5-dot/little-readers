@@ -20,8 +20,18 @@ export function errorHandler(
   }
 
   if (err instanceof AppError) {
+    const details = err.details;
+    const code =
+      details &&
+      typeof details === "object" &&
+      details !== null &&
+      "code" in details &&
+      typeof (details as { code: unknown }).code === "string"
+        ? (details as { code: string }).code
+        : undefined;
     return res.status(err.statusCode).json({
       error: err.message,
+      ...(code ? { code } : {}),
       details: err.details,
     });
   }

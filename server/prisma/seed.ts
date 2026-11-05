@@ -384,12 +384,14 @@ async function main() {
       passwordHash,
       role: UserRole.PARENT,
       isActive: true,
+      mobileE164: "+919876543210",
     },
     create: {
       name: "Demo Parent",
       email: "parent@littlereaders.test",
       passwordHash,
       role: UserRole.PARENT,
+      mobileE164: "+919876543210",
     },
   });
 

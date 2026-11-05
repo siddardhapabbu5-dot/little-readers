@@ -12,8 +12,29 @@ const envSchema = z.object({
   PORT: z.coerce.number().default(4100),
   DATABASE_URL: z.string().min(1, "DATABASE_URL is required"),
   JWT_SECRET: z.string().min(32, "JWT_SECRET must be at least 32 characters"),
+  /** Access token TTL (Parent OTP sessions use this; default shorter for mobile). */
   JWT_EXPIRES_IN: z.string().default("7d"),
+  ACCESS_TOKEN_EXPIRY: z.string().default("15m"),
+  REFRESH_TOKEN_EXPIRY: z.string().default("30d"),
   BCRYPT_ROUNDS: z.coerce.number().int().min(10).max(15).default(12),
+  /** Parent OTP */
+  OTP_EXPIRY_SECONDS: z.coerce.number().int().min(60).max(900).default(300),
+  OTP_RESEND_SECONDS: z.coerce.number().int().min(30).max(300).default(60),
+  OTP_MAX_ATTEMPTS: z.coerce.number().int().min(3).max(10).default(5),
+  /**
+   * When true (non-production), OTP is logged to server console for local testing.
+   * Never enable in production — OTP is never returned in API JSON in production.
+   */
+  OTP_DEV_MODE: z
+    .string()
+    .optional()
+    .transform((v) => v === "true" || v === "1"),
+  SMS_PROVIDER: z.enum(["console", "msg91", "http"]).default("console"),
+  SMS_API_KEY: z.string().optional(),
+  SMS_SENDER_ID: z.string().optional(),
+  SMS_HTTP_URL: z.string().optional(),
+  SMS_TEMPLATE_ID: z.string().optional(),
+  DEFAULT_COUNTRY_CODE: z.string().default("+91"),
   CORS_ORIGIN: z
     .string()
     .default(
@@ -26,6 +47,15 @@ const envSchema = z.object({
   /** Mobile Expo web — single Metro port 8081 only. */
   MOBILE_PUBLIC_URL: z.string().default("http://localhost:8081"),
   PASSWORD_RESET_TOKEN_TTL_MINUTES: z.coerce.number().int().min(5).max(1440).default(60),
+  /** Admin forgot-password tokens — short-lived (spec: 15 minutes). */
+  ADMIN_PASSWORD_RESET_TOKEN_TTL_MINUTES: z.coerce
+    .number()
+    .int()
+    .min(5)
+    .max(60)
+    .default(15),
+  /** Shown to parents who forgot their registered mobile (OTP login). */
+  SUPPORT_EMAIL: z.string().email().default("support@littlereaders.example"),
   /**
    * When true (non-production only), reset emails are logged instead of sent.
    * Production must use RESEND_API_KEY — never claim success without delivery.
@@ -74,6 +104,8 @@ export const env =
         DATABASE_URL: process.env.DATABASE_URL ?? "postgresql://invalid",
         JWT_SECRET: "test_secret_at_least_thirty_two_chars_long",
         JWT_EXPIRES_IN: "1h",
+        ACCESS_TOKEN_EXPIRY: "15m",
+        REFRESH_TOKEN_EXPIRY: "30d",
         BCRYPT_ROUNDS: 10,
         CORS_ORIGIN: "http://localhost:3000",
         RATE_LIMIT_WINDOW_MS: 15 * 60 * 1000,
@@ -81,6 +113,8 @@ export const env =
         APP_PUBLIC_URL: "http://localhost:3100",
         MOBILE_PUBLIC_URL: "http://localhost:8081",
         PASSWORD_RESET_TOKEN_TTL_MINUTES: 60,
+        ADMIN_PASSWORD_RESET_TOKEN_TTL_MINUTES: 15,
+        SUPPORT_EMAIL: "support@littlereaders.example",
         PASSWORD_RESET_LOG_ONLY: true,
         RESEND_API_KEY: undefined,
         RESEND_FROM_EMAIL: undefined,
@@ -93,4 +127,14 @@ export const env =
         PLAN_FAMILY_YEARLY_AMOUNT_PAISE: undefined,
         PLAN_EXTRA_SEAT_AMOUNT_PAISE: undefined,
         TAX_RATE_BPS: 0,
+        OTP_EXPIRY_SECONDS: 300,
+        OTP_RESEND_SECONDS: 60,
+        OTP_MAX_ATTEMPTS: 5,
+        OTP_DEV_MODE: true,
+        SMS_PROVIDER: "console" as const,
+        SMS_API_KEY: undefined,
+        SMS_SENDER_ID: undefined,
+        SMS_HTTP_URL: undefined,
+        SMS_TEMPLATE_ID: undefined,
+        DEFAULT_COUNTRY_CODE: "+91",
       };

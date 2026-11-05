@@ -6,11 +6,19 @@ export interface JwtPayload {
   sub: string;
   email: string;
   role: UserRole;
+  /** Parent device session id — required for PARENT single-device enforcement. */
+  sid?: string;
+  /** Issued-at (seconds) — used to revoke JWTs after Admin password reset. */
+  iat?: number;
 }
 
-export function signAccessToken(payload: JwtPayload): string {
+export function signAccessToken(
+  payload: JwtPayload,
+  expiresIn?: string
+): string {
   return jwt.sign(payload, env.JWT_SECRET, {
-    expiresIn: env.JWT_EXPIRES_IN as jwt.SignOptions["expiresIn"],
+    expiresIn: (expiresIn ??
+      (payload.sid ? env.ACCESS_TOKEN_EXPIRY : env.JWT_EXPIRES_IN)) as jwt.SignOptions["expiresIn"],
   });
 }
 

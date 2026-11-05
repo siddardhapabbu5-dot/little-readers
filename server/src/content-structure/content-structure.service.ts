@@ -75,6 +75,7 @@ export async function createGrade(input: {
 export async function updateGrade(
   id: string,
   patch: {
+    code?: string;
     label?: string;
     ageMin?: number;
     ageMax?: number;
@@ -90,10 +91,21 @@ export async function updateGrade(
   const ageMax = patch.ageMax ?? existing.ageMax;
   assertAgeRange(ageMin, ageMax);
 
-  // Never rewrite code or silently remapping assignments — code is immutable after create.
+  let nextCode: string | undefined;
+  if (patch.code !== undefined) {
+    nextCode = assertCode(patch.code, "grade code");
+    if (nextCode !== existing.code) {
+      const clash = await prisma.learningGrade.findUnique({
+        where: { code: nextCode },
+      });
+      if (clash) throw new AppError(`Grade code ${nextCode} already exists`, 409);
+    }
+  }
+
   return prisma.learningGrade.update({
     where: { id },
     data: {
+      ...(nextCode !== undefined ? { code: nextCode } : {}),
       ...(patch.label !== undefined ? { label: patch.label.trim() } : {}),
       ageMin,
       ageMax,

@@ -7,8 +7,14 @@ import {
   listConfiguredPlans,
   paymentsEnabled,
   publicKeyId,
+  type CatalogPlan,
   type PlanPurpose,
 } from "./plans.js";
+import {
+  getPublishedPlanById,
+  listPublishedPlans,
+  purposeForDuration,
+} from "../academic/subscription-plan.service.js";
 import {
   getRazorpayClient,
   verifyCheckoutSignature,
@@ -17,47 +23,193 @@ import {
 
 const BASE_INCLUDED = 2;
 
-function addPeriod(from: Date, purpose: PlanPurpose) {
+function addMonths(from: Date, months: number) {
+  const d = new Date(from);
+  d.setUTCMonth(d.getUTCMonth() + months);
+  return d;
+}
+
+function addPeriod(
+  from: Date,
+  purpose: PlanPurpose | PaymentPurpose,
+  durationMonths?: number
+) {
+  if (durationMonths && durationMonths > 0) {
+    return addMonths(from, durationMonths);
+  }
   const d = new Date(from);
   if (purpose === "FAMILY_MONTHLY") {
     d.setUTCDate(d.getUTCDate() + 30);
+  } else if (purpose === "FAMILY_3_MONTH") {
+    return addMonths(from, 3);
+  } else if (purpose === "FAMILY_6_MONTH") {
+    return addMonths(from, 6);
   } else if (purpose === "FAMILY_YEARLY") {
     d.setUTCDate(d.getUTCDate() + 365);
   }
   return d;
 }
 
-export function getPlansCatalog() {
-  const plans = listConfiguredPlans();
+function durationLabel(months: number) {
+  if (months === 1) return "Monthly";
+  if (months === 3) return "3 Months";
+  if (months === 6) return "6 Months";
+  if (months === 12) return "1 Year";
+  return `${months} Months`;
+}
+
+/** Parent-facing label — strip test stamps / raw codes from admin names. */
+function publicPlanLabel(name: string, durationMonths: number) {
+  const stripped = name
+    .replace(/\b\d{10,}\b/g, "")
+    .replace(/\bL\d+\b/gi, "")
+    .replace(/\b\d+mo\b/gi, "")
+    .replace(/[_-]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  const looksTechnical =
+    !stripped ||
+    stripped.length < 3 ||
+    /renamed/i.test(stripped) ||
+    /^\d/.test(stripped);
+  return looksTechnical ? durationLabel(durationMonths) : stripped;
+}
+
+export async function getPlansCatalog(levelId?: string) {
+  const dbPlans = await listPublishedPlans(levelId);
+  const envPlans = listConfiguredPlans().filter((p) => p.purpose === "EXTRA_SEATS");
+  const mapped: Array<CatalogPlan & { planId?: string; durationMonths?: number }> =
+    dbPlans.map((p) => ({
+      purpose: p.purpose as PlanPurpose,
+      code: p.code,
+      label: publicPlanLabel(p.name, p.durationMonths),
+      description: p.description ?? `Full access for ${durationLabel(p.durationMonths).toLowerCase()}`,
+      billingPeriod:
+        p.durationMonths === 12
+          ? "year"
+          : p.durationMonths === 1
+            ? "month"
+            : "month",
+      includedSeats: p.includedSeats,
+      seatsPurchased: 0,
+      amountPaise: p.amountPaise,
+      taxPaise: p.taxPaise,
+      totalPaise: p.totalPaise,
+      currency: p.currency,
+      planId: p.id,
+      durationMonths: p.durationMonths,
+    }));
+
+  // Fallback env monthly/yearly only when no DB catalog yet.
+  if (!mapped.length) {
+    mapped.push(
+      ...listConfiguredPlans().filter((p) => p.purpose !== "EXTRA_SEATS")
+    );
+  }
+  mapped.push(...envPlans);
+
+  const enabled = paymentsEnabled() || mapped.some((p) => p.purpose !== "EXTRA_SEATS");
   return {
-    enabled: paymentsEnabled(),
-    currency: plans[0]?.currency ?? "INR",
-    keyId: paymentsEnabled() ? publicKeyId() : null,
-    plans,
-    note: paymentsEnabled()
-      ? null
-      : "Checkout unavailable until PAYMENT_ENABLED, Razorpay keys, and plan amounts are configured.",
+    enabled: Boolean(
+      (process.env.PAYMENT_ENABLED === "true" ||
+        process.env.PAYMENT_ENABLED === "1" ||
+        paymentsEnabled()) &&
+        (process.env.RAZORPAY_KEY_ID || publicKeyId()) &&
+        mapped.length > 0
+    ),
+    currency: mapped[0]?.currency ?? "INR",
+    keyId: publicKeyId(),
+    plans: mapped,
+    dbCatalog: dbPlans.length > 0,
+    note:
+      mapped.length > 0
+        ? null
+        : "No published subscription plans yet. Ask Admin to publish plans, or configure env plan amounts.",
+    // keep flag for callers that still check paymentsEnabled alone
+    gatewayReady: paymentsEnabled() || enabled,
   };
 }
 
 export async function createCheckoutOrder(
   userId: string,
-  input: { purpose: PlanPurpose; seats?: number }
+  input: { purpose?: PlanPurpose; seats?: number; planId?: string }
 ) {
-  if (!paymentsEnabled()) {
-    throw new AppError(
-      "Checkout is not configured",
-      503,
-      { code: "PLAN_PRICES_NOT_CONFIGURED" }
-    );
+  const gatewayOk =
+    process.env.PAYMENT_ENABLED === "true" ||
+    process.env.PAYMENT_ENABLED === "1" ||
+    paymentsEnabled();
+  if (!gatewayOk || !publicKeyId()) {
+    throw new AppError("Checkout is not configured", 503, {
+      code: "PLAN_PRICES_NOT_CONFIGURED",
+    });
   }
 
-  const plan = getPlan(input.purpose, input.seats ?? 1);
-  if (!plan) {
-    throw new AppError("Selected plan is not available", 400);
+  let plan: CatalogPlan & {
+    planId?: string;
+    durationMonths?: number;
+    includedSeats?: number;
+  };
+  let durationMonths: number | undefined;
+  let snapshot: Record<string, unknown> = {};
+
+  if (input.planId) {
+    const dbPlan = await getPublishedPlanById(input.planId);
+    if (!dbPlan) {
+      throw new AppError(
+        "Selected plan is not available (draft, inactive, or unpublished)",
+        400,
+        { code: "PLAN_UNAVAILABLE" }
+      );
+    }
+    durationMonths = dbPlan.durationMonths;
+    plan = {
+      purpose: purposeForDuration(dbPlan.durationMonths) as PlanPurpose,
+      code: dbPlan.code,
+      label: dbPlan.name,
+      description: dbPlan.description ?? "",
+      billingPeriod: dbPlan.durationMonths === 12 ? "year" : "month",
+      includedSeats: dbPlan.includedSeats,
+      seatsPurchased: 0,
+      amountPaise: dbPlan.amountPaise,
+      taxPaise: dbPlan.taxPaise,
+      totalPaise: dbPlan.totalPaise,
+      currency: dbPlan.currency,
+      planId: dbPlan.id,
+      durationMonths: dbPlan.durationMonths,
+    };
+    snapshot = {
+      planId: dbPlan.id,
+      planCode: dbPlan.code,
+      planName: dbPlan.name,
+      durationMonths: dbPlan.durationMonths,
+      amountPaise: dbPlan.amountPaise,
+      taxPaise: dbPlan.taxPaise,
+      totalPaise: dbPlan.totalPaise,
+      applicableLevel: dbPlan.applicableLevel,
+    };
+  } else {
+    const purpose = input.purpose;
+    if (!purpose) {
+      throw new AppError("planId or purpose is required", 400);
+    }
+    const envPlan = getPlan(purpose, input.seats ?? 1);
+    if (!envPlan) {
+      throw new AppError("Selected plan is not available", 400);
+    }
+    plan = envPlan;
+    durationMonths =
+      purpose === "FAMILY_MONTHLY"
+        ? 1
+        : purpose === "FAMILY_3_MONTH"
+          ? 3
+          : purpose === "FAMILY_6_MONTH"
+            ? 6
+            : purpose === "FAMILY_YEARLY"
+              ? 12
+              : undefined;
   }
 
-  if (input.purpose === "EXTRA_SEATS") {
+  if (plan.purpose === "EXTRA_SEATS") {
     const sub = await prisma.subscription.findFirst({
       where: { userId },
       orderBy: { createdAt: "desc" },
@@ -81,6 +233,7 @@ export async function createCheckoutOrder(
       purpose: plan.purpose,
       userId,
       seats: String(plan.seatsPurchased),
+      planId: plan.planId ?? "",
     },
   });
 
@@ -100,7 +253,9 @@ export async function createCheckoutOrder(
         amountPaise: plan.amountPaise,
         taxPaise: plan.taxPaise,
         totalPaise: plan.totalPaise,
+        durationMonths,
         receipt,
+        ...snapshot,
       }),
     },
   });
@@ -153,13 +308,38 @@ async function activateVerifiedPayment(
 
     const purpose = payment.purpose as PlanPurpose | "MANUAL_ADMIN";
     const now = new Date();
+    let meta: { durationMonths?: number; planCode?: string; planName?: string } =
+      {};
+    try {
+      meta = payment.metadataJson
+        ? (JSON.parse(payment.metadataJson) as typeof meta)
+        : {};
+    } catch {
+      meta = {};
+    }
 
-    if (purpose === "FAMILY_MONTHLY" || purpose === "FAMILY_YEARLY") {
-      const base = subscription?.expiresAt && subscription.expiresAt > now
-        ? subscription.expiresAt
-        : now;
-      const expiresAt = addPeriod(base, purpose);
-      const planLabel = purpose === "FAMILY_MONTHLY" ? "MONTHLY" : "YEARLY";
+    const familyPurposes = new Set([
+      "FAMILY_MONTHLY",
+      "FAMILY_YEARLY",
+      "FAMILY_3_MONTH",
+      "FAMILY_6_MONTH",
+    ]);
+
+    if (familyPurposes.has(purpose)) {
+      const base =
+        subscription?.expiresAt && subscription.expiresAt > now
+          ? subscription.expiresAt
+          : now;
+      const expiresAt = addPeriod(base, purpose, meta.durationMonths);
+      // Preserve purchased plan code/label on the subscription row (history).
+      const planLabel =
+        meta.planCode ||
+        payment.planCode ||
+        (purpose === "FAMILY_MONTHLY"
+          ? "MONTHLY"
+          : purpose === "FAMILY_YEARLY"
+            ? "YEARLY"
+            : purpose);
 
       if (subscription) {
         subscription = await tx.subscription.update({

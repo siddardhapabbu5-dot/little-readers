@@ -1,5 +1,9 @@
 import { Platform } from "react-native";
-import { getOrCreateInstallationId, getToken } from "./secure";
+import {
+  getOrCreateInstallationId,
+  getToken,
+  saveSessionRevokedMessage,
+} from "./secure";
 import { notifyUnauthorized } from "./session";
 
 const API_URL =
@@ -8,17 +12,44 @@ const API_URL =
 
 export class ApiError extends Error {
   status: number;
+  code?: string;
   details?: unknown;
-  constructor(message: string, status: number, details?: unknown) {
+  constructor(
+    message: string,
+    status: number,
+    details?: unknown,
+    code?: string
+  ) {
     super(message);
     this.status = status;
     this.details = details;
+    this.code = code;
   }
 }
 
 /** Device lock headers only on real phones — not Expo web preview. */
 function isNativeMobileClient() {
   return Platform.OS === "ios" || Platform.OS === "android";
+}
+
+function errorCode(body: { code?: string; details?: { code?: string } }) {
+  return body.code ?? body.details?.code;
+}
+
+function handleAuthFailure(
+  status: number,
+  auth: string | undefined,
+  body: { error?: string; code?: string; details?: { code?: string } }
+) {
+  if (status !== 401 || !auth) return;
+  const code = errorCode(body);
+  if (code === "SESSION_REVOKED") {
+    void saveSessionRevokedMessage(
+      body.error ||
+        "You've been logged out because your account was opened on another device."
+    );
+  }
+  notifyUnauthorized();
 }
 
 export async function apiRequest<T>(
@@ -45,13 +76,12 @@ export async function apiRequest<T>(
 
   const body = await response.json().catch(() => ({}));
   if (!response.ok) {
-    if (response.status === 401 && auth) {
-      notifyUnauthorized();
-    }
+    handleAuthFailure(response.status, auth, body);
     throw new ApiError(
       body.error ?? "Request failed",
       response.status,
-      body.details
+      body.details,
+      errorCode(body)
     );
   }
   return body.data as T;
@@ -81,13 +111,12 @@ export async function apiUpload<T>(
 
   const body = await response.json().catch(() => ({}));
   if (!response.ok) {
-    if (response.status === 401 && auth) {
-      notifyUnauthorized();
-    }
+    handleAuthFailure(response.status, auth, body);
     throw new ApiError(
       body.error ?? "Upload failed",
       response.status,
-      body.details
+      body.details,
+      errorCode(body)
     );
   }
   return body.data as T;
@@ -113,16 +142,44 @@ export async function apiDownloadText(
   });
   const text = await response.text();
   if (!response.ok) {
-    if (response.status === 401 && auth) notifyUnauthorized();
     let message = "Download failed";
+    let code: string | undefined;
+    let details: unknown;
     try {
-      message = JSON.parse(text).error ?? message;
+      const parsed = JSON.parse(text);
+      message = parsed.error ?? message;
+      code = parsed.code ?? parsed.details?.code;
+      details = parsed.details;
     } catch {
       /* keep default */
     }
-    throw new ApiError(message, response.status);
+    handleAuthFailure(response.status, auth, { error: message, code });
+    throw new ApiError(message, response.status, details, code);
   }
   return text;
+}
+
+/**
+ * Lightweight session check on app resume.
+ * /auth/me runs requireAuth — OTP parents with sid get SESSION_REVOKED if replaced.
+ */
+export async function checkParentSessionAlive(): Promise<
+  "ok" | "revoked" | "skip"
+> {
+  const auth = await getToken();
+  if (!auth) return "skip";
+  try {
+    await apiRequest("/auth/me", { mobile: true });
+    return "ok";
+  } catch (err) {
+    if (err instanceof ApiError && err.code === "SESSION_REVOKED") {
+      return "revoked";
+    }
+    if (err instanceof ApiError && err.status === 401) {
+      return "revoked";
+    }
+    return "skip";
+  }
 }
 
 export { API_URL };

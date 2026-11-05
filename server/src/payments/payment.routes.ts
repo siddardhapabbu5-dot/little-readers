@@ -10,9 +10,12 @@ import * as paymentService from "./payment.service.js";
 
 export const paymentsRouter = Router();
 
-paymentsRouter.get("/plans", requireAuth, async (_req, res, next) => {
+paymentsRouter.get("/plans", requireAuth, async (req, res, next) => {
   try {
-    res.json({ data: paymentService.getPlansCatalog() });
+    const levelId = req.query.levelId
+      ? String(req.query.levelId)
+      : undefined;
+    res.json({ data: await paymentService.getPlansCatalog(levelId) });
   } catch (e) {
     next(e);
   }
@@ -24,13 +27,25 @@ paymentsRouter.post(
   requireRoles("PARENT", "ADMIN", "SUPER_ADMIN"),
   validateBody(
     z.object({
-      purpose: z.enum(["FAMILY_MONTHLY", "FAMILY_YEARLY", "EXTRA_SEATS"]),
+      purpose: z
+        .enum([
+          "FAMILY_MONTHLY",
+          "FAMILY_YEARLY",
+          "FAMILY_3_MONTH",
+          "FAMILY_6_MONTH",
+          "EXTRA_SEATS",
+        ])
+        .optional(),
+      planId: z.string().min(1).optional(),
       seats: z.number().int().min(1).max(20).optional(),
     })
   ),
   async (req: AuthenticatedRequest, res, next) => {
     try {
-      const data = await paymentService.createCheckoutOrder(req.user!.id, req.body);
+      const data = await paymentService.createCheckoutOrder(
+        req.user!.id,
+        req.body
+      );
       res.status(201).json({ data });
     } catch (e) {
       next(e);

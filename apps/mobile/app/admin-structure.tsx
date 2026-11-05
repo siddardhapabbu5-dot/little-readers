@@ -14,7 +14,6 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { AdminTabBar } from "../components/AdminTabBar";
 import { Card, ErrorText, Field, SoftButton, Title } from "../components/ui";
 import { AuthGate } from "../components/AuthGate";
-import { goAdminBack } from "../services/admin-nav";
 import { apiRequest, ApiError } from "../services/api";
 import { ROLE_SETS } from "../services/auth-errors";
 import { colors } from "../theme";
@@ -328,15 +327,17 @@ export default function AdminStructureScreen() {
     setBusy(true);
     setError(null);
     try {
+      const code = gradeForm.code.trim().toUpperCase();
       const label = gradeForm.label.trim();
       const ageMin = Number(gradeForm.ageMin);
       const ageMax = Number(gradeForm.ageMax);
+      if (!code) throw new ApiError("Code required", 400);
       if (!label) throw new ApiError("Label required", 400);
       await apiRequest(`/admin/content/grades/${panel.id}`, {
         method: "PATCH",
-        body: JSON.stringify({ label, ageMin, ageMax }),
+        body: JSON.stringify({ code, label, ageMin, ageMax }),
       });
-      setInfo(`Updated ${gradeForm.code}`);
+      setInfo(`Updated ${code}`);
       setPanel({ kind: "view-grade", id: panel.id });
       await load();
     } catch (err) {
@@ -579,8 +580,15 @@ export default function AdminStructureScreen() {
   return (
     <AuthGate roles={ROLE_SETS.admin}>
       <SafeAreaView style={styles.safe} edges={["top"]}>
-        <ScrollView contentContainerStyle={styles.content}>
-          <SoftButton label="← Back" onPress={() => goAdminBack(router)} />
+        <ScrollView
+          contentContainerStyle={styles.content}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
+        >
+          <SoftButton
+            label="← Back"
+            onPress={() => router.replace("/admin")}
+          />
           <Title>Academic Structure</Title>
           <Text style={styles.note}>
             Grade → Level → Group → Category. Create, view, edit, or delete grades and
@@ -655,8 +663,15 @@ export default function AdminStructureScreen() {
           {panel?.kind === "edit-grade" && panelGrade ? (
             <Card style={{ gap: 10 }}>
               <Text style={styles.section}>Edit {panelGrade.code}</Text>
-              <Text style={styles.meta}>Code cannot be changed after create.</Text>
-              <Field label="Code" value={gradeForm.code} editable={false} />
+              <Field
+                label="Code"
+                value={gradeForm.code}
+                autoCapitalize="characters"
+                autoFocus
+                onChangeText={(code) =>
+                  setGradeForm((f) => ({ ...f, code: code.toUpperCase() }))
+                }
+              />
               <Field
                 label="Label"
                 value={gradeForm.label}
@@ -944,11 +959,17 @@ export default function AdminStructureScreen() {
               {panel?.kind === "edit-category" && panelCategory ? (
                 <View style={styles.createBox}>
                   <Text style={styles.section}>Edit {panelCategory.code}</Text>
-                  <Text style={styles.meta}>Code cannot be changed after create.</Text>
-                  <Field label="Code" value={categoryForm.code} editable={false} />
+                  <Text style={styles.meta}>
+                    Code is fixed after create — edit label below.
+                  </Text>
+                  <View style={{ gap: 8 }}>
+                    <Text style={styles.fieldLabel}>Code</Text>
+                    <Text style={styles.lockedValue}>{categoryForm.code}</Text>
+                  </View>
                   <Field
                     label="Label"
                     value={categoryForm.label}
+                    autoFocus
                     onChangeText={(label) =>
                       setCategoryForm((f) => ({ ...f, label }))
                     }
@@ -1056,10 +1077,22 @@ export default function AdminStructureScreen() {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.bg },
-  content: { padding: 20, gap: 12, paddingBottom: 24 },
+  content: { padding: 20, gap: 12, paddingBottom: 100 },
   note: { color: colors.textMuted, lineHeight: 20 },
   info: { color: colors.success, fontWeight: "700" },
   section: { fontWeight: "800", fontSize: 16, color: colors.text },
+  fieldLabel: { fontWeight: "700", color: colors.text },
+  lockedValue: {
+    backgroundColor: "#F4F4F5",
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.border,
+    paddingHorizontal: 14,
+    paddingVertical: 14,
+    fontSize: 16,
+    fontWeight: "700",
+    color: colors.textMuted,
+  },
   meta: { color: colors.textMuted, lineHeight: 18, fontSize: 13 },
   tabs: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   gradeGrid: { flexDirection: "row", flexWrap: "wrap", gap: 10 },

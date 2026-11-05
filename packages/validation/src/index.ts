@@ -7,10 +7,42 @@ export const passwordSchema = z
   .regex(/[A-Za-z]/, "Password must include a letter")
   .regex(/[0-9]/, "Password must include a number");
 
+/** Stronger Admin recovery password (Phase account recovery). */
+export const adminPasswordSchema = z
+  .string()
+  .min(12, "Password must be at least 12 characters")
+  .max(128, "Password must be at most 128 characters")
+  .regex(/[A-Z]/, "Password must include an uppercase letter")
+  .regex(/[a-z]/, "Password must include a lowercase letter")
+  .regex(/[0-9]/, "Password must include a number")
+  .regex(
+    /[^A-Za-z0-9]/,
+    "Password must include a special character"
+  );
+
+export const adminForgotPasswordSchema = z.object({
+  email: z.string().trim().email("Valid email is required"),
+  client: z.enum(["web", "mobile"]).optional(),
+});
+
+export const adminResetPasswordSchema = z
+  .object({
+    token: z.string().trim().min(20, "Reset token is required"),
+    password: adminPasswordSchema,
+    confirmPassword: z.string().min(1, "Confirm your password"),
+  })
+  .refine((data) => data.password === data.confirmPassword, {
+    message: "Passwords do not match",
+    path: ["confirmPassword"],
+  });
+
 export const registerSchema = z.object({
   name: z.string().trim().min(2, "Name is required").max(100),
   email: z.string().trim().email("Valid email is required").max(255),
   password: passwordSchema,
+  /** Optional 10-digit or E.164 mobile for Parent OTP login (+91 default on server). */
+  mobile: z.string().trim().min(10).max(20).optional(),
+  countryCode: z.string().trim().min(1).max(6).optional(),
   acceptTerms: z.literal(true, {
     errorMap: () => ({ message: "You must accept the terms of service" }),
   }),
@@ -197,6 +229,8 @@ export type RegisterInput = z.infer<typeof registerSchema>;
 export type LoginInput = z.infer<typeof loginSchema>;
 export type ForgotPasswordInput = z.infer<typeof forgotPasswordSchema>;
 export type ResetPasswordInput = z.infer<typeof resetPasswordSchema>;
+export type AdminForgotPasswordInput = z.infer<typeof adminForgotPasswordSchema>;
+export type AdminResetPasswordInput = z.infer<typeof adminResetPasswordSchema>;
 export type CreateChildInput = z.infer<typeof createChildSchema>;
 export type UpdateChildInput = z.infer<typeof updateChildSchema>;
 export type StartLearningSessionInput = z.infer<typeof startLearningSessionSchema>;

@@ -165,7 +165,17 @@ export default function ParentScreen() {
     <AuthGate roles={ROLE_SETS.parentFamily}>
       <SafeAreaView style={styles.safe}>
         <ScrollView contentContainerStyle={styles.content}>
-          <SoftButton label="← Back" onPress={() => router.back()} />
+          <SoftButton
+            label="← Back"
+            onPress={() => {
+              // After login, Parent lands here via replace — no history to pop.
+              if (router.canGoBack()) {
+                router.back();
+                return;
+              }
+              router.replace("/(tabs)/home");
+            }}
+          />
           <Title>Parent dashboard</Title>
           <Text style={styles.sub}>Children, progress, devices & subscription</Text>
           <ErrorText>{error}</ErrorText>

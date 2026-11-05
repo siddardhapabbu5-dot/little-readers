@@ -1,6 +1,11 @@
 import { env } from "../config/env.js";
 
-export type PlanPurpose = "FAMILY_MONTHLY" | "FAMILY_YEARLY" | "EXTRA_SEATS";
+export type PlanPurpose =
+  | "FAMILY_MONTHLY"
+  | "FAMILY_3_MONTH"
+  | "FAMILY_6_MONTH"
+  | "FAMILY_YEARLY"
+  | "EXTRA_SEATS";
 
 export type CatalogPlan = {
   purpose: PlanPurpose;

@@ -99,4 +99,30 @@ export async function healthCheck() {
   return response.json();
 }
 
+/** Authenticated CSV (or other text) download — returns raw body text. */
+export async function apiDownloadText(
+  path: string,
+  options: { token?: string } = {}
+): Promise<string> {
+  const auth = options.token ?? (await getToken()) ?? undefined;
+  const response = await fetch(`${API_URL}${path}`, {
+    headers: {
+      ...(auth ? { Authorization: `Bearer ${auth}` } : {}),
+      "X-Client-Platform": Platform.OS,
+    },
+  });
+  const text = await response.text();
+  if (!response.ok) {
+    if (response.status === 401 && auth) notifyUnauthorized();
+    let message = "Download failed";
+    try {
+      message = JSON.parse(text).error ?? message;
+    } catch {
+      /* keep default */
+    }
+    throw new ApiError(message, response.status);
+  }
+  return text;
+}
+
 export { API_URL };

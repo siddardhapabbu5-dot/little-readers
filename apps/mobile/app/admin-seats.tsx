@@ -11,6 +11,7 @@ import { useFocusEffect, useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Card, ErrorText, SoftButton, Title } from "../components/ui";
 import { AuthGate } from "../components/AuthGate";
+import { goAdminBack } from "../services/admin-nav";
 import { apiRequest, ApiError } from "../services/api";
 import { ROLE_SETS } from "../services/auth-errors";
 import { colors } from "../theme";
@@ -107,7 +108,7 @@ export default function AdminSeatsScreen() {
     <AuthGate roles={ROLE_SETS.admin}>
       <SafeAreaView style={styles.safe}>
         <ScrollView contentContainerStyle={styles.content}>
-          <SoftButton label="← Back" onPress={() => router.back()} />
+          <SoftButton label="← Back" onPress={() => goAdminBack(router)} />
           <Title>Seats admin</Title>
           <Text style={styles.note}>
             Manual grant/revoke only. No automatic paid activation.

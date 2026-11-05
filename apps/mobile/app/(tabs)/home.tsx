@@ -8,7 +8,6 @@ import {
   DailyGoalCard,
   IconButton,
   KidsHeader,
-  QuickCategoryGrid,
   RecommendCard,
   SectionRow,
   WelcomeHero,
@@ -28,13 +27,6 @@ type Category = {
   progress: { wordsLearned: number; stars: number; completed: boolean } | null;
 };
 type Group = { id: string; code: string; label: string; categories: Category[] };
-
-const QUICK = [
-  { key: "family", emoji: "👨‍👩‍👧", label: "Family", tint: colors.skySoft },
-  { key: "animals", emoji: "🦁", label: "Animals", tint: colors.accentSoft },
-  { key: "fruits", emoji: "🍎", label: "Fruits", tint: colors.mintSoft },
-  { key: "colors", emoji: "🎨", label: "Colors", tint: colors.pinkSoft },
-];
 
 export default function HomeTab() {
   const router = useRouter();
@@ -122,11 +114,6 @@ export default function HomeTab() {
         />
 
         <ErrorText>{error}</ErrorText>
-
-        <QuickCategoryGrid
-          items={QUICK}
-          onPress={() => router.push("/(tabs)/learn")}
-        />
 
         <DailyGoalCard
           completed={dailyCompleted}

@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { Alert, Button } from "@little-readers/ui";
 import { AdminShell } from "@/components/AdminShell";
-import { apiRequest, ApiClientError } from "@/lib/api";
+import { API_URL, apiRequest, apiUpload, ApiClientError } from "@/lib/api";
 import { useAdminGate } from "@/lib/use-admin-gate";
 
 type Grade = { id: string; code: string; label: string };
@@ -404,8 +404,9 @@ export default function ManageVocabularyWordsPage() {
 
       <div className="panel" style={{ display: "grid", gap: 10, marginBottom: 16 }}>
         <p style={{ color: "#94a3b8", margin: 0 }}>
-          Search and edit kids vocabulary. Reclassification keeps the same word id so learning
-          history stays linked. Bulk review uses dictionary assignment workflow.
+          Search and edit kids vocabulary. Upload supports A–Z alphabet XLSX (select a category
+          first: Capital/Small Letter, Symbol, Word, Example Sentence) or the grade/level CSV.
+          Reclassification keeps the same word id so learning history stays linked.
         </p>
         <div
           style={{
@@ -520,6 +521,107 @@ export default function ManageVocabularyWordsPage() {
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
           <Button onClick={() => void loadWords()} disabled={busy}>
             Apply filters
+          </Button>
+          <Button
+            type="button"
+            variant="secondary"
+            disabled={busy || !token}
+            onClick={() => {
+              if (!token) return;
+              void (async () => {
+                setBusy(true);
+                setError(null);
+                try {
+                  const params = new URLSearchParams({
+                    isActive: "true",
+                    format: "auto",
+                  });
+                  if (gradeId) params.set("gradeId", gradeId);
+                  if (levelId) params.set("levelId", levelId);
+                  if (groupId) params.set("groupId", groupId);
+                  if (categoryId) params.set("categoryId", categoryId);
+                  const res = await fetch(
+                    `${API_URL}/admin/vocabulary/words/export.csv?${params}`,
+                    { headers: { Authorization: `Bearer ${token}` } }
+                  );
+                  if (!res.ok) throw new Error("Export failed");
+                  const blob = await res.blob();
+                  const url = URL.createObjectURL(blob);
+                  const a = document.createElement("a");
+                  a.href = url;
+                  const cd = res.headers.get("Content-Disposition") || "";
+                  const match = /filename="([^"]+)"/.exec(cd);
+                  a.download = match?.[1] || "little-readers-words.csv";
+                  a.click();
+                  URL.revokeObjectURL(url);
+                  setMessage(
+                    "Live sheet downloaded (UTF-8 emoji). Edit in Excel, then Upload sheet."
+                  );
+                } catch (e) {
+                  setError(e instanceof Error ? e.message : String(e));
+                } finally {
+                  setBusy(false);
+                }
+              })();
+            }}
+          >
+            Download CSV
+          </Button>
+          <Button
+            type="button"
+            variant="secondary"
+            disabled={busy || !token}
+            onClick={() => {
+              if (!token) return;
+              const input = document.createElement("input");
+              input.type = "file";
+              input.accept =
+                ".csv,.xlsx,.xls,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel";
+              input.onchange = () => {
+                const file = input.files?.[0];
+                if (!file) return;
+                void (async () => {
+                  setBusy(true);
+                  setError(null);
+                  try {
+                    const lower = file.name.toLowerCase();
+                    const looksAz =
+                      /a[_-]?to[_-]?z|alphabet/i.test(file.name) ||
+                      lower.endsWith(".xlsx") ||
+                      lower.endsWith(".xls");
+                    if (looksAz && !categoryId) {
+                      setError(
+                        "Select a category first for A–Z alphabet sheets (Capital Letter, Symbol, Word, Example Sentence)."
+                      );
+                      setBusy(false);
+                      return;
+                    }
+                    const form = new FormData();
+                    form.append("file", file);
+                    if (categoryId) form.append("categoryId", categoryId);
+                    const data = await apiUpload<{
+                      created: number;
+                      updated: number;
+                      failed: number;
+                      format?: string;
+                    }>("/admin/vocabulary/words/import-sheet", form, token);
+                    setMessage(
+                      `Imported${data.format === "alphabet_az" ? " (A–Z)" : ""}: ${data.created} created, ${data.updated} updated, ${data.failed} failed.`
+                    );
+                    await loadWords();
+                  } catch (e) {
+                    setError(
+                      e instanceof ApiClientError ? e.message : String(e)
+                    );
+                  } finally {
+                    setBusy(false);
+                  }
+                })();
+              };
+              input.click();
+            }}
+          >
+            Upload sheet
           </Button>
           <Link href="/admin/vocabulary/dictionary">Dictionary upload →</Link>
         </div>

@@ -5,11 +5,46 @@ import type {
 } from "@little-readers/validation";
 import { AppError } from "../lib/errors.js";
 import { prisma } from "../lib/prisma.js";
+import { resolveAlphabetEmoji } from "../vocab-import/alphabet-emoji.js";
 import { assertStudentDeviceAllowed } from "../devices/device.service.js";
 import {
   assertChildHasLearningSeat,
   assertParentSubscriptionEligible,
 } from "../subscriptions/subscription.service.js";
+
+function liveEmoji(word: string, emoji: string | null | undefined) {
+  return resolveAlphabetEmoji({
+    symbol: emoji,
+    word,
+    capitalLetter: word.charAt(0),
+    fallback: "🔤",
+  });
+}
+
+/** Distinct vocabulary words this child got correct in a category (any session). */
+async function countDistinctWordsLearned(childId: string, categoryId: string) {
+  const rows = await prisma.questionAttempt.findMany({
+    where: {
+      isCorrect: true,
+      session: { childId, categoryId },
+    },
+    select: { wordId: true },
+    distinct: ["wordId"],
+  });
+  return rows.length;
+}
+
+async function learnedWordIdSet(childId: string, categoryId: string) {
+  const rows = await prisma.questionAttempt.findMany({
+    where: {
+      isCorrect: true,
+      session: { childId, categoryId },
+    },
+    select: { wordId: true },
+    distinct: ["wordId"],
+  });
+  return new Set(rows.map((r) => r.wordId));
+}
 
 async function assertChildOwnedByParent(
   parentId: string,
@@ -69,6 +104,29 @@ export async function getLevel1Curriculum(parentId: string, childId: string) {
   }
 
   const ordered = level.groups.flatMap((g) => g.categories);
+
+  // Sync wordsLearned from real distinct correct attempts (fixes stuck 8/26).
+  const learnedByCategory = new Map<string, number>();
+  await Promise.all(
+    ordered.map(async (cat) => {
+      const n = await countDistinctWordsLearned(childId, cat.id);
+      learnedByCategory.set(cat.id, n);
+      const progress = cat.progress[0];
+      if (progress && progress.wordsLearned !== n) {
+        const done = n >= cat._count.words && cat._count.words > 0;
+        await prisma.childCategoryProgress.update({
+          where: { id: progress.id },
+          data: {
+            wordsLearned: n,
+            completed: done || progress.completed,
+          },
+        });
+        progress.wordsLearned = n;
+        if (done) progress.completed = true;
+      }
+    })
+  );
+
   const completedIds = new Set(
     ordered.filter((c) => c.progress[0]?.completed).map((c) => c.id)
   );
@@ -89,6 +147,7 @@ export async function getLevel1Curriculum(parentId: string, childId: string) {
       sortOrder: group.sortOrder,
       categories: group.categories.map((cat) => {
         const progress = cat.progress[0] ?? null;
+        const wordsLearned = learnedByCategory.get(cat.id) ?? progress?.wordsLearned ?? 0;
         const priorCompleted = ordered
           .filter((c) => c.unlockOrder < cat.unlockOrder)
           .every((c) => completedIds.has(c.id));
@@ -104,18 +163,33 @@ export async function getLevel1Curriculum(parentId: string, childId: string) {
           unlocked,
           progress: progress
             ? {
-                wordsLearned: progress.wordsLearned,
+                wordsLearned,
                 listenCorrect: progress.listenCorrect,
                 listenAttempts: progress.listenAttempts,
                 spellCorrect: progress.spellCorrect,
                 spellAttempts: progress.spellAttempts,
                 points: progress.points,
                 stars: progress.stars,
-                completed: progress.completed,
+                completed:
+                  progress.completed ||
+                  (cat._count.words > 0 && wordsLearned >= cat._count.words),
                 minutesLearned: progress.minutesLearned,
                 lastPlayedAt: progress.lastPlayedAt,
               }
-            : null,
+            : wordsLearned > 0
+              ? {
+                  wordsLearned,
+                  listenCorrect: 0,
+                  listenAttempts: 0,
+                  spellCorrect: 0,
+                  spellAttempts: 0,
+                  points: 0,
+                  stars: 0,
+                  completed: cat._count.words > 0 && wordsLearned >= cat._count.words,
+                  minutesLearned: 0,
+                  lastPlayedAt: null as Date | null,
+                }
+              : null,
         };
       }),
     })),
@@ -144,11 +218,16 @@ function buildQuestions(selected: SessionWord[], pool: SessionWord[]) {
       } else break;
     }
     const options = shuffle([
-      { id: word.id, text: word.text, emoji: word.emoji, correct: true },
+      {
+        id: word.id,
+        text: word.text,
+        emoji: liveEmoji(word.text, word.emoji),
+        correct: true,
+      },
       ...distractors.map((d) => ({
         id: d.id,
         text: d.text,
-        emoji: d.emoji,
+        emoji: liveEmoji(d.text, d.emoji),
         correct: false,
       })),
     ]).map((opt, i) => ({
@@ -165,7 +244,7 @@ function buildQuestions(selected: SessionWord[], pool: SessionWord[]) {
         id: word.id,
         text: word.text,
         meaning: word.meaning,
-        emoji: word.emoji,
+        emoji: liveEmoji(word.text, word.emoji),
         imageUrl: word.imageUrl,
         audioUrl: word.audioUrl,
         firstLetter: word.firstLetter || word.text.charAt(0).toUpperCase(),
@@ -447,7 +526,6 @@ export async function startLearningSession(
     throw new AppError("Category not found or empty", 404);
   }
 
-  const count = Math.min(input.questionCount ?? 10, category.words.length);
   const pool: SessionWord[] = category.words.map((w) => ({
     id: w.id,
     text: w.text,
@@ -459,7 +537,20 @@ export async function startLearningSession(
     phonetic: w.phonetic,
     difficulty: w.difficulty,
   }));
-  const selected = shuffle(pool).slice(0, count);
+
+  // Prefer words not yet learned so progress can reach 26/26 (not stuck on same 8).
+  const learnedIds = await learnedWordIdSet(input.childId, category.id);
+  const unlearned = shuffle(pool.filter((w) => !learnedIds.has(w.id)));
+  const already = shuffle(pool.filter((w) => learnedIds.has(w.id)));
+  const orderedPool = [...unlearned, ...already];
+
+  const defaultCount =
+    unlearned.length > 0 ? unlearned.length : Math.min(10, pool.length);
+  const count = Math.min(
+    input.questionCount ?? defaultCount,
+    orderedPool.length
+  );
+  const selected = orderedPool.slice(0, count);
 
   const session = await prisma.learningSession.create({
     data: {
@@ -637,13 +728,14 @@ export async function completeLearningSession(
             100
         );
   const stars = accuracy >= 90 ? 3 : accuracy >= 70 ? 2 : accuracy >= 40 ? 1 : 0;
-  const wordsLearned = new Set(
+  const sessionWordsLearned = new Set(
     session.attempts.filter((a) => a.isCorrect).map((a) => a.wordId)
   ).size;
 
   const buildResult = async (
     durationSec: number,
-    nextCategory: { id: string; label: string; emoji: string; code: string } | null
+    nextCategory: { id: string; label: string; emoji: string; code: string } | null,
+    categoryWordsLearned: number
   ) => ({
     sessionId: session.id,
     childName: session.child.displayName,
@@ -655,7 +747,9 @@ export async function completeLearningSession(
     points: session.status === "COMPLETED" ? session.points : points,
     stars: session.status === "COMPLETED" ? session.stars : stars,
     accuracy,
-    wordsLearned: session.status === "COMPLETED" ? session.wordsLearned : wordsLearned,
+    wordsLearned: categoryWordsLearned,
+    sessionWordsLearned:
+      session.status === "COMPLETED" ? session.wordsLearned : sessionWordsLearned,
     durationSec,
     nextCategory,
   });
@@ -673,7 +767,15 @@ export async function completeLearningSession(
       orderBy: { unlockOrder: "asc" },
       select: { id: true, label: true, emoji: true, code: true },
     });
-    return buildResult(session.durationSec ?? input.durationSec ?? 0, nextCategory);
+    const categoryWordsLearned = await countDistinctWordsLearned(
+      session.childId,
+      session.categoryId
+    );
+    return buildResult(
+      session.durationSec ?? input.durationSec ?? 0,
+      nextCategory,
+      categoryWordsLearned
+    );
   }
 
   const durationSec = input.durationSec ?? 0;
@@ -687,7 +789,7 @@ export async function completeLearningSession(
         completedAt: new Date(),
         points,
         stars,
-        wordsLearned,
+        wordsLearned: sessionWordsLearned,
         durationSec,
         listenCorrect,
         spellCorrect,
@@ -706,8 +808,26 @@ export async function completeLearningSession(
       },
     });
 
-    const nextWords = Math.max(existing?.wordsLearned ?? 0, wordsLearned);
-    const completed = nextWords >= 10 || accuracy >= 60;
+    // Cumulative unique words across ALL sessions (not max of this session's 8).
+    const distinctRows = await tx.questionAttempt.findMany({
+      where: {
+        isCorrect: true,
+        session: {
+          childId: session.childId,
+          categoryId: session.categoryId,
+        },
+      },
+      select: { wordId: true },
+      distinct: ["wordId"],
+    });
+    const nextWords = distinctRows.length;
+    const totalWords = await tx.vocabularyWord.count({
+      where: { categoryId: session.categoryId, isActive: true },
+    });
+    const completed =
+      (totalWords > 0 && nextWords >= totalWords) ||
+      nextWords >= 10 ||
+      accuracy >= 60;
 
     await tx.childCategoryProgress.upsert({
       where: {
@@ -748,7 +868,7 @@ export async function completeLearningSession(
       where: { childId: session.childId },
       create: {
         childId: session.childId,
-        wordsLearned,
+        wordsLearned: nextWords,
         readingScore: accuracy,
         spellingScore: spellAttempts.length
           ? Math.round((spellCorrect / spellAttempts.length) * 100)
@@ -756,7 +876,7 @@ export async function completeLearningSession(
         minutesLearned,
       },
       update: {
-        wordsLearned: { increment: wordsLearned },
+        wordsLearned: nextWords,
         readingScore: accuracy,
         spellingScore: spellAttempts.length
           ? Math.round((spellCorrect / spellAttempts.length) * 100)
@@ -797,7 +917,7 @@ export async function completeLearningSession(
           completed: true,
           points,
           stars,
-          wordsLearned,
+          wordsLearned: sessionWordsLearned,
           listenCorrect,
           spellCorrect,
           minutesLearned,
@@ -807,7 +927,7 @@ export async function completeLearningSession(
           completed: true,
           points: { increment: points },
           stars: { increment: stars },
-          wordsLearned: Math.max(wordsLearned, 0),
+          wordsLearned: Math.max(sessionWordsLearned, 0),
           listenCorrect: { increment: listenCorrect },
           spellCorrect: { increment: spellCorrect },
           minutesLearned: { increment: minutesLearned },
@@ -816,7 +936,7 @@ export async function completeLearningSession(
       });
     }
 
-    return closed;
+    return { closed, nextWords };
   });
 
   const nextCategory = await prisma.learningCategory.findFirst({
@@ -831,21 +951,7 @@ export async function completeLearningSession(
     select: { id: true, label: true, emoji: true, code: true },
   });
 
-  return {
-    sessionId: updated.id,
-    childName: session.child.displayName,
-    category: session.category,
-    questionsAttempted: session.attempts.length,
-    correctAnswers: session.attempts.filter((a) => a.isCorrect).length,
-    listenCorrect,
-    spellCorrect,
-    points,
-    stars,
-    accuracy,
-    wordsLearned,
-    durationSec,
-    nextCategory,
-  };
+  return buildResult(durationSec, nextCategory, updated.nextWords);
 }
 
 export async function getChildLearningOverview(
@@ -1094,6 +1200,30 @@ async function listLevelGroupsById(
   });
 
   const ordered = level.groups.flatMap((g) => g.categories);
+
+  const learnedByCategory = new Map<string, number>();
+  if (childId) {
+    await Promise.all(
+      ordered.map(async (cat) => {
+        const n = await countDistinctWordsLearned(childId, cat.id);
+        learnedByCategory.set(cat.id, n);
+        const progress = Array.isArray(cat.progress) ? cat.progress[0] : null;
+        if (progress && progress.wordsLearned !== n) {
+          const done = n >= cat._count.words && cat._count.words > 0;
+          await prisma.childCategoryProgress.update({
+            where: { id: progress.id },
+            data: {
+              wordsLearned: n,
+              completed: done || progress.completed,
+            },
+          });
+          progress.wordsLearned = n;
+          if (done) progress.completed = true;
+        }
+      })
+    );
+  }
+
   const completedIds = new Set(
     ordered
       .filter((c) => {
@@ -1119,6 +1249,8 @@ async function listLevelGroupsById(
       sortOrder: group.sortOrder,
       categories: group.categories.map((cat) => {
         const progress = Array.isArray(cat.progress) ? cat.progress[0] ?? null : null;
+        const wordsLearned =
+          learnedByCategory.get(cat.id) ?? progress?.wordsLearned ?? 0;
         const priorCompleted = ordered
           .filter((c) => c.unlockOrder < cat.unlockOrder)
           .every((c) => completedIds.has(c.id));
@@ -1127,6 +1259,9 @@ async function listLevelGroupsById(
           cat.unlockOrder === 0 ||
           priorCompleted ||
           Boolean(progress?.lastPlayedAt);
+        const completed =
+          Boolean(progress?.completed) ||
+          (cat._count.words > 0 && wordsLearned >= cat._count.words);
         return {
           id: cat.id,
           code: cat.code,
@@ -1136,14 +1271,15 @@ async function listLevelGroupsById(
           wordCount: cat._count.words,
           unlockOrder: cat.unlockOrder,
           unlocked,
-          progress: progress
-            ? {
-                wordsLearned: progress.wordsLearned,
-                points: progress.points,
-                stars: progress.stars,
-                completed: progress.completed,
-              }
-            : null,
+          progress:
+            progress || wordsLearned > 0
+              ? {
+                  wordsLearned,
+                  points: progress?.points ?? 0,
+                  stars: progress?.stars ?? 0,
+                  completed,
+                }
+              : null,
         };
       }),
     })),

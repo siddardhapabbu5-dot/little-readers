@@ -1,4 +1,4 @@
-import { beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import request from "supertest";
 import { createApp } from "../src/app.js";
 import { prisma } from "../src/lib/prisma.js";
@@ -281,6 +281,42 @@ describe.skipIf(!hasDb)("Admin lesson management", () => {
         questionCount: 5,
       });
     expect([200, 201]).toContain(catSession.status);
+  });
+
+  afterAll(async () => {
+    const testLessons = await prisma.lesson.findMany({
+      where: {
+        OR: [
+          { title: `Lesson ${stamp}` },
+          { title: `Play Lesson ${stamp}` },
+        ],
+      },
+      select: { id: true },
+    });
+    const ids = testLessons.map((l) => l.id);
+    if (ids.length) {
+      await prisma.questionAttempt.deleteMany({
+        where: { session: { lessonId: { in: ids } } },
+      });
+      await prisma.learningSession.deleteMany({
+        where: { lessonId: { in: ids } },
+      });
+      await prisma.childLessonProgress.deleteMany({
+        where: { lessonId: { in: ids } },
+      });
+      await prisma.classroomLessonAssignment.deleteMany({
+        where: { lessonId: { in: ids } },
+      });
+      await prisma.lessonVocabItem.deleteMany({
+        where: { lessonId: { in: ids } },
+      });
+      await prisma.lesson.deleteMany({ where: { id: { in: ids } } });
+    }
+    if (wordIds.length) {
+      await prisma.vocabularyWord.deleteMany({
+        where: { id: { in: wordIds } },
+      });
+    }
   });
 });
 

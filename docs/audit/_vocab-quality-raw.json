@@ -1,0 +1,1829 @@
+{
+  "generatedAt": "2026-11-05T04:04:48.688Z",
+  "grades": [
+    {
+      "code": "GRADE_1",
+      "label": "Grade 1",
+      "isActive": true,
+      "activeWords": 57,
+      "curriculumLikeWords": 38,
+      "syntheticOrTestWords": 19,
+      "withSense": 41,
+      "sampleCurriculum": [
+        {
+          "text": "apple",
+          "meaning": "a sweet fruit",
+          "category": "Family and People",
+          "sourceRef": null,
+          "sourceName": "Little Readers Kids Starter"
+        },
+        {
+          "text": "baby",
+          "meaning": "a very young child",
+          "category": "Family and People",
+          "sourceRef": null,
+          "sourceName": "Little Readers Kids Starter"
+        },
+        {
+          "text": "bed",
+          "meaning": "a place to sleep",
+          "category": "Family and People",
+          "sourceRef": null,
+          "sourceName": "Little Readers Kids Starter"
+        },
+        {
+          "text": "bird",
+          "meaning": "an animal that can fly",
+          "category": "Family and People",
+          "sourceRef": null,
+          "sourceName": "Little Readers Kids Starter"
+        },
+        {
+          "text": "blue",
+          "meaning": "the color of the sky",
+          "category": "Family and People",
+          "sourceRef": null,
+          "sourceName": "Little Readers Kids Starter"
+        },
+        {
+          "text": "book",
+          "meaning": "pages you can read",
+          "category": "Family and People",
+          "sourceRef": null,
+          "sourceName": "Little Readers Kids Starter"
+        },
+        {
+          "text": "bread",
+          "meaning": "food made from flour",
+          "category": "Family and People",
+          "sourceRef": null,
+          "sourceName": "Little Readers Kids Starter"
+        },
+        {
+          "text": "cat",
+          "meaning": "a small furry pet",
+          "category": "Family and People",
+          "sourceRef": null,
+          "sourceName": "Little Readers Kids Starter"
+        },
+        {
+          "text": "chair",
+          "meaning": "a seat with a back",
+          "category": "Family and People",
+          "sourceRef": null,
+          "sourceName": "Little Readers Kids Starter"
+        },
+        {
+          "text": "dad",
+          "meaning": "a father",
+          "category": "Family and People",
+          "sourceRef": null,
+          "sourceName": "Little Readers Kids Starter"
+        }
+      ]
+    },
+    {
+      "code": "GRADE_2",
+      "label": "Grade 2",
+      "isActive": true,
+      "activeWords": 11,
+      "curriculumLikeWords": 11,
+      "syntheticOrTestWords": 0,
+      "withSense": 11,
+      "sampleCurriculum": [
+        {
+          "text": "banana",
+          "meaning": "a long yellow fruit",
+          "category": "Family and People",
+          "sourceRef": null,
+          "sourceName": "Little Readers Kids Starter"
+        },
+        {
+          "text": "brother",
+          "meaning": "a boy sibling",
+          "category": "Family and People",
+          "sourceRef": null,
+          "sourceName": "Little Readers Kids Starter"
+        },
+        {
+          "text": "circle",
+          "meaning": "a round shape",
+          "category": "Family and People",
+          "sourceRef": null,
+          "sourceName": "Little Readers Kids Starter"
+        },
+        {
+          "text": "flower",
+          "meaning": "a colorful part of a plant",
+          "category": "Family and People",
+          "sourceRef": null,
+          "sourceName": "Little Readers Kids Starter"
+        },
+        {
+          "text": "friend",
+          "meaning": "someone you like to play with",
+          "category": "Family and People",
+          "sourceRef": null,
+          "sourceName": "Little Readers Kids Starter"
+        },
+        {
+          "text": "pencil",
+          "meaning": "a tool for writing",
+          "category": "Family and People",
+          "sourceRef": null,
+          "sourceName": "Little Readers Kids Starter"
+        },
+        {
+          "text": "school",
+          "meaning": "a place where children learn",
+          "category": "Family and People",
+          "sourceRef": null,
+          "sourceName": "Little Readers Kids Starter"
+        },
+        {
+          "text": "sister",
+          "meaning": "a girl sibling",
+          "category": "Family and People",
+          "sourceRef": null,
+          "sourceName": "Little Readers Kids Starter"
+        },
+        {
+          "text": "square",
+          "meaning": "a shape with four equal sides",
+          "category": "Family and People",
+          "sourceRef": null,
+          "sourceName": "Little Readers Kids Starter"
+        },
+        {
+          "text": "teacher",
+          "meaning": "a person who helps children learn",
+          "category": "Family and People",
+          "sourceRef": null,
+          "sourceName": "Little Readers Kids Starter"
+        }
+      ]
+    },
+    {
+      "code": "GRADE_3",
+      "label": "Grade 3",
+      "isActive": true,
+      "activeWords": 30,
+      "curriculumLikeWords": 0,
+      "syntheticOrTestWords": 30,
+      "withSense": 30,
+      "sampleCurriculum": []
+    },
+    {
+      "code": "GRADE_4",
+      "label": "Grade 4",
+      "isActive": true,
+      "activeWords": 15,
+      "curriculumLikeWords": 0,
+      "syntheticOrTestWords": 15,
+      "withSense": 15,
+      "sampleCurriculum": []
+    }
+  ],
+  "duplicates": {
+    "sameGradeHeadwords": [
+      {
+        "grade": "GRADE_3",
+        "headword": "dicttest1793849940146",
+        "count": 2,
+        "wordIds": [
+          "cmw30afj000a9htt0jn0eeicw",
+          "cmw2zxsec002lhtg0mpfztd8q"
+        ],
+        "categories": [
+          "Family and People",
+          "Nature and Environment"
+        ]
+      },
+      {
+        "grade": "GRADE_3",
+        "headword": "dicttest1793850857545",
+        "count": 2,
+        "wordIds": [
+          "cmw30hg9l005thtcwmzuum2en",
+          "cmw30i40r000dhthgl92du0z7"
+        ],
+        "categories": [
+          "Nature and Environment",
+          "Family and People"
+        ]
+      }
+    ],
+    "crossGradeHeadwords": [
+      {
+        "headword": "wmbulk1793849939075",
+        "grades": [
+          "GRADE_1",
+          "GRADE_3"
+        ],
+        "placements": [
+          {
+            "grade": "GRADE_1",
+            "wordId": "cmw2zxs2o001hhtg0uzef9ypp",
+            "text": "wmbulk1793849939075",
+            "category": "Animals"
+          },
+          {
+            "grade": "GRADE_3",
+            "wordId": "cmw30afil00a5htt0ofh057ao",
+            "text": "wmbulk1793849939075",
+            "category": "Family and People"
+          }
+        ],
+        "synthetic": true
+      },
+      {
+        "headword": "wmbulk1793850855704",
+        "grades": [
+          "GRADE_1",
+          "GRADE_3"
+        ],
+        "placements": [
+          {
+            "grade": "GRADE_1",
+            "wordId": "cmw30hfb2003xhtcw9p09lxij",
+            "text": "wmbulk1793850855704",
+            "category": "Animals"
+          },
+          {
+            "grade": "GRADE_3",
+            "wordId": "cmw30i40b0009hthg677ece86",
+            "text": "wmbulk1793850855704",
+            "category": "Family and People"
+          }
+        ],
+        "synthetic": true
+      },
+      {
+        "headword": "dicttest1793815868154",
+        "grades": [
+          "GRADE_3",
+          "GRADE_4"
+        ],
+        "placements": [
+          {
+            "grade": "GRADE_3",
+            "wordId": "cmw30aeuo0057htt00kqex847",
+            "text": "dicttest1793815868154",
+            "category": "Family and People"
+          },
+          {
+            "grade": "GRADE_4",
+            "wordId": "cmw30b45a0003htb06gbppygz",
+            "text": "dicttest1793815868154",
+            "category": "Family and People"
+          }
+        ],
+        "synthetic": true
+      },
+      {
+        "headword": "dicttest1793816986823",
+        "grades": [
+          "GRADE_3",
+          "GRADE_4"
+        ],
+        "placements": [
+          {
+            "grade": "GRADE_3",
+            "wordId": "cmw30aevq005bhtt0u2c46vpz",
+            "text": "dicttest1793816986823",
+            "category": "Family and People"
+          },
+          {
+            "grade": "GRADE_4",
+            "wordId": "cmw30b45v000bhtb0zx9sqdbh",
+            "text": "dicttest1793816986823",
+            "category": "Family and People"
+          }
+        ],
+        "synthetic": true
+      },
+      {
+        "headword": "dicttest1793817496985",
+        "grades": [
+          "GRADE_3",
+          "GRADE_4"
+        ],
+        "placements": [
+          {
+            "grade": "GRADE_3",
+            "wordId": "cmw30aewg005fhtt0e58d69k9",
+            "text": "dicttest1793817496985",
+            "category": "Family and People"
+          },
+          {
+            "grade": "GRADE_4",
+            "wordId": "cmw30b468000jhtb03r29piy6",
+            "text": "dicttest1793817496985",
+            "category": "Family and People"
+          }
+        ],
+        "synthetic": true
+      },
+      {
+        "headword": "dicttest1793817540288",
+        "grades": [
+          "GRADE_3",
+          "GRADE_4"
+        ],
+        "placements": [
+          {
+            "grade": "GRADE_3",
+            "wordId": "cmw30aexi005lhtt045bkqdm2",
+            "text": "dicttest1793817540288",
+            "category": "Family and People"
+          },
+          {
+            "grade": "GRADE_4",
+            "wordId": "cmw30b46l000rhtb0fjxl3pug",
+            "text": "dicttest1793817540288",
+            "category": "Family and People"
+          }
+        ],
+        "synthetic": true
+      },
+      {
+        "headword": "dicttest1793817604379",
+        "grades": [
+          "GRADE_3",
+          "GRADE_4"
+        ],
+        "placements": [
+          {
+            "grade": "GRADE_3",
+            "wordId": "cmw30aeyb005rhtt05bfsbqz8",
+            "text": "dicttest1793817604379",
+            "category": "Family and People"
+          },
+          {
+            "grade": "GRADE_4",
+            "wordId": "cmw30b46u000zhtb0sj6a1osw",
+            "text": "dicttest1793817604379",
+            "category": "Family and People"
+          }
+        ],
+        "synthetic": true
+      },
+      {
+        "headword": "dicttest1793818382260",
+        "grades": [
+          "GRADE_3",
+          "GRADE_4"
+        ],
+        "placements": [
+          {
+            "grade": "GRADE_3",
+            "wordId": "cmw30aez9005xhtt0kpf7wnny",
+            "text": "dicttest1793818382260",
+            "category": "Family and People"
+          },
+          {
+            "grade": "GRADE_4",
+            "wordId": "cmw30b47a0017htb0ttb5gjbt",
+            "text": "dicttest1793818382260",
+            "category": "Family and People"
+          }
+        ],
+        "synthetic": true
+      },
+      {
+        "headword": "dicttest1793821081754",
+        "grades": [
+          "GRADE_3",
+          "GRADE_4"
+        ],
+        "placements": [
+          {
+            "grade": "GRADE_3",
+            "wordId": "cmw30af39006hhtt035gcy1xr",
+            "text": "dicttest1793821081754",
+            "category": "Family and People"
+          },
+          {
+            "grade": "GRADE_4",
+            "wordId": "cmw30b47k001fhtb04pwhpww0",
+            "text": "dicttest1793821081754",
+            "category": "Family and People"
+          }
+        ],
+        "synthetic": true
+      },
+      {
+        "headword": "dicttest1793821281630",
+        "grades": [
+          "GRADE_3",
+          "GRADE_4"
+        ],
+        "placements": [
+          {
+            "grade": "GRADE_3",
+            "wordId": "cmw30af59006thtt044q7o213",
+            "text": "dicttest1793821281630",
+            "category": "Family and People"
+          },
+          {
+            "grade": "GRADE_4",
+            "wordId": "cmw30b47v001nhtb07vg0rg05",
+            "text": "dicttest1793821281630",
+            "category": "Family and People"
+          }
+        ],
+        "synthetic": true
+      },
+      {
+        "headword": "dicttest1793821651690",
+        "grades": [
+          "GRADE_3",
+          "GRADE_4"
+        ],
+        "placements": [
+          {
+            "grade": "GRADE_3",
+            "wordId": "cmw30af690071htt053mxtk72",
+            "text": "dicttest1793821651690",
+            "category": "Family and People"
+          },
+          {
+            "grade": "GRADE_4",
+            "wordId": "cmw30b484001vhtb0vvv25d2z",
+            "text": "dicttest1793821651690",
+            "category": "Family and People"
+          }
+        ],
+        "synthetic": true
+      },
+      {
+        "headword": "dicttest1793821734795",
+        "grades": [
+          "GRADE_3",
+          "GRADE_4"
+        ],
+        "placements": [
+          {
+            "grade": "GRADE_3",
+            "wordId": "cmw30af760079htt01ujd02qd",
+            "text": "dicttest1793821734795",
+            "category": "Family and People"
+          },
+          {
+            "grade": "GRADE_4",
+            "wordId": "cmw30b48e0023htb073pnfs2z",
+            "text": "dicttest1793821734795",
+            "category": "Family and People"
+          }
+        ],
+        "synthetic": true
+      },
+      {
+        "headword": "wmbulk1793817496488",
+        "grades": [
+          "GRADE_3",
+          "GRADE_4"
+        ],
+        "placements": [
+          {
+            "grade": "GRADE_3",
+            "wordId": "cmw30aex8005jhtt0q8h4y78d",
+            "text": "wmbulk1793817496488",
+            "category": "Family and People"
+          },
+          {
+            "grade": "GRADE_4",
+            "wordId": "cmw30b48o002bhtb0r2e5ytj2",
+            "text": "wmbulk1793817496488",
+            "category": "Family and People"
+          }
+        ],
+        "synthetic": true
+      },
+      {
+        "headword": "wmbulk1793817539819",
+        "grades": [
+          "GRADE_3",
+          "GRADE_4"
+        ],
+        "placements": [
+          {
+            "grade": "GRADE_3",
+            "wordId": "cmw30aexy005phtt0gp21t1ak",
+            "text": "wmbulk1793817539819",
+            "category": "Family and People"
+          },
+          {
+            "grade": "GRADE_4",
+            "wordId": "cmw30b48s002fhtb03jxg0bw9",
+            "text": "wmbulk1793817539819",
+            "category": "Family and People"
+          }
+        ],
+        "synthetic": true
+      },
+      {
+        "headword": "wmbulk1793817603817",
+        "grades": [
+          "GRADE_3",
+          "GRADE_4"
+        ],
+        "placements": [
+          {
+            "grade": "GRADE_3",
+            "wordId": "cmw30aeyz005vhtt0afff5oya",
+            "text": "wmbulk1793817603817",
+            "category": "Family and People"
+          },
+          {
+            "grade": "GRADE_4",
+            "wordId": "cmw30b48x002jhtb0lwurf6n7",
+            "text": "wmbulk1793817603817",
+            "category": "Family and People"
+          }
+        ],
+        "synthetic": true
+      },
+      {
+        "headword": "wmbulk1793818381738",
+        "grades": [
+          "GRADE_3",
+          "GRADE_4"
+        ],
+        "placements": [
+          {
+            "grade": "GRADE_3",
+            "wordId": "cmw30af090061htt0g3wfr42a",
+            "text": "wmbulk1793818381738",
+            "category": "Family and People"
+          },
+          {
+            "grade": "GRADE_4",
+            "wordId": "cmw30b492002nhtb01gch5kym",
+            "text": "wmbulk1793818381738",
+            "category": "Family and People"
+          }
+        ],
+        "synthetic": true
+      },
+      {
+        "headword": "wmbulk1793818420219",
+        "grades": [
+          "GRADE_3",
+          "GRADE_4"
+        ],
+        "placements": [
+          {
+            "grade": "GRADE_3",
+            "wordId": "cmw30af0p0063htt0mp4d9mub",
+            "text": "wmbulk1793818420219",
+            "category": "Family and People"
+          },
+          {
+            "grade": "GRADE_4",
+            "wordId": "cmw30b497002rhtb0fla0xv39",
+            "text": "wmbulk1793818420219",
+            "category": "Family and People"
+          }
+        ],
+        "synthetic": true
+      }
+    ],
+    "duplicateSenseDefs": []
+  },
+  "needsReview": [
+    {
+      "status": "NEEDS_REVIEW",
+      "grade": "GRADE_1",
+      "wordId": "cmw30afaj0081htt0j02npz0s",
+      "text": "apple",
+      "meaning": "a sweet fruit",
+      "category": "Family and People",
+      "origin": "DICTIONARY",
+      "sourceName": "Little Readers Kids Starter",
+      "sourceRef": null,
+      "reasons": [
+        "theme looks like \"food\" but category is \"Family and People\""
+      ]
+    },
+    {
+      "status": "NEEDS_REVIEW",
+      "grade": "GRADE_1",
+      "wordId": "cmw30af9t007vhtt0kn43nbtg",
+      "text": "bird",
+      "meaning": "an animal that can fly",
+      "category": "Family and People",
+      "origin": "DICTIONARY",
+      "sourceName": "Little Readers Kids Starter",
+      "sourceRef": null,
+      "reasons": [
+        "theme looks like \"animals\" but category is \"Family and People\""
+      ]
+    },
+    {
+      "status": "NEEDS_REVIEW",
+      "grade": "GRADE_1",
+      "wordId": "cmw30afc3008fhtt07mofq7vq",
+      "text": "blue",
+      "meaning": "the color of the sky",
+      "category": "Family and People",
+      "origin": "DICTIONARY",
+      "sourceName": "Little Readers Kids Starter",
+      "sourceRef": null,
+      "reasons": [
+        "theme looks like \"colors\" but category is \"Family and People\""
+      ]
+    },
+    {
+      "status": "NEEDS_REVIEW",
+      "grade": "GRADE_1",
+      "wordId": "cmw30afbg0089htt06r8zk750",
+      "text": "bread",
+      "meaning": "food made from flour",
+      "category": "Family and People",
+      "origin": "DICTIONARY",
+      "sourceName": "Little Readers Kids Starter",
+      "sourceRef": null,
+      "reasons": [
+        "theme looks like \"food\" but category is \"Family and People\""
+      ]
+    },
+    {
+      "status": "NEEDS_REVIEW",
+      "grade": "GRADE_1",
+      "wordId": "cmw30af9b007rhtt0r3ot6p5s",
+      "text": "cat",
+      "meaning": "a small furry pet",
+      "category": "Family and People",
+      "origin": "DICTIONARY",
+      "sourceName": "Little Readers Kids Starter",
+      "sourceRef": null,
+      "reasons": [
+        "theme looks like \"animals\" but category is \"Family and People\""
+      ]
+    },
+    {
+      "status": "NEEDS_REVIEW",
+      "grade": "GRADE_1",
+      "wordId": "cmw30af9j007thtt0b61yzb8j",
+      "text": "dog",
+      "meaning": "a friendly animal pet",
+      "category": "Family and People",
+      "origin": "DICTIONARY",
+      "sourceName": "Little Readers Kids Starter",
+      "sourceRef": null,
+      "reasons": [
+        "theme looks like \"animals\" but category is \"Family and People\""
+      ]
+    },
+    {
+      "status": "NEEDS_REVIEW",
+      "grade": "GRADE_1",
+      "wordId": "cmw30afhe009vhtt0lghbjp9d",
+      "text": "eat",
+      "meaning": "to take food into your mouth",
+      "category": "Family and People",
+      "origin": "DICTIONARY",
+      "sourceName": "Little Readers Kids Starter",
+      "sourceRef": null,
+      "reasons": [
+        "theme looks like \"food\" but category is \"Family and People\""
+      ]
+    },
+    {
+      "status": "NEEDS_REVIEW",
+      "grade": "GRADE_1",
+      "wordId": "cmw30afa3007xhtt0i6oroi36",
+      "text": "fish",
+      "meaning": "an animal that lives in water",
+      "category": "Family and People",
+      "origin": "DICTIONARY",
+      "sourceName": "Little Readers Kids Starter",
+      "sourceRef": null,
+      "reasons": [
+        "theme looks like \"animals\" but category is \"Family and People\""
+      ]
+    },
+    {
+      "status": "NEEDS_REVIEW",
+      "grade": "GRADE_1",
+      "wordId": "cmw30afcb008hhtt0xo2slogl",
+      "text": "green",
+      "meaning": "the color of grass",
+      "category": "Family and People",
+      "origin": "DICTIONARY",
+      "sourceName": "Little Readers Kids Starter",
+      "sourceRef": null,
+      "reasons": [
+        "theme looks like \"colors\" but category is \"Family and People\""
+      ]
+    },
+    {
+      "status": "NEEDS_REVIEW",
+      "grade": "GRADE_1",
+      "wordId": "cmw30afaa007zhtt00674m48t",
+      "text": "lion",
+      "meaning": "a big wild cat",
+      "category": "Family and People",
+      "origin": "DICTIONARY",
+      "sourceName": "Little Readers Kids Starter",
+      "sourceRef": null,
+      "reasons": [
+        "theme looks like \"animals\" but category is \"Family and People\""
+      ]
+    },
+    {
+      "status": "NEEDS_REVIEW",
+      "grade": "GRADE_1",
+      "wordId": "cmw30afb10085htt011u6rgyo",
+      "text": "mango",
+      "meaning": "a sweet tropical fruit",
+      "category": "Family and People",
+      "origin": "DICTIONARY",
+      "sourceName": "Little Readers Kids Starter",
+      "sourceRef": null,
+      "reasons": [
+        "theme looks like \"food\" but category is \"Family and People\""
+      ]
+    },
+    {
+      "status": "NEEDS_REVIEW",
+      "grade": "GRADE_1",
+      "wordId": "cmw30afb90087htt0hthqz5dn",
+      "text": "milk",
+      "meaning": "a white drink from cows",
+      "category": "Family and People",
+      "origin": "DICTIONARY",
+      "sourceName": "Little Readers Kids Starter",
+      "sourceRef": null,
+      "reasons": [
+        "theme looks like \"food\" but category is \"Family and People\""
+      ]
+    },
+    {
+      "status": "NEEDS_REVIEW",
+      "grade": "GRADE_1",
+      "wordId": "cmw30affz009jhtt019s938b7",
+      "text": "moon",
+      "meaning": "the light in the night sky",
+      "category": "Family and People",
+      "origin": "DICTIONARY",
+      "sourceName": "Little Readers Kids Starter",
+      "sourceRef": null,
+      "reasons": [
+        "theme looks like \"nature\" but category is \"Family and People\""
+      ]
+    },
+    {
+      "status": "NEEDS_REVIEW",
+      "grade": "GRADE_1",
+      "wordId": "cmw30afe3008zhtt0nu97sct5",
+      "text": "mouth",
+      "meaning": "the body part you eat and talk with",
+      "category": "Family and People",
+      "origin": "DICTIONARY",
+      "sourceName": "Little Readers Kids Starter",
+      "sourceRef": null,
+      "reasons": [
+        "theme looks like \"food\" but category is \"Family and People\""
+      ]
+    },
+    {
+      "status": "NEEDS_REVIEW",
+      "grade": "GRADE_1",
+      "wordId": "cmw30jcxl016ghtn4yr75hpv4",
+      "text": "playfix_1793850946616_w0",
+      "meaning": "fixture meaning 0",
+      "category": "Family and People",
+      "origin": "LEGACY",
+      "sourceName": null,
+      "sourceRef": null,
+      "reasons": [
+        "synthetic/test fixture headword — not production curriculum content"
+      ]
+    },
+    {
+      "status": "NEEDS_REVIEW",
+      "grade": "GRADE_1",
+      "wordId": "cmw30jcxn016ihtn432g75fye",
+      "text": "playfix_1793850946616_w1",
+      "meaning": "fixture meaning 1",
+      "category": "Family and People",
+      "origin": "LEGACY",
+      "sourceName": null,
+      "sourceRef": null,
+      "reasons": [
+        "synthetic/test fixture headword — not production curriculum content"
+      ]
+    },
+    {
+      "status": "NEEDS_REVIEW",
+      "grade": "GRADE_1",
+      "wordId": "cmw30jcxo016khtn4mmrlivjr",
+      "text": "playfix_1793850946616_w2",
+      "meaning": "fixture meaning 2",
+      "category": "Family and People",
+      "origin": "LEGACY",
+      "sourceName": null,
+      "sourceRef": null,
+      "reasons": [
+        "synthetic/test fixture headword — not production curriculum content"
+      ]
+    },
+    {
+      "status": "NEEDS_REVIEW",
+      "grade": "GRADE_1",
+      "wordId": "cmw30jcxq016mhtn4ca4byftu",
+      "text": "playfix_1793850946616_w3",
+      "meaning": "fixture meaning 3",
+      "category": "Family and People",
+      "origin": "LEGACY",
+      "sourceName": null,
+      "sourceRef": null,
+      "reasons": [
+        "synthetic/test fixture headword — not production curriculum content"
+      ]
+    },
+    {
+      "status": "NEEDS_REVIEW",
+      "grade": "GRADE_1",
+      "wordId": "cmw30jcxr016ohtn4nb40hskr",
+      "text": "playfix_1793850946616_w4",
+      "meaning": "fixture meaning 4",
+      "category": "Family and People",
+      "origin": "LEGACY",
+      "sourceName": null,
+      "sourceRef": null,
+      "reasons": [
+        "synthetic/test fixture headword — not production curriculum content"
+      ]
+    },
+    {
+      "status": "NEEDS_REVIEW",
+      "grade": "GRADE_1",
+      "wordId": "cmw30jcxs016qhtn4zvamut5m",
+      "text": "playfix_1793850946616_w5",
+      "meaning": "fixture meaning 5",
+      "category": "Family and People",
+      "origin": "LEGACY",
+      "sourceName": null,
+      "sourceRef": null,
+      "reasons": [
+        "synthetic/test fixture headword — not production curriculum content"
+      ]
+    },
+    {
+      "status": "NEEDS_REVIEW",
+      "grade": "GRADE_1",
+      "wordId": "cmw30jcxt016shtn4ozzqmeg7",
+      "text": "playfix_1793850946616_w6",
+      "meaning": "fixture meaning 6",
+      "category": "Family and People",
+      "origin": "LEGACY",
+      "sourceName": null,
+      "sourceRef": null,
+      "reasons": [
+        "synthetic/test fixture headword — not production curriculum content"
+      ]
+    },
+    {
+      "status": "NEEDS_REVIEW",
+      "grade": "GRADE_1",
+      "wordId": "cmw30jcxu016uhtn4niz7v52n",
+      "text": "playfix_1793850946616_w7",
+      "meaning": "fixture meaning 7",
+      "category": "Family and People",
+      "origin": "LEGACY",
+      "sourceName": null,
+      "sourceRef": null,
+      "reasons": [
+        "synthetic/test fixture headword — not production curriculum content"
+      ]
+    },
+    {
+      "status": "NEEDS_REVIEW",
+      "grade": "GRADE_1",
+      "wordId": "cmw30tbuw003jhtiwvtkivoyj",
+      "text": "playfix_1793851411784_w0",
+      "meaning": "fixture meaning 0",
+      "category": "Family and People",
+      "origin": "LEGACY",
+      "sourceName": null,
+      "sourceRef": null,
+      "reasons": [
+        "synthetic/test fixture headword — not production curriculum content"
+      ]
+    },
+    {
+      "status": "NEEDS_REVIEW",
+      "grade": "GRADE_1",
+      "wordId": "cmw30tbv1003lhtiwhzqv803z",
+      "text": "playfix_1793851411784_w1",
+      "meaning": "fixture meaning 1",
+      "category": "Family and People",
+      "origin": "LEGACY",
+      "sourceName": null,
+      "sourceRef": null,
+      "reasons": [
+        "synthetic/test fixture headword — not production curriculum content"
+      ]
+    },
+    {
+      "status": "NEEDS_REVIEW",
+      "grade": "GRADE_1",
+      "wordId": "cmw30tbv5003nhtiw47xhjfpc",
+      "text": "playfix_1793851411784_w2",
+      "meaning": "fixture meaning 2",
+      "category": "Family and People",
+      "origin": "LEGACY",
+      "sourceName": null,
+      "sourceRef": null,
+      "reasons": [
+        "synthetic/test fixture headword — not production curriculum content"
+      ]
+    },
+    {
+      "status": "NEEDS_REVIEW",
+      "grade": "GRADE_1",
+      "wordId": "cmw30tbv7003phtiw1xh9xs2x",
+      "text": "playfix_1793851411784_w3",
+      "meaning": "fixture meaning 3",
+      "category": "Family and People",
+      "origin": "LEGACY",
+      "sourceName": null,
+      "sourceRef": null,
+      "reasons": [
+        "synthetic/test fixture headword — not production curriculum content"
+      ]
+    },
+    {
+      "status": "NEEDS_REVIEW",
+      "grade": "GRADE_1",
+      "wordId": "cmw30tbvb003rhtiwo87rxuqc",
+      "text": "playfix_1793851411784_w4",
+      "meaning": "fixture meaning 4",
+      "category": "Family and People",
+      "origin": "LEGACY",
+      "sourceName": null,
+      "sourceRef": null,
+      "reasons": [
+        "synthetic/test fixture headword — not production curriculum content"
+      ]
+    },
+    {
+      "status": "NEEDS_REVIEW",
+      "grade": "GRADE_1",
+      "wordId": "cmw30tbve003thtiw96omukgv",
+      "text": "playfix_1793851411784_w5",
+      "meaning": "fixture meaning 5",
+      "category": "Family and People",
+      "origin": "LEGACY",
+      "sourceName": null,
+      "sourceRef": null,
+      "reasons": [
+        "synthetic/test fixture headword — not production curriculum content"
+      ]
+    },
+    {
+      "status": "NEEDS_REVIEW",
+      "grade": "GRADE_1",
+      "wordId": "cmw30tbvh003vhtiw3l8be4bi",
+      "text": "playfix_1793851411784_w6",
+      "meaning": "fixture meaning 6",
+      "category": "Family and People",
+      "origin": "LEGACY",
+      "sourceName": null,
+      "sourceRef": null,
+      "reasons": [
+        "synthetic/test fixture headword — not production curriculum content"
+      ]
+    },
+    {
+      "status": "NEEDS_REVIEW",
+      "grade": "GRADE_1",
+      "wordId": "cmw30tbvl003xhtiwxwgyhiep",
+      "text": "playfix_1793851411784_w7",
+      "meaning": "fixture meaning 7",
+      "category": "Family and People",
+      "origin": "LEGACY",
+      "sourceName": null,
+      "sourceRef": null,
+      "reasons": [
+        "synthetic/test fixture headword — not production curriculum content"
+      ]
+    },
+    {
+      "status": "NEEDS_REVIEW",
+      "grade": "GRADE_1",
+      "wordId": "cmw30afg9009lhtt0kd461ibm",
+      "text": "rain",
+      "meaning": "water that falls from clouds",
+      "category": "Family and People",
+      "origin": "DICTIONARY",
+      "sourceName": "Little Readers Kids Starter",
+      "sourceRef": null,
+      "reasons": [
+        "theme looks like \"nature\" but category is \"Family and People\""
+      ]
+    },
+    {
+      "status": "NEEDS_REVIEW",
+      "grade": "GRADE_1",
+      "wordId": "cmw30afbv008dhtt0cnc52ce7",
+      "text": "red",
+      "meaning": "the color of an apple",
+      "category": "Family and People",
+      "origin": "DICTIONARY",
+      "sourceName": "Little Readers Kids Starter",
+      "sourceRef": null,
+      "reasons": [
+        "theme looks like \"food\" but category is \"Family and People\""
+      ]
+    },
+    {
+      "status": "NEEDS_REVIEW",
+      "grade": "GRADE_1",
+      "wordId": "cmw30affs009hhtt06jdawfj5",
+      "text": "sun",
+      "meaning": "the bright light in the day sky",
+      "category": "Family and People",
+      "origin": "DICTIONARY",
+      "sourceName": "Little Readers Kids Starter",
+      "sourceRef": null,
+      "reasons": [
+        "theme looks like \"nature\" but category is \"Family and People\""
+      ]
+    },
+    {
+      "status": "NEEDS_REVIEW",
+      "grade": "GRADE_1",
+      "wordId": "cmw30afgf009nhtt0yrho6j3q",
+      "text": "tree",
+      "meaning": "a tall plant with a trunk",
+      "category": "Family and People",
+      "origin": "DICTIONARY",
+      "sourceName": "Little Readers Kids Starter",
+      "sourceRef": null,
+      "reasons": [
+        "theme looks like \"nature\" but category is \"Family and People\""
+      ]
+    },
+    {
+      "status": "NEEDS_REVIEW",
+      "grade": "GRADE_1",
+      "wordId": "cmw2zxs2o001hhtg0uzef9ypp",
+      "text": "wmbulk1793849939075",
+      "meaning": "A small friendly animal children know.",
+      "category": "Animals",
+      "origin": "DICTIONARY",
+      "sourceName": "Bulk Test",
+      "sourceRef": null,
+      "reasons": [
+        "synthetic/test fixture headword — not production curriculum content"
+      ]
+    },
+    {
+      "status": "NEEDS_REVIEW",
+      "grade": "GRADE_1",
+      "wordId": "cmw30hfb2003xhtcw9p09lxij",
+      "text": "wmbulk1793850855704",
+      "meaning": "A small friendly animal children know.",
+      "category": "Animals",
+      "origin": "DICTIONARY",
+      "sourceName": "Bulk Test",
+      "sourceRef": null,
+      "reasons": [
+        "synthetic/test fixture headword — not production curriculum content"
+      ]
+    },
+    {
+      "status": "NEEDS_REVIEW",
+      "grade": "GRADE_1",
+      "wordId": "cmw30je6z018vhtn455619o7k",
+      "text": "wmbulk1793850947607",
+      "meaning": "A small friendly animal children know.",
+      "category": "Animals",
+      "origin": "DICTIONARY",
+      "sourceName": "Bulk Test",
+      "sourceRef": null,
+      "reasons": [
+        "synthetic/test fixture headword — not production curriculum content"
+      ]
+    },
+    {
+      "status": "NEEDS_REVIEW",
+      "grade": "GRADE_2",
+      "wordId": "cmw30afas0083htt0156kj1u6",
+      "text": "banana",
+      "meaning": "a long yellow fruit",
+      "category": "Family and People",
+      "origin": "DICTIONARY",
+      "sourceName": "Little Readers Kids Starter",
+      "sourceRef": null,
+      "reasons": [
+        "theme looks like \"food\" but category is \"Family and People\""
+      ]
+    },
+    {
+      "status": "NEEDS_REVIEW",
+      "grade": "GRADE_2",
+      "wordId": "cmw30afgn009phtt0d8rcdsta",
+      "text": "flower",
+      "meaning": "a colorful part of a plant",
+      "category": "Family and People",
+      "origin": "DICTIONARY",
+      "sourceName": "Little Readers Kids Starter",
+      "sourceRef": null,
+      "reasons": [
+        "theme looks like \"nature\" but category is \"Family and People\""
+      ]
+    },
+    {
+      "status": "NEEDS_REVIEW",
+      "grade": "GRADE_2",
+      "wordId": "cmw30afck008jhtt0u4dae5r7",
+      "text": "yellow",
+      "meaning": "the color of a banana",
+      "category": "Family and People",
+      "origin": "DICTIONARY",
+      "sourceName": "Little Readers Kids Starter",
+      "sourceRef": null,
+      "reasons": [
+        "theme looks like \"food\" but category is \"Family and People\""
+      ]
+    },
+    {
+      "status": "NEEDS_REVIEW",
+      "grade": "GRADE_3",
+      "wordId": "cmw30aeuo0057htt00kqex847",
+      "text": "dicttest1793815868154",
+      "meaning": "A large wild feline in nature.",
+      "category": "Family and People",
+      "origin": "DICTIONARY",
+      "sourceName": "Test English-English Dictionary",
+      "sourceRef": null,
+      "reasons": [
+        "synthetic/test fixture headword — not production curriculum content",
+        "theme looks like \"nature\" but category is \"Family and People\""
+      ]
+    },
+    {
+      "status": "NEEDS_REVIEW",
+      "grade": "GRADE_3",
+      "wordId": "cmw30aevq005bhtt0u2c46vpz",
+      "text": "dicttest1793816986823",
+      "meaning": "A large wild feline in nature.",
+      "category": "Family and People",
+      "origin": "DICTIONARY",
+      "sourceName": "Test English-English Dictionary",
+      "sourceRef": null,
+      "reasons": [
+        "synthetic/test fixture headword — not production curriculum content",
+        "theme looks like \"nature\" but category is \"Family and People\""
+      ]
+    },
+    {
+      "status": "NEEDS_REVIEW",
+      "grade": "GRADE_3",
+      "wordId": "cmw30aewg005fhtt0e58d69k9",
+      "text": "dicttest1793817496985",
+      "meaning": "A large wild feline in nature.",
+      "category": "Family and People",
+      "origin": "DICTIONARY",
+      "sourceName": "Test English-English Dictionary",
+      "sourceRef": null,
+      "reasons": [
+        "synthetic/test fixture headword — not production curriculum content",
+        "theme looks like \"nature\" but category is \"Family and People\""
+      ]
+    },
+    {
+      "status": "NEEDS_REVIEW",
+      "grade": "GRADE_3",
+      "wordId": "cmw30aexi005lhtt045bkqdm2",
+      "text": "dicttest1793817540288",
+      "meaning": "A large wild feline in nature.",
+      "category": "Family and People",
+      "origin": "DICTIONARY",
+      "sourceName": "Test English-English Dictionary",
+      "sourceRef": null,
+      "reasons": [
+        "synthetic/test fixture headword — not production curriculum content",
+        "theme looks like \"nature\" but category is \"Family and People\""
+      ]
+    },
+    {
+      "status": "NEEDS_REVIEW",
+      "grade": "GRADE_3",
+      "wordId": "cmw30aeyb005rhtt05bfsbqz8",
+      "text": "dicttest1793817604379",
+      "meaning": "A large wild feline in nature.",
+      "category": "Family and People",
+      "origin": "DICTIONARY",
+      "sourceName": "Test English-English Dictionary",
+      "sourceRef": null,
+      "reasons": [
+        "synthetic/test fixture headword — not production curriculum content",
+        "theme looks like \"nature\" but category is \"Family and People\""
+      ]
+    },
+    {
+      "status": "NEEDS_REVIEW",
+      "grade": "GRADE_3",
+      "wordId": "cmw30aez9005xhtt0kpf7wnny",
+      "text": "dicttest1793818382260",
+      "meaning": "A large wild feline in nature.",
+      "category": "Family and People",
+      "origin": "DICTIONARY",
+      "sourceName": "Test English-English Dictionary",
+      "sourceRef": null,
+      "reasons": [
+        "synthetic/test fixture headword — not production curriculum content",
+        "theme looks like \"nature\" but category is \"Family and People\""
+      ]
+    },
+    {
+      "status": "NEEDS_REVIEW",
+      "grade": "GRADE_3",
+      "wordId": "cmw30af39006hhtt035gcy1xr",
+      "text": "dicttest1793821081754",
+      "meaning": "A large wild feline in nature.",
+      "category": "Family and People",
+      "origin": "DICTIONARY",
+      "sourceName": "Test English-English Dictionary",
+      "sourceRef": null,
+      "reasons": [
+        "synthetic/test fixture headword — not production curriculum content",
+        "theme looks like \"nature\" but category is \"Family and People\""
+      ]
+    },
+    {
+      "status": "NEEDS_REVIEW",
+      "grade": "GRADE_3",
+      "wordId": "cmw30af59006thtt044q7o213",
+      "text": "dicttest1793821281630",
+      "meaning": "A large wild feline in nature.",
+      "category": "Family and People",
+      "origin": "DICTIONARY",
+      "sourceName": "Test English-English Dictionary",
+      "sourceRef": null,
+      "reasons": [
+        "synthetic/test fixture headword — not production curriculum content",
+        "theme looks like \"nature\" but category is \"Family and People\""
+      ]
+    },
+    {
+      "status": "NEEDS_REVIEW",
+      "grade": "GRADE_3",
+      "wordId": "cmw30af690071htt053mxtk72",
+      "text": "dicttest1793821651690",
+      "meaning": "A large wild feline in nature.",
+      "category": "Family and People",
+      "origin": "DICTIONARY",
+      "sourceName": "Test English-English Dictionary",
+      "sourceRef": null,
+      "reasons": [
+        "synthetic/test fixture headword — not production curriculum content",
+        "theme looks like \"nature\" but category is \"Family and People\""
+      ]
+    },
+    {
+      "status": "NEEDS_REVIEW",
+      "grade": "GRADE_3",
+      "wordId": "cmw30af760079htt01ujd02qd",
+      "text": "dicttest1793821734795",
+      "meaning": "A large wild feline in nature.",
+      "category": "Family and People",
+      "origin": "DICTIONARY",
+      "sourceName": "Test English-English Dictionary",
+      "sourceRef": null,
+      "reasons": [
+        "synthetic/test fixture headword — not production curriculum content",
+        "theme looks like \"nature\" but category is \"Family and People\""
+      ]
+    },
+    {
+      "status": "NEEDS_REVIEW",
+      "grade": "GRADE_3",
+      "wordId": "cmw30afj000a9htt0jn0eeicw",
+      "text": "dicttest1793849940146",
+      "meaning": "A large wild feline in nature.",
+      "category": "Family and People",
+      "origin": "DICTIONARY",
+      "sourceName": "Test English-English Dictionary",
+      "sourceRef": null,
+      "reasons": [
+        "synthetic/test fixture headword — not production curriculum content",
+        "theme looks like \"nature\" but category is \"Family and People\""
+      ]
+    },
+    {
+      "status": "NEEDS_REVIEW",
+      "grade": "GRADE_3",
+      "wordId": "cmw2zxsec002lhtg0mpfztd8q",
+      "text": "dicttest1793849940146",
+      "meaning": "A large wild feline in nature.",
+      "category": "Nature and Environment",
+      "origin": "DICTIONARY",
+      "sourceName": "Test English-English Dictionary",
+      "sourceRef": null,
+      "reasons": [
+        "synthetic/test fixture headword — not production curriculum content"
+      ]
+    },
+    {
+      "status": "NEEDS_REVIEW",
+      "grade": "GRADE_3",
+      "wordId": "cmw30hg9l005thtcwmzuum2en",
+      "text": "dicttest1793850857545",
+      "meaning": "A large wild feline in nature.",
+      "category": "Nature and Environment",
+      "origin": "DICTIONARY",
+      "sourceName": "Test English-English Dictionary",
+      "sourceRef": null,
+      "reasons": [
+        "synthetic/test fixture headword — not production curriculum content"
+      ]
+    },
+    {
+      "status": "NEEDS_REVIEW",
+      "grade": "GRADE_3",
+      "wordId": "cmw30i40r000dhthgl92du0z7",
+      "text": "dicttest1793850857545",
+      "meaning": "A large wild feline in nature.",
+      "category": "Family and People",
+      "origin": "DICTIONARY",
+      "sourceName": "Test English-English Dictionary",
+      "sourceRef": null,
+      "reasons": [
+        "synthetic/test fixture headword — not production curriculum content",
+        "theme looks like \"nature\" but category is \"Family and People\""
+      ]
+    },
+    {
+      "status": "NEEDS_REVIEW",
+      "grade": "GRADE_3",
+      "wordId": "cmw30jf6v01arhtn4vn9iij3z",
+      "text": "dicttest1793850949438",
+      "meaning": "A large wild feline in nature.",
+      "category": "Nature and Environment",
+      "origin": "DICTIONARY",
+      "sourceName": "Test English-English Dictionary",
+      "sourceRef": null,
+      "reasons": [
+        "synthetic/test fixture headword — not production curriculum content"
+      ]
+    },
+    {
+      "status": "NEEDS_REVIEW",
+      "grade": "GRADE_3",
+      "wordId": "cmw30aex8005jhtt0q8h4y78d",
+      "text": "wmbulk1793817496488",
+      "meaning": "A small friendly animal children know.",
+      "category": "Family and People",
+      "origin": "DICTIONARY",
+      "sourceName": "Bulk Test Dict",
+      "sourceRef": null,
+      "reasons": [
+        "synthetic/test fixture headword — not production curriculum content",
+        "theme looks like \"animals\" but category is \"Family and People\""
+      ]
+    },
+    {
+      "status": "NEEDS_REVIEW",
+      "grade": "GRADE_3",
+      "wordId": "cmw30aexy005phtt0gp21t1ak",
+      "text": "wmbulk1793817539819",
+      "meaning": "A small friendly animal children know.",
+      "category": "Family and People",
+      "origin": "DICTIONARY",
+      "sourceName": "Bulk Test Dict",
+      "sourceRef": null,
+      "reasons": [
+        "synthetic/test fixture headword — not production curriculum content",
+        "theme looks like \"animals\" but category is \"Family and People\""
+      ]
+    },
+    {
+      "status": "NEEDS_REVIEW",
+      "grade": "GRADE_3",
+      "wordId": "cmw30aeyz005vhtt0afff5oya",
+      "text": "wmbulk1793817603817",
+      "meaning": "A small friendly animal children know.",
+      "category": "Family and People",
+      "origin": "DICTIONARY",
+      "sourceName": "Bulk Test Dict",
+      "sourceRef": null,
+      "reasons": [
+        "synthetic/test fixture headword — not production curriculum content",
+        "theme looks like \"animals\" but category is \"Family and People\""
+      ]
+    },
+    {
+      "status": "NEEDS_REVIEW",
+      "grade": "GRADE_3",
+      "wordId": "cmw30af090061htt0g3wfr42a",
+      "text": "wmbulk1793818381738",
+      "meaning": "A small friendly animal children know.",
+      "category": "Family and People",
+      "origin": "DICTIONARY",
+      "sourceName": "Bulk Test Dict",
+      "sourceRef": null,
+      "reasons": [
+        "synthetic/test fixture headword — not production curriculum content",
+        "theme looks like \"animals\" but category is \"Family and People\""
+      ]
+    },
+    {
+      "status": "NEEDS_REVIEW",
+      "grade": "GRADE_3",
+      "wordId": "cmw30af0p0063htt0mp4d9mub",
+      "text": "wmbulk1793818420219",
+      "meaning": "A small friendly animal children know.",
+      "category": "Family and People",
+      "origin": "DICTIONARY",
+      "sourceName": "Bulk Test Dict",
+      "sourceRef": null,
+      "reasons": [
+        "synthetic/test fixture headword — not production curriculum content",
+        "theme looks like \"animals\" but category is \"Family and People\""
+      ]
+    },
+    {
+      "status": "NEEDS_REVIEW",
+      "grade": "GRADE_3",
+      "wordId": "cmw30af120065htt01ewliem7",
+      "text": "wmbulk1793818458349",
+      "meaning": "A small friendly animal children know.",
+      "category": "Family and People",
+      "origin": "DICTIONARY",
+      "sourceName": "Bulk Test Dict",
+      "sourceRef": null,
+      "reasons": [
+        "synthetic/test fixture headword — not production curriculum content",
+        "theme looks like \"animals\" but category is \"Family and People\""
+      ]
+    },
+    {
+      "status": "NEEDS_REVIEW",
+      "grade": "GRADE_3",
+      "wordId": "cmw30af1e0067htt01mgtv1vy",
+      "text": "wmbulk1793818498051",
+      "meaning": "A small friendly animal children know.",
+      "category": "Family and People",
+      "origin": "DICTIONARY",
+      "sourceName": "Bulk Test Dict",
+      "sourceRef": null,
+      "reasons": [
+        "synthetic/test fixture headword — not production curriculum content",
+        "theme looks like \"animals\" but category is \"Family and People\""
+      ]
+    },
+    {
+      "status": "NEEDS_REVIEW",
+      "grade": "GRADE_3",
+      "wordId": "cmw30af1o0069htt0sbjhx6wk",
+      "text": "wmbulk1793818597503",
+      "meaning": "Another sense used only for bulk reject.",
+      "category": "Family and People",
+      "origin": "DICTIONARY",
+      "sourceName": "Bulk Test",
+      "sourceRef": null,
+      "reasons": [
+        "synthetic/test fixture headword — not production curriculum content"
+      ]
+    },
+    {
+      "status": "NEEDS_REVIEW",
+      "grade": "GRADE_3",
+      "wordId": "cmw30af2e006dhtt0lsh2czf8",
+      "text": "wmbulk1793819240047",
+      "meaning": "Another sense used only for bulk reject.",
+      "category": "Family and People",
+      "origin": "DICTIONARY",
+      "sourceName": "Bulk Test",
+      "sourceRef": null,
+      "reasons": [
+        "synthetic/test fixture headword — not production curriculum content"
+      ]
+    },
+    {
+      "status": "NEEDS_REVIEW",
+      "grade": "GRADE_3",
+      "wordId": "cmw30af40006lhtt0j2hpd260",
+      "text": "wmbulk1793821080471",
+      "meaning": "Another sense used only for bulk reject.",
+      "category": "Family and People",
+      "origin": "DICTIONARY",
+      "sourceName": "Bulk Test",
+      "sourceRef": null,
+      "reasons": [
+        "synthetic/test fixture headword — not production curriculum content"
+      ]
+    },
+    {
+      "status": "NEEDS_REVIEW",
+      "grade": "GRADE_3",
+      "wordId": "cmw30af4l006phtt0zlgtzbnd",
+      "text": "wmbulk1793821278079",
+      "meaning": "Another sense used only for bulk reject.",
+      "category": "Family and People",
+      "origin": "DICTIONARY",
+      "sourceName": "Bulk Test",
+      "sourceRef": null,
+      "reasons": [
+        "synthetic/test fixture headword — not production curriculum content"
+      ]
+    },
+    {
+      "status": "NEEDS_REVIEW",
+      "grade": "GRADE_3",
+      "wordId": "cmw30af5u006xhtt0xyri3p06",
+      "text": "wmbulk1793821645268",
+      "meaning": "Another sense used only for bulk reject.",
+      "category": "Family and People",
+      "origin": "DICTIONARY",
+      "sourceName": "Bulk Test",
+      "sourceRef": null,
+      "reasons": [
+        "synthetic/test fixture headword — not production curriculum content"
+      ]
+    },
+    {
+      "status": "NEEDS_REVIEW",
+      "grade": "GRADE_3",
+      "wordId": "cmw30af6q0075htt02kwtlsfj",
+      "text": "wmbulk1793821729022",
+      "meaning": "Another sense used only for bulk reject.",
+      "category": "Family and People",
+      "origin": "DICTIONARY",
+      "sourceName": "Bulk Test",
+      "sourceRef": null,
+      "reasons": [
+        "synthetic/test fixture headword — not production curriculum content"
+      ]
+    },
+    {
+      "status": "NEEDS_REVIEW",
+      "grade": "GRADE_3",
+      "wordId": "cmw30afil00a5htt0ofh057ao",
+      "text": "wmbulk1793849939075",
+      "meaning": "Another sense used only for bulk reject.",
+      "category": "Family and People",
+      "origin": "DICTIONARY",
+      "sourceName": "Bulk Test",
+      "sourceRef": null,
+      "reasons": [
+        "synthetic/test fixture headword — not production curriculum content"
+      ]
+    },
+    {
+      "status": "NEEDS_REVIEW",
+      "grade": "GRADE_3",
+      "wordId": "cmw30i40b0009hthg677ece86",
+      "text": "wmbulk1793850855704",
+      "meaning": "Another sense used only for bulk reject.",
+      "category": "Family and People",
+      "origin": "DICTIONARY",
+      "sourceName": "Bulk Test",
+      "sourceRef": null,
+      "reasons": [
+        "synthetic/test fixture headword — not production curriculum content"
+      ]
+    },
+    {
+      "status": "NEEDS_REVIEW",
+      "grade": "GRADE_4",
+      "wordId": "cmw30b45a0003htb06gbppygz",
+      "text": "dicttest1793815868154",
+      "meaning": "A large wild feline in nature.",
+      "category": "Family and People",
+      "origin": "DICTIONARY",
+      "sourceName": "Test English-English Dictionary",
+      "sourceRef": null,
+      "reasons": [
+        "synthetic/test fixture headword — not production curriculum content",
+        "theme looks like \"nature\" but category is \"Family and People\""
+      ]
+    },
+    {
+      "status": "NEEDS_REVIEW",
+      "grade": "GRADE_4",
+      "wordId": "cmw30b45v000bhtb0zx9sqdbh",
+      "text": "dicttest1793816986823",
+      "meaning": "A large wild feline in nature.",
+      "category": "Family and People",
+      "origin": "DICTIONARY",
+      "sourceName": "Test English-English Dictionary",
+      "sourceRef": null,
+      "reasons": [
+        "synthetic/test fixture headword — not production curriculum content",
+        "theme looks like \"nature\" but category is \"Family and People\""
+      ]
+    },
+    {
+      "status": "NEEDS_REVIEW",
+      "grade": "GRADE_4",
+      "wordId": "cmw30b468000jhtb03r29piy6",
+      "text": "dicttest1793817496985",
+      "meaning": "A large wild feline in nature.",
+      "category": "Family and People",
+      "origin": "DICTIONARY",
+      "sourceName": "Test English-English Dictionary",
+      "sourceRef": null,
+      "reasons": [
+        "synthetic/test fixture headword — not production curriculum content",
+        "theme looks like \"nature\" but category is \"Family and People\""
+      ]
+    },
+    {
+      "status": "NEEDS_REVIEW",
+      "grade": "GRADE_4",
+      "wordId": "cmw30b46l000rhtb0fjxl3pug",
+      "text": "dicttest1793817540288",
+      "meaning": "A large wild feline in nature.",
+      "category": "Family and People",
+      "origin": "DICTIONARY",
+      "sourceName": "Test English-English Dictionary",
+      "sourceRef": null,
+      "reasons": [
+        "synthetic/test fixture headword — not production curriculum content",
+        "theme looks like \"nature\" but category is \"Family and People\""
+      ]
+    },
+    {
+      "status": "NEEDS_REVIEW",
+      "grade": "GRADE_4",
+      "wordId": "cmw30b46u000zhtb0sj6a1osw",
+      "text": "dicttest1793817604379",
+      "meaning": "A large wild feline in nature.",
+      "category": "Family and People",
+      "origin": "DICTIONARY",
+      "sourceName": "Test English-English Dictionary",
+      "sourceRef": null,
+      "reasons": [
+        "synthetic/test fixture headword — not production curriculum content",
+        "theme looks like \"nature\" but category is \"Family and People\""
+      ]
+    },
+    {
+      "status": "NEEDS_REVIEW",
+      "grade": "GRADE_4",
+      "wordId": "cmw30b47a0017htb0ttb5gjbt",
+      "text": "dicttest1793818382260",
+      "meaning": "A large wild feline in nature.",
+      "category": "Family and People",
+      "origin": "DICTIONARY",
+      "sourceName": "Test English-English Dictionary",
+      "sourceRef": null,
+      "reasons": [
+        "synthetic/test fixture headword — not production curriculum content",
+        "theme looks like \"nature\" but category is \"Family and People\""
+      ]
+    },
+    {
+      "status": "NEEDS_REVIEW",
+      "grade": "GRADE_4",
+      "wordId": "cmw30b47k001fhtb04pwhpww0",
+      "text": "dicttest1793821081754",
+      "meaning": "A large wild feline in nature.",
+      "category": "Family and People",
+      "origin": "DICTIONARY",
+      "sourceName": "Test English-English Dictionary",
+      "sourceRef": null,
+      "reasons": [
+        "synthetic/test fixture headword — not production curriculum content",
+        "theme looks like \"nature\" but category is \"Family and People\""
+      ]
+    },
+    {
+      "status": "NEEDS_REVIEW",
+      "grade": "GRADE_4",
+      "wordId": "cmw30b47v001nhtb07vg0rg05",
+      "text": "dicttest1793821281630",
+      "meaning": "A large wild feline in nature.",
+      "category": "Family and People",
+      "origin": "DICTIONARY",
+      "sourceName": "Test English-English Dictionary",
+      "sourceRef": null,
+      "reasons": [
+        "synthetic/test fixture headword — not production curriculum content",
+        "theme looks like \"nature\" but category is \"Family and People\""
+      ]
+    },
+    {
+      "status": "NEEDS_REVIEW",
+      "grade": "GRADE_4",
+      "wordId": "cmw30b484001vhtb0vvv25d2z",
+      "text": "dicttest1793821651690",
+      "meaning": "A large wild feline in nature.",
+      "category": "Family and People",
+      "origin": "DICTIONARY",
+      "sourceName": "Test English-English Dictionary",
+      "sourceRef": null,
+      "reasons": [
+        "synthetic/test fixture headword — not production curriculum content",
+        "theme looks like \"nature\" but category is \"Family and People\""
+      ]
+    },
+    {
+      "status": "NEEDS_REVIEW",
+      "grade": "GRADE_4",
+      "wordId": "cmw30b48e0023htb073pnfs2z",
+      "text": "dicttest1793821734795",
+      "meaning": "A large wild feline in nature.",
+      "category": "Family and People",
+      "origin": "DICTIONARY",
+      "sourceName": "Test English-English Dictionary",
+      "sourceRef": null,
+      "reasons": [
+        "synthetic/test fixture headword — not production curriculum content",
+        "theme looks like \"nature\" but category is \"Family and People\""
+      ]
+    },
+    {
+      "status": "NEEDS_REVIEW",
+      "grade": "GRADE_4",
+      "wordId": "cmw30b48o002bhtb0r2e5ytj2",
+      "text": "wmbulk1793817496488",
+      "meaning": "A small friendly animal children know.",
+      "category": "Family and People",
+      "origin": "DICTIONARY",
+      "sourceName": "Bulk Test Dict",
+      "sourceRef": null,
+      "reasons": [
+        "synthetic/test fixture headword — not production curriculum content",
+        "theme looks like \"animals\" but category is \"Family and People\""
+      ]
+    },
+    {
+      "status": "NEEDS_REVIEW",
+      "grade": "GRADE_4",
+      "wordId": "cmw30b48s002fhtb03jxg0bw9",
+      "text": "wmbulk1793817539819",
+      "meaning": "A small friendly animal children know.",
+      "category": "Family and People",
+      "origin": "DICTIONARY",
+      "sourceName": "Bulk Test Dict",
+      "sourceRef": null,
+      "reasons": [
+        "synthetic/test fixture headword — not production curriculum content",
+        "theme looks like \"animals\" but category is \"Family and People\""
+      ]
+    },
+    {
+      "status": "NEEDS_REVIEW",
+      "grade": "GRADE_4",
+      "wordId": "cmw30b48x002jhtb0lwurf6n7",
+      "text": "wmbulk1793817603817",
+      "meaning": "A small friendly animal children know.",
+      "category": "Family and People",
+      "origin": "DICTIONARY",
+      "sourceName": "Bulk Test Dict",
+      "sourceRef": null,
+      "reasons": [
+        "synthetic/test fixture headword — not production curriculum content",
+        "theme looks like \"animals\" but category is \"Family and People\""
+      ]
+    },
+    {
+      "status": "NEEDS_REVIEW",
+      "grade": "GRADE_4",
+      "wordId": "cmw30b492002nhtb01gch5kym",
+      "text": "wmbulk1793818381738",
+      "meaning": "A small friendly animal children know.",
+      "category": "Family and People",
+      "origin": "DICTIONARY",
+      "sourceName": "Bulk Test Dict",
+      "sourceRef": null,
+      "reasons": [
+        "synthetic/test fixture headword — not production curriculum content",
+        "theme looks like \"animals\" but category is \"Family and People\""
+      ]
+    },
+    {
+      "status": "NEEDS_REVIEW",
+      "grade": "GRADE_4",
+      "wordId": "cmw30b497002rhtb0fla0xv39",
+      "text": "wmbulk1793818420219",
+      "meaning": "A small friendly animal children know.",
+      "category": "Family and People",
+      "origin": "DICTIONARY",
+      "sourceName": "Bulk Test Dict",
+      "sourceRef": null,
+      "reasons": [
+        "synthetic/test fixture headword — not production curriculum content",
+        "theme looks like \"animals\" but category is \"Family and People\""
+      ]
+    }
+  ],
+  "totals": {
+    "activeWords": 113,
+    "curriculumLikeWords": 49,
+    "syntheticOrTestWords": 64,
+    "needsReview": 85,
+    "sameGradeDupes": 2,
+    "crossGradeDupes": 17,
+    "duplicateSenseDefs": 0
+  }
+}

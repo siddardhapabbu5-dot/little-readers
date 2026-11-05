@@ -1,0 +1,373 @@
+{
+  "totals": {
+    "activeWords": 113,
+    "curriculumLikeWords": 49,
+    "syntheticOrTestWords": 64,
+    "needsReview": 85,
+    "sameGradeDupes": 2,
+    "crossGradeDupes": 17,
+    "duplicateSenseDefs": 0
+  },
+  "grades": [
+    {
+      "code": "GRADE_1",
+      "active": 57,
+      "curriculum": 38,
+      "synthetic": 19
+    },
+    {
+      "code": "GRADE_2",
+      "active": 11,
+      "curriculum": 11,
+      "synthetic": 0
+    },
+    {
+      "code": "GRADE_3",
+      "active": 30,
+      "curriculum": 0,
+      "synthetic": 30
+    },
+    {
+      "code": "GRADE_4",
+      "active": 15,
+      "curriculum": 0,
+      "synthetic": 15
+    }
+  ],
+  "topReasons": [
+    [
+      "synthetic/test fixture headword — not production curriculum content",
+      64
+    ],
+    [
+      "theme looks like \"nature\" but category is \"Family and People\"",
+      27
+    ],
+    [
+      "theme looks like \"animals\" but category is \"Family and People\"",
+      17
+    ],
+    [
+      "theme looks like \"food\" but category is \"Family and People\"",
+      9
+    ],
+    [
+      "theme looks like \"colors\" but category is \"Family and People\"",
+      2
+    ]
+  ],
+  "sampleNonSynthetic": [
+    {
+      "status": "NEEDS_REVIEW",
+      "grade": "GRADE_1",
+      "wordId": "cmw30afaj0081htt0j02npz0s",
+      "text": "apple",
+      "meaning": "a sweet fruit",
+      "category": "Family and People",
+      "origin": "DICTIONARY",
+      "sourceName": "Little Readers Kids Starter",
+      "sourceRef": null,
+      "reasons": [
+        "theme looks like \"food\" but category is \"Family and People\""
+      ]
+    },
+    {
+      "status": "NEEDS_REVIEW",
+      "grade": "GRADE_1",
+      "wordId": "cmw30af9t007vhtt0kn43nbtg",
+      "text": "bird",
+      "meaning": "an animal that can fly",
+      "category": "Family and People",
+      "origin": "DICTIONARY",
+      "sourceName": "Little Readers Kids Starter",
+      "sourceRef": null,
+      "reasons": [
+        "theme looks like \"animals\" but category is \"Family and People\""
+      ]
+    },
+    {
+      "status": "NEEDS_REVIEW",
+      "grade": "GRADE_1",
+      "wordId": "cmw30afc3008fhtt07mofq7vq",
+      "text": "blue",
+      "meaning": "the color of the sky",
+      "category": "Family and People",
+      "origin": "DICTIONARY",
+      "sourceName": "Little Readers Kids Starter",
+      "sourceRef": null,
+      "reasons": [
+        "theme looks like \"colors\" but category is \"Family and People\""
+      ]
+    },
+    {
+      "status": "NEEDS_REVIEW",
+      "grade": "GRADE_1",
+      "wordId": "cmw30afbg0089htt06r8zk750",
+      "text": "bread",
+      "meaning": "food made from flour",
+      "category": "Family and People",
+      "origin": "DICTIONARY",
+      "sourceName": "Little Readers Kids Starter",
+      "sourceRef": null,
+      "reasons": [
+        "theme looks like \"food\" but category is \"Family and People\""
+      ]
+    },
+    {
+      "status": "NEEDS_REVIEW",
+      "grade": "GRADE_1",
+      "wordId": "cmw30af9b007rhtt0r3ot6p5s",
+      "text": "cat",
+      "meaning": "a small furry pet",
+      "category": "Family and People",
+      "origin": "DICTIONARY",
+      "sourceName": "Little Readers Kids Starter",
+      "sourceRef": null,
+      "reasons": [
+        "theme looks like \"animals\" but category is \"Family and People\""
+      ]
+    },
+    {
+      "status": "NEEDS_REVIEW",
+      "grade": "GRADE_1",
+      "wordId": "cmw30af9j007thtt0b61yzb8j",
+      "text": "dog",
+      "meaning": "a friendly animal pet",
+      "category": "Family and People",
+      "origin": "DICTIONARY",
+      "sourceName": "Little Readers Kids Starter",
+      "sourceRef": null,
+      "reasons": [
+        "theme looks like \"animals\" but category is \"Family and People\""
+      ]
+    },
+    {
+      "status": "NEEDS_REVIEW",
+      "grade": "GRADE_1",
+      "wordId": "cmw30afhe009vhtt0lghbjp9d",
+      "text": "eat",
+      "meaning": "to take food into your mouth",
+      "category": "Family and People",
+      "origin": "DICTIONARY",
+      "sourceName": "Little Readers Kids Starter",
+      "sourceRef": null,
+      "reasons": [
+        "theme looks like \"food\" but category is \"Family and People\""
+      ]
+    },
+    {
+      "status": "NEEDS_REVIEW",
+      "grade": "GRADE_1",
+      "wordId": "cmw30afa3007xhtt0i6oroi36",
+      "text": "fish",
+      "meaning": "an animal that lives in water",
+      "category": "Family and People",
+      "origin": "DICTIONARY",
+      "sourceName": "Little Readers Kids Starter",
+      "sourceRef": null,
+      "reasons": [
+        "theme looks like \"animals\" but category is \"Family and People\""
+      ]
+    },
+    {
+      "status": "NEEDS_REVIEW",
+      "grade": "GRADE_1",
+      "wordId": "cmw30afcb008hhtt0xo2slogl",
+      "text": "green",
+      "meaning": "the color of grass",
+      "category": "Family and People",
+      "origin": "DICTIONARY",
+      "sourceName": "Little Readers Kids Starter",
+      "sourceRef": null,
+      "reasons": [
+        "theme looks like \"colors\" but category is \"Family and People\""
+      ]
+    },
+    {
+      "status": "NEEDS_REVIEW",
+      "grade": "GRADE_1",
+      "wordId": "cmw30afaa007zhtt00674m48t",
+      "text": "lion",
+      "meaning": "a big wild cat",
+      "category": "Family and People",
+      "origin": "DICTIONARY",
+      "sourceName": "Little Readers Kids Starter",
+      "sourceRef": null,
+      "reasons": [
+        "theme looks like \"animals\" but category is \"Family and People\""
+      ]
+    },
+    {
+      "status": "NEEDS_REVIEW",
+      "grade": "GRADE_1",
+      "wordId": "cmw30afb10085htt011u6rgyo",
+      "text": "mango",
+      "meaning": "a sweet tropical fruit",
+      "category": "Family and People",
+      "origin": "DICTIONARY",
+      "sourceName": "Little Readers Kids Starter",
+      "sourceRef": null,
+      "reasons": [
+        "theme looks like \"food\" but category is \"Family and People\""
+      ]
+    },
+    {
+      "status": "NEEDS_REVIEW",
+      "grade": "GRADE_1",
+      "wordId": "cmw30afb90087htt0hthqz5dn",
+      "text": "milk",
+      "meaning": "a white drink from cows",
+      "category": "Family and People",
+      "origin": "DICTIONARY",
+      "sourceName": "Little Readers Kids Starter",
+      "sourceRef": null,
+      "reasons": [
+        "theme looks like \"food\" but category is \"Family and People\""
+      ]
+    },
+    {
+      "status": "NEEDS_REVIEW",
+      "grade": "GRADE_1",
+      "wordId": "cmw30affz009jhtt019s938b7",
+      "text": "moon",
+      "meaning": "the light in the night sky",
+      "category": "Family and People",
+      "origin": "DICTIONARY",
+      "sourceName": "Little Readers Kids Starter",
+      "sourceRef": null,
+      "reasons": [
+        "theme looks like \"nature\" but category is \"Family and People\""
+      ]
+    },
+    {
+      "status": "NEEDS_REVIEW",
+      "grade": "GRADE_1",
+      "wordId": "cmw30afe3008zhtt0nu97sct5",
+      "text": "mouth",
+      "meaning": "the body part you eat and talk with",
+      "category": "Family and People",
+      "origin": "DICTIONARY",
+      "sourceName": "Little Readers Kids Starter",
+      "sourceRef": null,
+      "reasons": [
+        "theme looks like \"food\" but category is \"Family and People\""
+      ]
+    },
+    {
+      "status": "NEEDS_REVIEW",
+      "grade": "GRADE_1",
+      "wordId": "cmw30afg9009lhtt0kd461ibm",
+      "text": "rain",
+      "meaning": "water that falls from clouds",
+      "category": "Family and People",
+      "origin": "DICTIONARY",
+      "sourceName": "Little Readers Kids Starter",
+      "sourceRef": null,
+      "reasons": [
+        "theme looks like \"nature\" but category is \"Family and People\""
+      ]
+    },
+    {
+      "status": "NEEDS_REVIEW",
+      "grade": "GRADE_1",
+      "wordId": "cmw30afbv008dhtt0cnc52ce7",
+      "text": "red",
+      "meaning": "the color of an apple",
+      "category": "Family and People",
+      "origin": "DICTIONARY",
+      "sourceName": "Little Readers Kids Starter",
+      "sourceRef": null,
+      "reasons": [
+        "theme looks like \"food\" but category is \"Family and People\""
+      ]
+    },
+    {
+      "status": "NEEDS_REVIEW",
+      "grade": "GRADE_1",
+      "wordId": "cmw30affs009hhtt06jdawfj5",
+      "text": "sun",
+      "meaning": "the bright light in the day sky",
+      "category": "Family and People",
+      "origin": "DICTIONARY",
+      "sourceName": "Little Readers Kids Starter",
+      "sourceRef": null,
+      "reasons": [
+        "theme looks like \"nature\" but category is \"Family and People\""
+      ]
+    },
+    {
+      "status": "NEEDS_REVIEW",
+      "grade": "GRADE_1",
+      "wordId": "cmw30afgf009nhtt0yrho6j3q",
+      "text": "tree",
+      "meaning": "a tall plant with a trunk",
+      "category": "Family and People",
+      "origin": "DICTIONARY",
+      "sourceName": "Little Readers Kids Starter",
+      "sourceRef": null,
+      "reasons": [
+        "theme looks like \"nature\" but category is \"Family and People\""
+      ]
+    },
+    {
+      "status": "NEEDS_REVIEW",
+      "grade": "GRADE_2",
+      "wordId": "cmw30afas0083htt0156kj1u6",
+      "text": "banana",
+      "meaning": "a long yellow fruit",
+      "category": "Family and People",
+      "origin": "DICTIONARY",
+      "sourceName": "Little Readers Kids Starter",
+      "sourceRef": null,
+      "reasons": [
+        "theme looks like \"food\" but category is \"Family and People\""
+      ]
+    },
+    {
+      "status": "NEEDS_REVIEW",
+      "grade": "GRADE_2",
+      "wordId": "cmw30afgn009phtt0d8rcdsta",
+      "text": "flower",
+      "meaning": "a colorful part of a plant",
+      "category": "Family and People",
+      "origin": "DICTIONARY",
+      "sourceName": "Little Readers Kids Starter",
+      "sourceRef": null,
+      "reasons": [
+        "theme looks like \"nature\" but category is \"Family and People\""
+      ]
+    }
+  ],
+  "syntheticCount": 64,
+  "sameGradeDupes": [
+    {
+      "grade": "GRADE_3",
+      "headword": "dicttest1793849940146",
+      "count": 2,
+      "wordIds": [
+        "cmw30afj000a9htt0jn0eeicw",
+        "cmw2zxsec002lhtg0mpfztd8q"
+      ],
+      "categories": [
+        "Family and People",
+        "Nature and Environment"
+      ]
+    },
+    {
+      "grade": "GRADE_3",
+      "headword": "dicttest1793850857545",
+      "count": 2,
+      "wordIds": [
+        "cmw30hg9l005thtcwmzuum2en",
+        "cmw30i40r000dhthgl92du0z7"
+      ],
+      "categories": [
+        "Nature and Environment",
+        "Family and People"
+      ]
+    }
+  ],
+  "crossGradeReal": [],
+  "crossGradeSyntheticCount": 17,
+  "dupSenseDefs": 0
+}

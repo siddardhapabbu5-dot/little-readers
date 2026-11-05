@@ -19,10 +19,13 @@ import {
   updateImportPreview,
 } from "./vocab-import.service.js";
 import {
+  clearAllAdminVocabularyWords,
   createAdminWord,
   deactivateAdminWord,
   deleteAdminWord,
+  exportAdminWordsCsv,
   getAdminWord,
+  importVocabularySheet,
   reclassifyAdminWord,
   searchAdminWords,
   updateAdminWord,
@@ -109,6 +112,101 @@ vocabImportRouter.get("/words", async (req, res, next) => {
       assignmentStatus,
       take: req.query.take != null ? Number(req.query.take) : 100,
       skip: req.query.skip != null ? Number(req.query.skip) : 0,
+    });
+    res.status(200).json({ data });
+  } catch (error) {
+    next(error);
+  }
+});
+
+const clearWordsSchema = z.object({
+  confirm: z.literal("DELETE_ALL_WORDS"),
+});
+
+/** Wipe published VocabularyWord rows so a new dictionary can replace them. */
+vocabImportRouter.post("/words/clear-all", async (req, res, next) => {
+  try {
+    const parsed = clearWordsSchema.safeParse(req.body);
+    if (!parsed.success) {
+      throw new AppError(
+        'Send { "confirm": "DELETE_ALL_WORDS" } to clear vocabulary',
+        400
+      );
+    }
+    const data = await clearAllAdminVocabularyWords();
+    res.status(200).json({ data });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * Download words as CSV.
+ * - Single ABC/Alphabet category → A–Z sheet (Capital/Small/Symbol/Word/Example) with live emoji
+ * - Otherwise grade/level sheet (emoji column uses displayable emoji + UTF-8 BOM for Excel)
+ */
+vocabImportRouter.get("/words/export.csv", async (req, res, next) => {
+  try {
+    const bool = (v: unknown) => {
+      if (v === "true" || v === "1") return true;
+      if (v === "false" || v === "0") return false;
+      return undefined;
+    };
+    const formatRaw =
+      typeof req.query.format === "string" ? req.query.format : "auto";
+    const format =
+      formatRaw === "alphabet" || formatRaw === "grade_level"
+        ? formatRaw
+        : "auto";
+    const { csv, count, filename } = await exportAdminWordsCsv({
+      gradeId:
+        typeof req.query.gradeId === "string" ? req.query.gradeId : undefined,
+      levelId:
+        typeof req.query.levelId === "string" ? req.query.levelId : undefined,
+      groupId:
+        typeof req.query.groupId === "string" ? req.query.groupId : undefined,
+      categoryId:
+        typeof req.query.categoryId === "string"
+          ? req.query.categoryId
+          : undefined,
+      isActive: bool(req.query.isActive) ?? true,
+      format,
+    });
+    res.setHeader("Content-Type", "text/csv; charset=utf-8");
+    res.setHeader(
+      "Content-Disposition",
+      `attachment; filename="${filename || `little-readers-words-${count}.csv`}"`
+    );
+    res.status(200).send(csv);
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * Upload word sheet:
+ * - A–Z alphabet XLSX/CSV (Capital Letter, Small Letter, Symbol, Word, Example Sentence)
+ *   → requires categoryId (selected category in Admin)
+ * - Grade/level/category CSV template
+ */
+vocabImportRouter.post("/words/import-sheet", (req, res, next) => {
+  const ct = String(req.headers["content-type"] ?? "");
+  if (ct.includes("multipart/form-data")) {
+    return upload.single("file")(req, res, next);
+  }
+  return next();
+}, async (req, res, next) => {
+  try {
+    const categoryId =
+      (typeof req.body?.categoryId === "string" && req.body.categoryId) ||
+      (typeof req.query.categoryId === "string" ? req.query.categoryId : "") ||
+      undefined;
+
+    const data = await importVocabularySheet({
+      buffer: req.file?.buffer,
+      filename: req.file?.originalname,
+      csvText: typeof req.body?.csv === "string" ? req.body.csv : undefined,
+      categoryId,
     });
     res.status(200).json({ data });
   } catch (error) {

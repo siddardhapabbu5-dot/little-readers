@@ -19,6 +19,7 @@
     "db:generate": "npm run db:generate --workspace=@little-readers/server",
     "db:migrate": "npm run db:migrate --workspace=@little-readers/server",
     "db:seed": "npm run db:seed --workspace=@little-readers/server",
+    "db:prepare-client": "npm run db:prepare-client --workspace=@little-readers/server",
     "db:studio": "npm run db:studio --workspace=@little-readers/server",
     "test": "npm run test --workspace=@little-readers/api && npm run test --workspace=@little-readers/server",
     "test:api": "npm run test --workspace=@little-readers/api",
@@ -33,5 +34,8 @@
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
   },
-  "license": "UNLICENSED"
+  "license": "UNLICENSED",
+  "devDependencies": {
+    "typescript": "^5.7.3"
+  }
 }

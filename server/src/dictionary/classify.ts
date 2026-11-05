@@ -107,9 +107,14 @@ function gradeFromDifficulty(score: number): GradeCode {
 function matchCategory(
   input: ClassifyInput,
   categories: CategoryHint[]
-): { category: CategoryHint; confidenceBoost: number; reason: string } {
+): {
+  category: CategoryHint;
+  confidenceBoost: number;
+  reason: string;
+} | null {
+  if (!categories.length) return null;
+
   const hay = `${input.headword} ${input.definition}`.toLowerCase();
-  let best: CategoryHint | null = null;
   let bestHits = 0;
   let bestKey = "";
 
@@ -121,8 +126,15 @@ function matchCategory(
     }
   }
 
+  // Need a real keyword hit — never dump unrelated words into the only category.
+  if (bestHits <= 0 || !bestKey) return null;
+
   const byCode = (codePart: string) =>
-    categories.find((c) => c.code.toUpperCase().includes(codePart) || c.label.toUpperCase().includes(codePart));
+    categories.find(
+      (c) =>
+        c.code.toUpperCase().includes(codePart) ||
+        c.label.toUpperCase().includes(codePart)
+    );
 
   const map: Record<string, () => CategoryHint | undefined> = {
     FAMILY: () => byCode("FAMILY") || byCode("PEOPLE"),
@@ -130,26 +142,21 @@ function matchCategory(
     FRUITS: () => byCode("FRUIT") || byCode("VEGETABLE"),
     COLORS: () => byCode("COLOR") || byCode("COLOUR") || byCode("SHAPE"),
     BODY: () => byCode("BODY"),
-    SCHOOL: () => byCode("SCHOOL") || byCode("CLASS"),
+    SCHOOL: () => byCode("SCHOOL") || byCode("CLASS") || byCode("TEACHER"),
     HOUSEHOLD: () => byCode("HOUSE") || byCode("HOME") || byCode("OBJECT"),
     FOOD: () => byCode("FOOD") || byCode("DRINK"),
     NATURE: () => byCode("NATURE") || byCode("ENVIRON"),
     ACTION: () => byCode("ACTION"),
   };
 
-  best = (bestKey && map[bestKey]?.()) || categories[0] || null;
-  if (!best) {
-    throw new Error("No categories available for classification");
-  }
+  const matched = map[bestKey]?.();
+  // Keyword says "fruit" but there is no Fruits category yet → skip (do not use Family).
+  if (!matched) return null;
 
-  const boost = bestHits > 0 ? Math.min(0.25, bestHits * 0.08) : 0;
   return {
-    category: best,
-    confidenceBoost: boost,
-    reason:
-      bestHits > 0
-        ? `category keywords matched (${bestKey || "general"})`
-        : "no strong category keywords; defaulted to first available category",
+    category: matched,
+    confidenceBoost: Math.min(0.25, bestHits * 0.08),
+    reason: `category keywords matched (${bestKey})`,
   };
 }
 
@@ -182,10 +189,14 @@ export function classifySense(
   for (const gradeCode of grades) {
     const cats = categoriesByGrade[gradeCode] ?? [];
     if (!cats.length) continue;
-    const { category, confidenceBoost, reason } = matchCategory(input, cats);
+    const matched = matchCategory(input, cats);
+    if (!matched) continue;
+    const { category, confidenceBoost, reason } = matched;
     const isPrimary = gradeCode === primaryGrade;
     const confidence = clamp(
-      (isPrimary ? 0.62 : 0.45) + confidenceBoost - Math.abs(difficultyScore - 40) * 0.002,
+      (isPrimary ? 0.62 : 0.45) +
+        confidenceBoost -
+        Math.abs(difficultyScore - 40) * 0.002,
       0.2,
       0.92
     );
@@ -202,7 +213,9 @@ export function classifySense(
         `Signals: length=${input.headword.length}, estimatedSyllables=${syllables}, definitionChars=${input.definition.length}, difficultyScore=${difficultyScore.toFixed(1)}.`,
         `Suggested ${gradeCode}${isPrimary ? " (primary)" : " (secondary near boundary)"}.`,
         reason + ".",
-        input.wordType ? `POS provided: ${input.wordType}.` : "POS not provided in source — not invented.",
+        input.wordType
+          ? `POS provided: ${input.wordType}.`
+          : "POS not provided in source — not invented.",
       ].join(" "),
     });
   }

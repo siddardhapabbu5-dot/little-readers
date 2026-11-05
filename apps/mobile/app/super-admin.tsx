@@ -119,14 +119,6 @@ export default function SuperAdminScreen() {
             )}
           </Card>
 
-          <Card color="#FFF7ED">
-            <Text style={styles.section}>Not on Express yet</Text>
-            <Text style={styles.row}>School registration / licenses</Text>
-            <Text style={styles.row}>Platform audit logs</Text>
-            <Text style={styles.row}>Plan configuration console</Text>
-            <Text style={styles.row}>These remain Nest Phase 3 — not mocked here.</Text>
-          </Card>
-
           <SoftButton label="Open Admin tools" onPress={() => router.push("/admin")} />
           <SoftButton
             label="Dictionary → Grades"

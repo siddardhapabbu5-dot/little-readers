@@ -71,84 +71,111 @@ async function main() {
     });
   }
 
-  const grades = [
-    { code: "GRADE_1", label: "Grade 1", ageMin: 1, ageMax: 3, sortOrder: 1 },
-    { code: "GRADE_2", label: "Grade 2", ageMin: 4, ageMax: 6, sortOrder: 2 },
-    { code: "GRADE_3", label: "Grade 3", ageMin: 7, ageMax: 9, sortOrder: 3 },
-    { code: "GRADE_4", label: "Grade 4", ageMin: 10, ageMax: 12, sortOrder: 4 },
-  ];
-  for (const g of grades) {
-    await prisma.learningGrade.upsert({
-      where: { code: g.code },
-      update: g,
-      create: g,
-    });
+  // Default grades/levels/categories for local tests. Client DBs: SEED_CURRICULUM=0
+  // so `db:seed` does not recreate GRADE_2–4 after a wipe.
+  const seedCurriculum = process.env.SEED_CURRICULUM !== "0";
+
+  if (seedCurriculum) {
+    const grades = [
+      { code: "GRADE_1", label: "Grade 1", ageMin: 1, ageMax: 3, sortOrder: 1 },
+      { code: "GRADE_2", label: "Grade 2", ageMin: 4, ageMax: 6, sortOrder: 2 },
+      { code: "GRADE_3", label: "Grade 3", ageMin: 7, ageMax: 9, sortOrder: 3 },
+      { code: "GRADE_4", label: "Grade 4", ageMin: 10, ageMax: 12, sortOrder: 4 },
+    ];
+    for (const g of grades) {
+      await prisma.learningGrade.upsert({
+        where: { code: g.code },
+        update: g,
+        create: g,
+      });
+    }
+
+    const gradeByCode = Object.fromEntries(
+      (
+        await prisma.learningGrade.findMany({
+          where: { code: { in: grades.map((g) => g.code) } },
+        })
+      ).map((g) => [g.code, g.id])
+    );
+
+    const levels = [
+      {
+        code: "LEVEL_1",
+        label: "Level 1 – Ages 1–3 (Grade 1)",
+        sortOrder: 0,
+        ageMin: 1,
+        ageMax: 3,
+        kind: "GRADE_BAND" as const,
+        gradeId: gradeByCode.GRADE_1,
+        description:
+          "Grade 1 age band — vocabulary via dictionary approval or category import",
+      },
+      {
+        code: "LEVEL_2",
+        label: "Level 2 – Ages 4–6 (Grade 2)",
+        sortOrder: 1,
+        ageMin: 4,
+        ageMax: 6,
+        kind: "GRADE_BAND" as const,
+        gradeId: gradeByCode.GRADE_2,
+        description: "Grade 2 age band — vocabulary via dictionary approval",
+      },
+      {
+        code: "LEVEL_3",
+        label: "Level 3 – Ages 7–9 (Grade 3)",
+        sortOrder: 2,
+        ageMin: 7,
+        ageMax: 9,
+        kind: "GRADE_BAND" as const,
+        gradeId: gradeByCode.GRADE_3,
+        description: "Grade 3 age band — vocabulary via dictionary approval",
+      },
+      {
+        code: "LEVEL_4",
+        label: "Level 4 – Ages 10–12 (Grade 4)",
+        sortOrder: 3,
+        ageMin: 10,
+        ageMax: 12,
+        kind: "GRADE_BAND" as const,
+        gradeId: gradeByCode.GRADE_4,
+        description: "Grade 4 age band — vocabulary via dictionary approval",
+      },
+      {
+        code: "FOUNDATION",
+        label: "Foundation",
+        sortOrder: 10,
+        ageMin: 3,
+        ageMax: 5,
+      },
+      {
+        code: "ELEMENTARY",
+        label: "Elementary",
+        sortOrder: 11,
+        ageMin: 6,
+        ageMax: 8,
+      },
+      {
+        code: "ADVANCED",
+        label: "Advanced",
+        sortOrder: 12,
+        ageMin: 9,
+        ageMax: 12,
+      },
+    ];
+
+    for (const level of levels) {
+      await prisma.learningLevel.upsert({
+        where: { code: level.code },
+        update: level,
+        create: level,
+      });
+    }
+
+    // Categories/groups for Grades 1–4 — do not seed English vocabulary words.
+    await seedLevel1Vocabulary(prisma, { includeWords: false });
+  } else {
+    console.log("Skipping default grades/levels/categories (SEED_CURRICULUM=0).");
   }
-
-  const gradeByCode = Object.fromEntries(
-    (
-      await prisma.learningGrade.findMany({
-        where: { code: { in: grades.map((g) => g.code) } },
-      })
-    ).map((g) => [g.code, g.id])
-  );
-
-  const levels = [
-    {
-      code: "LEVEL_1",
-      label: "Level 1 – Ages 1–3 (Grade 1)",
-      sortOrder: 0,
-      ageMin: 1,
-      ageMax: 3,
-      kind: "GRADE_BAND" as const,
-      gradeId: gradeByCode.GRADE_1,
-      description: "Grade 1 age band — vocabulary via dictionary approval or category import",
-    },
-    {
-      code: "LEVEL_2",
-      label: "Level 2 – Ages 4–6 (Grade 2)",
-      sortOrder: 1,
-      ageMin: 4,
-      ageMax: 6,
-      kind: "GRADE_BAND" as const,
-      gradeId: gradeByCode.GRADE_2,
-      description: "Grade 2 age band — vocabulary via dictionary approval",
-    },
-    {
-      code: "LEVEL_3",
-      label: "Level 3 – Ages 7–9 (Grade 3)",
-      sortOrder: 2,
-      ageMin: 7,
-      ageMax: 9,
-      kind: "GRADE_BAND" as const,
-      gradeId: gradeByCode.GRADE_3,
-      description: "Grade 3 age band — vocabulary via dictionary approval",
-    },
-    {
-      code: "LEVEL_4",
-      label: "Level 4 – Ages 10–12 (Grade 4)",
-      sortOrder: 3,
-      ageMin: 10,
-      ageMax: 12,
-      kind: "GRADE_BAND" as const,
-      gradeId: gradeByCode.GRADE_4,
-      description: "Grade 4 age band — vocabulary via dictionary approval",
-    },
-    { code: "FOUNDATION", label: "Foundation", sortOrder: 10, ageMin: 3, ageMax: 5 },
-    { code: "ELEMENTARY", label: "Elementary", sortOrder: 11, ageMin: 6, ageMax: 8 },
-    { code: "ADVANCED", label: "Advanced", sortOrder: 12, ageMin: 9, ageMax: 12 },
-  ];
-
-  for (const level of levels) {
-    await prisma.learningLevel.upsert({
-      where: { code: level.code },
-      update: level,
-      create: level,
-    });
-  }
-
-  // Categories/groups for Grades 1–4 — do not seed English vocabulary words.
-  await seedLevel1Vocabulary(prisma, { includeWords: false });
 
   const subjects = [
     { code: "ALPHABET", name: "Alphabet Learning" },
@@ -169,6 +196,65 @@ async function main() {
       update: subject,
       create: subject,
     });
+  }
+
+  const permissions = [
+    { code: "lessons.manage", description: "Create and edit lessons" },
+    { code: "users.manage", description: "Manage parent accounts" },
+    { code: "content.publish", description: "Publish learning content" },
+    { code: "subscriptions.view", description: "View subscription reports" },
+    { code: "reports.export", description: "Export analytics reports" },
+  ];
+
+  for (const permission of permissions) {
+    await prisma.permission.upsert({
+      where: { code: permission.code },
+      update: permission,
+      create: permission,
+    });
+  }
+
+  const contentAdminRole = await prisma.adminRole.upsert({
+    where: { name: "Content Admin" },
+    update: { description: "Manages learning content" },
+    create: {
+      name: "Content Admin",
+      description: "Manages learning content",
+    },
+  });
+
+  const manageLessons = await prisma.permission.findUniqueOrThrow({
+    where: { code: "lessons.manage" },
+  });
+  const publishContent = await prisma.permission.findUniqueOrThrow({
+    where: { code: "content.publish" },
+  });
+
+  for (const permissionId of [manageLessons.id, publishContent.id]) {
+    await prisma.rolePermission.upsert({
+      where: {
+        adminRoleId_permissionId: {
+          adminRoleId: contentAdminRole.id,
+          permissionId,
+        },
+      },
+      update: {},
+      create: {
+        adminRoleId: contentAdminRole.id,
+        permissionId,
+      },
+    });
+  }
+
+  // Demo accounts, sample lessons, free yearly seat — local/tests only.
+  // Client / fresh DB: SEED_DEMO=0
+  const seedDemo = process.env.SEED_DEMO !== "0";
+
+  if (!seedDemo) {
+    console.log(
+      "Seed complete (structure only — SEED_DEMO=0, no demo users, sample lessons, or free trials)."
+    );
+    return;
   }
 
   const foundation = await prisma.ageGroup.findUniqueOrThrow({
@@ -290,54 +376,6 @@ async function main() {
     });
   }
 
-  const permissions = [
-    { code: "lessons.manage", description: "Create and edit lessons" },
-    { code: "users.manage", description: "Manage parent accounts" },
-    { code: "content.publish", description: "Publish learning content" },
-    { code: "subscriptions.view", description: "View subscription reports" },
-    { code: "reports.export", description: "Export analytics reports" },
-  ];
-
-  for (const permission of permissions) {
-    await prisma.permission.upsert({
-      where: { code: permission.code },
-      update: permission,
-      create: permission,
-    });
-  }
-
-  const contentAdminRole = await prisma.adminRole.upsert({
-    where: { name: "Content Admin" },
-    update: { description: "Manages learning content" },
-    create: {
-      name: "Content Admin",
-      description: "Manages learning content",
-    },
-  });
-
-  const manageLessons = await prisma.permission.findUniqueOrThrow({
-    where: { code: "lessons.manage" },
-  });
-  const publishContent = await prisma.permission.findUniqueOrThrow({
-    where: { code: "content.publish" },
-  });
-
-  for (const permissionId of [manageLessons.id, publishContent.id]) {
-    await prisma.rolePermission.upsert({
-      where: {
-        adminRoleId_permissionId: {
-          adminRoleId: contentAdminRole.id,
-          permissionId,
-        },
-      },
-      update: {},
-      create: {
-        adminRoleId: contentAdminRole.id,
-        permissionId,
-      },
-    });
-  }
-
   const passwordHash = await bcrypt.hash("ParentDemo1", 12);
   const parent = await prisma.user.upsert({
     where: { email: "parent@littlereaders.test" },
@@ -415,12 +453,14 @@ async function main() {
       name: "Demo Admin",
       passwordHash: adminHash,
       role: UserRole.ADMIN,
+      isActive: true,
     },
     create: {
       name: "Demo Admin",
       email: "admin@littlereaders.test",
       passwordHash: adminHash,
       role: UserRole.ADMIN,
+      isActive: true,
     },
   });
 
@@ -491,6 +531,7 @@ async function main() {
   console.log("Demo admin:       admin@littlereaders.test / AdminDemo1");
   console.log("Demo super admin: superadmin@littlereaders.test / SuperDemo1");
   console.log("Note: TEACHER/STUDENT User roles are deferred (Child profiles = student learning identity).");
+  console.log("Client handoff: run `npm run db:prepare-client --workspace=@little-readers/server` and seed with SEED_DEMO=0.");
 }
 
 main()

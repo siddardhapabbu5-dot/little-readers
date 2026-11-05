@@ -8,16 +8,17 @@ import { clearToken } from "@/lib/auth-storage";
 
 const NAV = [
   { href: "/admin", label: "Dashboard" },
-  { href: "/admin/vocabulary", label: "Vocabulary Management" },
-  { href: "/admin/vocabulary/grades", label: "Manage Grades" },
-  { href: "/admin/vocabulary/levels", label: "Manage Levels" },
-  { href: "/admin/vocabulary/groups", label: "Manage Groups" },
-  { href: "/admin/vocabulary/categories", label: "Manage Categories" },
-  { href: "/admin/vocabulary/dictionary", label: "Dictionary → Grades" },
+  { href: "/admin/vocabulary/grades", label: "Academic Structure" },
+  { href: "/admin/vocabulary", label: "Dictionary & Vocabulary" },
+  { href: "/admin/vocabulary/lessons", label: "Lessons" },
+  { href: "/admin/schools", label: "Students & Progress" },
+  { href: "/admin/vocabulary/dictionary", label: "Dictionary upload" },
   { href: "/admin/vocabulary/words", label: "Manage Words" },
-  { href: "/admin/vocabulary/lessons", label: "Manage Lessons" },
+  { href: "/admin/vocabulary/programme", label: "Six-month programme" },
+  { href: "/admin/vocabulary/categories", label: "Categories" },
+  { href: "/admin/vocabulary/levels", label: "Levels" },
+  { href: "/admin/vocabulary/groups", label: "Groups" },
   { href: "/admin/subscriptions", label: "Subscriptions & Seats" },
-  { href: "/admin/schools", label: "Schools" },
   { href: "/admin/vocabulary/upload", label: "Upload Vocabulary" },
   { href: "/admin/vocabulary/imports", label: "Import History" },
 ];
@@ -39,7 +40,7 @@ export function AdminShell({
         <nav>
           {NAV.map((item) => (
             <Link
-              key={item.href}
+              key={`${item.href}-${item.label}`}
               href={item.href}
               className={
                 pathname === item.href ||

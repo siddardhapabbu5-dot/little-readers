@@ -6,7 +6,28 @@ import { Alert, Button } from "@little-readers/ui";
 import { apiRequest, ApiClientError } from "@/lib/api";
 import { getToken } from "@/lib/auth-storage";
 import { getActiveChild } from "@/lib/child-session";
-import { playCelebrateTone, speakWord } from "@/lib/speech";
+import { playCelebrateTone, prefetchKidVoice, speakWord } from "@/lib/speech";
+
+function displayEmoji(raw?: string | null, fallback = "🔤") {
+  const s = (raw ?? "").trim();
+  if (!s || s === "?" || s === "□" || s === "�") return fallback;
+  let hasEmoji = false;
+  for (const ch of s) {
+    const cp = ch.codePointAt(0)!;
+    if (cp === 0xfe0f || cp === 0x200d) continue;
+    if (cp >= 0xe000 && cp <= 0xfaff) return fallback;
+    if (
+      (cp >= 0x1f300 && cp <= 0x1faff) ||
+      (cp >= 0x1f000 && cp <= 0x1f2ff) ||
+      (cp >= 0x2600 && cp <= 0x27bf) ||
+      (cp >= 0x2300 && cp <= 0x23ff) ||
+      (cp >= 0x2b00 && cp <= 0x2bff)
+    ) {
+      hasEmoji = true;
+    }
+  }
+  return hasEmoji ? s : fallback;
+}
 
 type Round = "LISTEN" | "LETTER" | "SPELL" | "RESULTS";
 
@@ -86,6 +107,10 @@ function PlayInner() {
   const question = session?.questions[qIndex] ?? null;
 
   useEffect(() => {
+    prefetchKidVoice();
+  }, []);
+
+  useEffect(() => {
     const token = getToken();
     const child = getActiveChild();
     if (!token || !child || (!categoryId && !lessonId)) {
@@ -100,12 +125,20 @@ function PlayInner() {
         childId: child.id,
         ...(lessonId
           ? { lessonId, resume: true }
-          : { categoryId, questionCount: 10 }),
+          : { categoryId }),
       }),
     })
       .then((data) => {
-        setSession(data);
-        speakWord(data.questions[0]?.word.text ?? "");
+        const questions = data.questions.map((q) => ({
+          ...q,
+          word: { ...q.word, emoji: displayEmoji(q.word.emoji) },
+          listenOptions: q.listenOptions.map((o) => ({
+            ...o,
+            emoji: displayEmoji(o.emoji),
+          })),
+        }));
+        setSession({ ...data, questions });
+        speakWord(questions[0]?.word.text ?? "", { profile: "kid" });
       })
       .catch((err) => {
         setError(

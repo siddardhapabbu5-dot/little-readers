@@ -12,15 +12,22 @@ import { adminColors, radii, shadow } from "../theme";
 
 type AuthUser = { id: string; name: string; email: string; role: string };
 
-const LINKS: Array<{
+const ACADEMIC: Array<{
   label: string;
   href: string;
   icon: keyof typeof Ionicons.glyphMap;
 }> = [
-  { label: "Content structure", href: "/admin-structure", icon: "layers-outline" },
-  { label: "Vocabulary words", href: "/admin-words", icon: "book-outline" },
-  { label: "Lessons", href: "/admin-lessons", icon: "school-outline" },
-  { label: "Dictionary", href: "/admin-dictionary", icon: "library-outline" },
+  { label: "Students & Progress", href: "/admin-schools", icon: "people-outline" },
+  { label: "Reports", href: "/admin-reports", icon: "bar-chart-outline" },
+];
+
+const OPERATIONS: Array<{
+  label: string;
+  href: string;
+  icon: keyof typeof Ionicons.glyphMap;
+}> = [
+  { label: "Schools", href: "/admin-schools", icon: "business-outline" },
+  { label: "Payments", href: "/admin-payments", icon: "card-outline" },
   { label: "Child seats", href: "/admin-seats", icon: "people-outline" },
   { label: "Subscriptions", href: "/subscription", icon: "diamond-outline" },
   { label: "Devices", href: "/devices", icon: "phone-portrait-outline" },
@@ -42,12 +49,39 @@ export default function AdminSettingsScreen() {
     router.replace("/login");
   }
 
+  function renderLinks(
+    links: Array<{ label: string; href: string; icon: keyof typeof Ionicons.glyphMap }>
+  ) {
+    return links.map((link) => {
+      if (link.href === "/super-admin" && user?.role !== "SUPER_ADMIN") {
+        return null;
+      }
+      return (
+        <Pressable
+          key={`${link.href}-${link.label}`}
+          onPress={() => router.push(link.href as never)}
+          style={({ pressed }) => [
+            styles.row,
+            shadow.soft,
+            { opacity: pressed ? 0.85 : 1 },
+          ]}
+        >
+          <View style={styles.rowIcon}>
+            <Ionicons name={link.icon} size={20} color={adminColors.primary} />
+          </View>
+          <Text style={styles.rowLabel}>{link.label}</Text>
+          <Ionicons name="chevron-forward" size={18} color={adminColors.textSecondary} />
+        </Pressable>
+      );
+    });
+  }
+
   return (
     <AuthGate roles={ROLE_SETS.admin}>
       <SafeAreaView style={styles.safe} edges={["top"]}>
         <View style={styles.header}>
-          <Text style={styles.title}>Settings</Text>
-          <Text style={styles.sub}>Admin tools and account</Text>
+          <Text style={styles.title}>More</Text>
+          <Text style={styles.sub}>Students, operations and account</Text>
         </View>
 
         <ScrollView contentContainerStyle={styles.content}>
@@ -62,35 +96,13 @@ export default function AdminSettingsScreen() {
             </View>
           </View>
 
-          <Text style={styles.section}>Admin tools</Text>
-          {LINKS.map((link) => {
-            if (link.href === "/super-admin" && user?.role !== "SUPER_ADMIN") {
-              return null;
-            }
-            return (
-              <Pressable
-                key={link.href}
-                onPress={() => router.push(link.href as never)}
-                style={({ pressed }) => [
-                  styles.row,
-                  shadow.soft,
-                  { opacity: pressed ? 0.85 : 1 },
-                ]}
-              >
-                <View style={styles.rowIcon}>
-                  <Ionicons name={link.icon} size={20} color={adminColors.primary} />
-                </View>
-                <Text style={styles.rowLabel}>{link.label}</Text>
-                <Ionicons name="chevron-forward" size={18} color={adminColors.textSecondary} />
-              </Pressable>
-            );
-          })}
+          <Text style={styles.section}>Students & reports</Text>
+          {renderLinks(ACADEMIC)}
 
-          <PrimaryButton
-            label="Log out"
-            color="#EF4444"
-            onPress={() => void logout()}
-          />
+          <Text style={styles.section}>Operations</Text>
+          {renderLinks(OPERATIONS)}
+
+          <PrimaryButton label="Log out" color="#EF4444" onPress={() => void logout()} />
           <Text style={styles.note}>
             Logging out does not release registered child devices.
           </Text>

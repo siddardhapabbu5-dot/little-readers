@@ -15,7 +15,12 @@ describe.skipIf(!hasDb)("Four-grade dictionary classification", () => {
   beforeAll(async () => {
     process.env.JWT_SECRET =
       process.env.JWT_SECRET ?? "dev_only_change_me_to_a_long_random_secret_value";
-    await ensureFourGrades();
+    await ensureFourGrades({ createMissing: true });
+    const { seedLevel1Vocabulary } = await import(
+      "../prisma/seeds/level1-vocabulary.js"
+    );
+    await seedLevel1Vocabulary(prisma, { includeWords: false });
+    await prisma.learningCategory.updateMany({ data: { isPublished: true } });
 
     const login = await request(app).post("/api/auth/login").send({
       email: "admin@littlereaders.test",
@@ -26,49 +31,97 @@ describe.skipIf(!hasDb)("Four-grade dictionary classification", () => {
   });
 
   it("classify-v1 uses mixed signals and can suggest multi-grade near boundaries", () => {
-    const fakeCat = (grade: GradeCode, gradeId: string, levelId: string): CategoryHint => ({
-      id: `cat_${grade}`,
-      code: "FAMILY",
-      label: "Family and People",
+    const fake = (
+      grade: GradeCode,
+      gradeId: string,
+      levelId: string,
+      code: string,
+      label: string
+    ): CategoryHint => ({
+      id: `cat_${grade}_${code}`,
+      code,
+      label,
       gradeCode: grade,
       gradeId,
       levelId,
     });
     const byGrade: Record<GradeCode, CategoryHint[]> = {
-      GRADE_1: [fakeCat("GRADE_1", "g1", "l1")],
-      GRADE_2: [fakeCat("GRADE_2", "g2", "l2")],
-      GRADE_3: [fakeCat("GRADE_3", "g3", "l3")],
-      GRADE_4: [fakeCat("GRADE_4", "g4", "l4")],
+      GRADE_1: [
+        fake("GRADE_1", "g1", "l1", "FAMILY_AND_PEOPLE", "Family and People"),
+        fake("GRADE_1", "g1", "l1", "ANIMALS", "Animals"),
+      ],
+      GRADE_2: [
+        fake("GRADE_2", "g2", "l2", "FAMILY_AND_PEOPLE", "Family and People"),
+        fake("GRADE_2", "g2", "l2", "ANIMALS", "Animals"),
+      ],
+      GRADE_3: [
+        fake("GRADE_3", "g3", "l3", "NATURE", "Nature"),
+      ],
+      GRADE_4: [
+        fake("GRADE_4", "g4", "l4", "NATURE", "Nature"),
+      ],
     };
 
     const easy = classifySense(
-      { headword: "cat", definition: "A small pet animal that lives with people." },
+      { headword: "mom", definition: "A mother in the family." },
       byGrade
     );
     expect(easy[0].gradeCode).toBe("GRADE_1");
+    expect(easy[0].categoryId).toContain("FAMILY");
     expect(easy[0].explanation).toContain(CLASSIFICATION_VERSION);
     expect(easy[0].explanation.toLowerCase()).toContain("not a guarantee");
+
+    const animal = classifySense(
+      { headword: "cat", definition: "A small pet animal." },
+      byGrade
+    );
+    expect(animal[0].categoryId).toContain("ANIMALS");
+
+    // No Fruits category → do not dump apple into Family
+    const onlyFamily: Record<GradeCode, CategoryHint[]> = {
+      GRADE_1: [
+        fake("GRADE_1", "g1", "l1", "FAMILY_AND_PEOPLE", "Family and People"),
+      ],
+      GRADE_2: [],
+      GRADE_3: [],
+      GRADE_4: [],
+    };
+    expect(
+      classifySense(
+        { headword: "apple", definition: "A sweet fruit." },
+        onlyFamily
+      )
+    ).toEqual([]);
 
     const hard = classifySense(
       {
         headword: "photosynthesis",
         definition:
-          "A complex biological process by which plants convert light into chemical energy; an abstract scientific concept.",
+          "A complex biological process by which plants convert light into chemical energy; an abstract scientific concept about nature.",
         wordType: "noun",
       },
       byGrade
     );
+    expect(hard.length).toBeGreaterThan(0);
     expect(["GRADE_3", "GRADE_4"]).toContain(hard[0].gradeCode);
   });
 
   it("imports JSON dictionary, classifies, approves and publishes without duplicating headword entries", async () => {
+    const headword = "mom";
     const payload = [
       {
-        headword: `dicttest${Date.now()}`,
+        headword,
         pronunciation: "test",
         senses: [
-          { definition: "A small family pet that children know.", wordType: "noun", synonyms: ["kitty"] },
-          { definition: "A large wild feline in nature.", wordType: "noun" },
+          {
+            definition: `A mother in the family (test ${Date.now()}).`,
+            wordType: "noun",
+            synonyms: ["mama"],
+          },
+          {
+            definition: `A caring parent who helps children (test ${Date.now()}).`,
+            wordType: "noun",
+          },
         ],
       },
     ];
@@ -85,7 +138,7 @@ describe.skipIf(!hasDb)("Four-grade dictionary classification", () => {
     expect(upload.body.data.senseCount).toBeGreaterThanOrEqual(2);
 
     const entryCount = await prisma.dictionaryEntry.count({
-      where: { normalizedHeadword: payload[0].headword.toLowerCase() },
+      where: { normalizedHeadword: headword.toLowerCase() },
     });
     expect(entryCount).toBe(1);
 
@@ -96,12 +149,15 @@ describe.skipIf(!hasDb)("Four-grade dictionary classification", () => {
     expect(classified.body.data.status).toBe("CLASSIFIED");
 
     const pending = await request(app)
-      .get("/api/admin/dictionary/assignments?status=PENDING&take=20")
+      .get("/api/admin/dictionary/assignments?status=PENDING&take=50")
       .set("Authorization", `Bearer ${adminToken}`);
     expect(pending.status).toBe(200);
-    const mine = (pending.body.data as Array<{ id: string; sense: { entry: { headword: string } } }>).filter(
-      (a) => a.sense.entry.headword === payload[0].headword
-    );
+    const mine = (
+      pending.body.data as Array<{
+        id: string;
+        sense: { entry: { headword: string } };
+      }>
+    ).filter((a) => a.sense.entry.headword === headword);
     expect(mine.length).toBeGreaterThan(0);
 
     const first = mine[0];

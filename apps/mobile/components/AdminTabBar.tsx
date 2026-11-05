@@ -5,7 +5,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { dash } from "./admin/dashboardTheme";
 
-type TabKey = "dashboard" | "schools" | "payments" | "reports" | "settings";
+type TabKey = "dashboard" | "structure" | "vocabulary" | "lessons" | "more";
 
 const TABS: Array<{
   key: TabKey;
@@ -15,18 +15,57 @@ const TABS: Array<{
   iconActive: keyof typeof Ionicons.glyphMap;
 }> = [
   { key: "dashboard", label: "Dashboard", href: "/admin", icon: "home-outline", iconActive: "home" },
-  { key: "schools", label: "Schools", href: "/admin-schools", icon: "business-outline", iconActive: "business" },
-  { key: "payments", label: "Payments", href: "/admin-payments", icon: "card-outline", iconActive: "card" },
-  { key: "reports", label: "Reports", href: "/admin-reports", icon: "bar-chart-outline", iconActive: "bar-chart" },
-  { key: "settings", label: "Settings", href: "/admin-settings", icon: "settings-outline", iconActive: "settings" },
+  {
+    key: "structure",
+    label: "Structure",
+    href: "/admin-structure",
+    icon: "layers-outline",
+    iconActive: "layers",
+  },
+  {
+    key: "vocabulary",
+    label: "Vocabulary",
+    href: "/admin-vocabulary",
+    icon: "book-outline",
+    iconActive: "book",
+  },
+  {
+    key: "lessons",
+    label: "Lessons",
+    href: "/admin-lessons",
+    icon: "school-outline",
+    iconActive: "school",
+  },
+  {
+    key: "more",
+    label: "More",
+    href: "/admin-settings",
+    icon: "menu-outline",
+    iconActive: "menu",
+  },
 ];
 
 function activeKey(pathname: string | null): TabKey {
   const path = pathname ?? "";
-  if (path.includes("admin-schools")) return "schools";
-  if (path.includes("admin-payments")) return "payments";
-  if (path.includes("admin-reports")) return "reports";
-  if (path.includes("admin-settings")) return "settings";
+  if (path.includes("admin-structure")) return "structure";
+  if (
+    path.includes("admin-vocabulary") ||
+    path.includes("admin-dictionary") ||
+    path.includes("admin-words") ||
+    path.includes("admin-programme")
+  ) {
+    return "vocabulary";
+  }
+  if (path.includes("admin-lessons")) return "lessons";
+  if (
+    path.includes("admin-settings") ||
+    path.includes("admin-schools") ||
+    path.includes("admin-payments") ||
+    path.includes("admin-reports") ||
+    path.includes("admin-seats")
+  ) {
+    return "more";
+  }
   return "dashboard";
 }
 

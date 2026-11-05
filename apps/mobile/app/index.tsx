@@ -3,7 +3,13 @@ import { ActivityIndicator, View } from "react-native";
 import { Redirect } from "expo-router";
 import { apiRequest, ApiError } from "../services/api";
 import { routeForRole } from "../services/auth-errors";
-import { clearSession, getToken, getUser, saveUser } from "../services/secure";
+import {
+  clearSession,
+  ensureClientFreshStart,
+  getToken,
+  getUser,
+  saveUser,
+} from "../services/secure";
 import { colors } from "../theme";
 
 type AuthUser = { id: string; name: string; email: string; role: string };
@@ -14,6 +20,7 @@ export default function Index() {
 
   useEffect(() => {
     void (async () => {
+      await ensureClientFreshStart();
       const token = await getToken();
       const cached = await getUser<AuthUser>();
       if (!token || !cached) {

@@ -1,6 +1,7 @@
 import type { LearningLevelKind } from "@prisma/client";
 import { AppError } from "../lib/errors.js";
 import { prisma } from "../lib/prisma.js";
+import { resolveStarterPack } from "./category-starter-packs.js";
 
 const CODE_RE = /^[A-Z0-9_]{1,40}$/;
 
@@ -29,7 +30,7 @@ function assertAgeRange(ageMin: number, ageMax: number) {
 export async function listGradesAdmin(includeInactive = true) {
   return prisma.learningGrade.findMany({
     where: includeInactive ? undefined : { isActive: true },
-    orderBy: { sortOrder: "asc" },
+    orderBy: [{ sortOrder: "asc" }, { code: "asc" }],
     include: {
       _count: { select: { levels: true, assignments: true } },
     },
@@ -50,6 +51,14 @@ export async function createGrade(input: {
   const label = input.label.trim();
   if (!label) throw new AppError("label is required", 400);
 
+  const fromCode = Number((code.match(/(\d+)/) ?? [])[1]);
+  const sortOrder =
+    input.sortOrder ??
+    (Number.isFinite(fromCode) && fromCode > 0
+      ? fromCode
+      : ((await prisma.learningGrade.aggregate({ _max: { sortOrder: true } }))
+          ._max.sortOrder ?? 0) + 1);
+
   return prisma.learningGrade.create({
     data: {
       code,
@@ -57,7 +66,7 @@ export async function createGrade(input: {
       ageMin: input.ageMin,
       ageMax: input.ageMax,
       description: input.description?.trim() || null,
-      sortOrder: input.sortOrder ?? 0,
+      sortOrder,
       isActive: input.isActive ?? true,
     },
   });
@@ -101,23 +110,91 @@ export async function deactivateGrade(id: string) {
   return updateGrade(id, { isActive: false });
 }
 
-export async function deleteGrade(id: string) {
+export async function deleteGrade(id: string, opts?: { force?: boolean }) {
+  const force = opts?.force === true;
   const existing = await prisma.learningGrade.findUnique({
     where: { id },
     include: {
-      _count: { select: { levels: true, assignments: true } },
+      levels: {
+        include: {
+          groups: {
+            include: {
+              categories: { select: { id: true, label: true } },
+            },
+          },
+        },
+      },
+      _count: { select: { levels: true, assignments: true, programmes: true } },
     },
   });
   if (!existing) throw new AppError("Grade not found", 404);
-  if (existing._count.levels > 0 || existing._count.assignments > 0) {
+
+  const categoryIds = existing.levels.flatMap((l) =>
+    l.groups.flatMap((g) => g.categories.map((c) => c.id))
+  );
+  const levelIds = existing.levels.map((l) => l.id);
+  const inUse =
+    existing._count.levels > 0 ||
+    existing._count.assignments > 0 ||
+    existing._count.programmes > 0 ||
+    categoryIds.length > 0;
+
+  if (inUse && !force) {
     throw new AppError(
-      "Grade is referenced by levels or dictionary assignments. Deactivate instead.",
+      `Grade has ${existing._count.levels} level(s) and ${categoryIds.length} categor(ies). Use force delete to remove the grade, levels, groups, categories, and words — or Deactivate to hide it.`,
       409,
-      { code: "GRADE_IN_USE", suggest: "deactivate" }
+      {
+        code: "GRADE_IN_USE",
+        suggest: "force",
+        levelCount: existing._count.levels,
+        categoryCount: categoryIds.length,
+      }
     );
   }
+
+  // Cascade: categories (+ words) → groups → levels → grade
+  for (const categoryId of categoryIds) {
+    await deleteCategory(categoryId, { force: true });
+  }
+
+  const groupIds = existing.levels.flatMap((l) => l.groups.map((g) => g.id));
+  if (groupIds.length) {
+    await prisma.lesson.updateMany({
+      where: { groupId: { in: groupIds } },
+      data: { groupId: null },
+    });
+    await prisma.learningGroup.deleteMany({ where: { id: { in: groupIds } } });
+  }
+
+  if (levelIds.length) {
+    await prisma.child.updateMany({
+      where: { levelId: { in: levelIds } },
+      data: { levelId: null },
+    });
+    await prisma.vocabImportBatch.deleteMany({
+      where: { levelId: { in: levelIds } },
+    });
+    await prisma.lesson.updateMany({
+      where: { levelId: { in: levelIds } },
+      data: { levelId: null },
+    });
+    // Programmes cascade from grade; still clear level-linked leftovers
+    await prisma.learningLevel.deleteMany({ where: { id: { in: levelIds } } });
+  }
+
+  await prisma.lesson.updateMany({
+    where: { gradeId: id },
+    data: { gradeId: null },
+  });
   await prisma.learningGrade.delete({ where: { id } });
-  return { id, deleted: true };
+
+  return {
+    id,
+    deleted: true,
+    forced: force,
+    categoriesRemoved: categoryIds.length,
+    levelsRemoved: levelIds.length,
+  };
 }
 
 // ——— Levels ———
@@ -407,6 +484,7 @@ export async function listCategoriesAdmin(filters: {
       _count: {
         select: {
           words: { where: { isActive: true } },
+          lessons: true,
           sessions: true,
           progress: true,
           assignments: true,
@@ -425,6 +503,8 @@ export async function createCategory(input: {
   sortOrder?: number;
   unlockOrder?: number;
   isPublished?: boolean;
+  /** When true, seed curated starter words + emoji for known themes. */
+  fillStarters?: boolean;
 }) {
   const code = assertCode(input.code, "category code");
   const label = input.label.trim();
@@ -433,18 +513,109 @@ export async function createCategory(input: {
   const group = await prisma.learningGroup.findUnique({ where: { id: input.groupId } });
   if (!group) throw new AppError("groupId not found", 400);
 
-  return prisma.learningCategory.create({
+  const pack = input.fillStarters
+    ? resolveStarterPack(code, label)
+    : null;
+
+  const category = await prisma.learningCategory.create({
     data: {
       groupId: input.groupId,
       code,
       label,
       description: input.description?.trim() || null,
-      emoji: input.emoji?.trim() || "📚",
+      emoji: input.emoji?.trim() || pack?.emoji || "📚",
       sortOrder: input.sortOrder ?? 0,
       unlockOrder: input.unlockOrder ?? 0,
       isPublished: input.isPublished ?? true,
     },
   });
+
+  if (input.fillStarters) {
+    // Only fill when a known theme matches — any custom name still creates fine.
+    if (resolveStarterPack(code, label)) {
+      const filled = await fillCategoryStarterWords(category.id);
+      return { ...category, starterFill: filled };
+    }
+    return {
+      ...category,
+      starterFill: {
+        categoryId: category.id,
+        theme: null as string | null,
+        created: 0,
+        skipped: 0,
+        totalInPack: 0,
+        skippedReason: "NO_STARTER_PACK" as const,
+      },
+    };
+  }
+
+  return category;
+}
+
+/**
+ * Add curated starter words (with emoji) for a category theme.
+ * Skips words that already exist in the category. No Google images.
+ */
+export async function fillCategoryStarterWords(categoryId: string) {
+  const category = await prisma.learningCategory.findUnique({
+    where: { id: categoryId },
+  });
+  if (!category) throw new AppError("Category not found", 404);
+
+  const pack = resolveStarterPack(category.code, category.label);
+  if (!pack) {
+    throw new AppError(
+      "No starter pack for this category name. Use a theme like Family, Animals, Fruits, Colors, Body, School, Household, Food, Nature, or Action — or upload a CSV.",
+      400,
+      { code: "NO_STARTER_PACK" }
+    );
+  }
+
+  let created = 0;
+  let skipped = 0;
+  let sortOrder = 0;
+  for (const w of pack.words) {
+    const text = w.text.trim().toLowerCase();
+    const existing = await prisma.vocabularyWord.findUnique({
+      where: {
+        categoryId_text: { categoryId: category.id, text },
+      },
+    });
+    if (existing) {
+      skipped += 1;
+      continue;
+    }
+    await prisma.vocabularyWord.create({
+      data: {
+        categoryId: category.id,
+        text,
+        meaning: w.meaning,
+        emoji: w.emoji,
+        phonetic: w.phonetic ?? null,
+        firstLetter: text.slice(0, 1),
+        difficulty: w.difficulty ?? 1,
+        sortOrder: sortOrder++,
+        isActive: true,
+        origin: "LEGACY",
+      },
+    });
+    created += 1;
+  }
+
+  if (pack.emoji && category.emoji === "📚") {
+    await prisma.learningCategory.update({
+      where: { id: category.id },
+      data: { emoji: pack.emoji },
+    });
+  }
+
+  return {
+    categoryId: category.id,
+    theme: pack.key,
+    created,
+    skipped,
+    totalInPack: pack.words.length,
+  };
 }
 
 export async function updateCategory(
@@ -500,10 +671,12 @@ export async function deactivateCategory(id: string) {
   return updateCategory(id, { isPublished: false });
 }
 
-export async function deleteCategory(id: string) {
+export async function deleteCategory(id: string, opts?: { force?: boolean }) {
+  const force = opts?.force === true;
   const existing = await prisma.learningCategory.findUnique({
     where: { id },
     include: {
+      words: { select: { id: true } },
       _count: {
         select: {
           words: true,
@@ -511,24 +684,67 @@ export async function deleteCategory(id: string) {
           progress: true,
           assignments: true,
           vocabImports: true,
+          lessons: true,
         },
       },
     },
   });
   if (!existing) throw new AppError("Category not found", 404);
+
   const used =
     existing._count.words +
     existing._count.sessions +
     existing._count.progress +
     existing._count.assignments +
-    existing._count.vocabImports;
-  if (used > 0) {
+    existing._count.vocabImports +
+    existing._count.lessons;
+
+  if (used > 0 && !force) {
     throw new AppError(
-      "Category is referenced by vocabulary, sessions, progress, or imports. Unpublish instead.",
+      `Category still has ${existing._count.words} word(s) or other links. Use force delete to remove the category and its words, or Unpublish to hide it.`,
       409,
-      { code: "CATEGORY_IN_USE", suggest: "deactivate" }
+      {
+        code: "CATEGORY_IN_USE",
+        suggest: "force",
+        wordCount: existing._count.words,
+      }
     );
   }
-  await prisma.learningCategory.delete({ where: { id } });
-  return { id, deleted: true };
+
+  const wordIds = existing.words.map((w) => w.id);
+
+  await prisma.$transaction(async (tx) => {
+    if (wordIds.length) {
+      await tx.questionAttempt.deleteMany({ where: { wordId: { in: wordIds } } });
+      await tx.lessonVocabItem.deleteMany({
+        where: { vocabularyWordId: { in: wordIds } },
+      });
+      await tx.vocabProgrammeItem.deleteMany({
+        where: { vocabularyWordId: { in: wordIds } },
+      });
+      await tx.vocabularyGradeAssignment.updateMany({
+        where: { publishedWordId: { in: wordIds } },
+        data: { publishedWordId: null },
+      });
+      await tx.vocabularyWord.deleteMany({ where: { categoryId: id } });
+    }
+
+    await tx.childCategoryProgress.deleteMany({ where: { categoryId: id } });
+    await tx.learningSession.deleteMany({ where: { categoryId: id } });
+    await tx.vocabularyGradeAssignment.deleteMany({ where: { categoryId: id } });
+    await tx.vocabImportBatch.deleteMany({ where: { categoryId: id } });
+    await tx.lesson.updateMany({
+      where: { learningCategoryId: id },
+      data: { learningCategoryId: null },
+    });
+
+    await tx.learningCategory.delete({ where: { id } });
+  });
+
+  return {
+    id,
+    deleted: true,
+    forced: force,
+    wordsRemoved: wordIds.length,
+  };
 }

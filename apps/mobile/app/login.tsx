@@ -127,6 +127,40 @@ export default function LoginScreen() {
               <View style={styles.ruleLine} />
             </View>
 
+            {__DEV__ ? (
+              <View style={styles.devRow} accessibilityLabel="Demo quick login">
+                <Text style={styles.devLabel}>Demo (tap to fill)</Text>
+                <View style={styles.devBtns}>
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel="Fill parent demo login"
+                    onPress={() => {
+                      setEmail("parent@littlereaders.test");
+                      setPassword("ParentDemo1");
+                      setError(null);
+                      setFieldHint(null);
+                    }}
+                    style={styles.devBtn}
+                  >
+                    <Text style={styles.devBtnText}>Parent</Text>
+                  </Pressable>
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel="Fill admin demo login"
+                    onPress={() => {
+                      setEmail("admin@littlereaders.test");
+                      setPassword("AdminDemo1");
+                      setError(null);
+                      setFieldHint(null);
+                    }}
+                    style={styles.devBtn}
+                  >
+                    <Text style={styles.devBtnText}>Admin</Text>
+                  </Pressable>
+                </View>
+              </View>
+            ) : null}
+
             <View style={styles.inputRow}>
               <Text style={styles.inputIcon} accessibilityElementsHidden>
                 ✉
@@ -326,6 +360,34 @@ const styles = StyleSheet.create({
     fontWeight: "800",
     color: colors.primaryDark,
     textAlign: "center",
+  },
+  devRow: {
+    gap: 4,
+    marginBottom: 2,
+  },
+  devLabel: {
+    fontSize: 11,
+    fontWeight: "600",
+    color: "#7C6BB5",
+    textAlign: "center",
+  },
+  devBtns: {
+    flexDirection: "row",
+    justifyContent: "center",
+    gap: 8,
+  },
+  devBtn: {
+    backgroundColor: "#F0EBFF",
+    borderWidth: 1,
+    borderColor: "#D4CBF5",
+    borderRadius: 999,
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+  },
+  devBtnText: {
+    color: colors.primaryDark,
+    fontWeight: "700",
+    fontSize: 12,
   },
   welcomeSub: {
     color: colors.textMuted,

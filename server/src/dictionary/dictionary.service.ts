@@ -29,7 +29,13 @@ const GRADE_LEVEL: Record<GradeCode, string> = {
   GRADE_4: "LEVEL_4",
 };
 
-export async function ensureFourGrades() {
+/**
+ * Sync grade/level rows. By default does NOT create missing grades (so wiping
+ * GRADE_2–4 for a client DB is not undone by Classify / list-grades).
+ * Tests that need the full ladder: ensureFourGrades({ createMissing: true }).
+ */
+export async function ensureFourGrades(opts?: { createMissing?: boolean }) {
+  const createMissing = opts?.createMissing === true;
   const defs = [
     { code: "GRADE_1", label: "Grade 1", ageMin: 1, ageMax: 3, sortOrder: 1, level: "LEVEL_1" },
     { code: "GRADE_2", label: "Grade 2", ageMin: 4, ageMax: 6, sortOrder: 2, level: "LEVEL_2" },
@@ -38,22 +44,31 @@ export async function ensureFourGrades() {
   ] as const;
 
   for (const def of defs) {
-    const grade = await prisma.learningGrade.upsert({
+    const existing = await prisma.learningGrade.findUnique({
       where: { code: def.code },
-      update: {
-        label: def.label,
-        ageMin: def.ageMin,
-        ageMax: def.ageMax,
-        sortOrder: def.sortOrder,
-      },
-      create: {
-        code: def.code,
-        label: def.label,
-        ageMin: def.ageMin,
-        ageMax: def.ageMax,
-        sortOrder: def.sortOrder,
-      },
     });
+    if (!existing && !createMissing) continue;
+
+    const grade = existing
+      ? await prisma.learningGrade.update({
+          where: { id: existing.id },
+          data: {
+            label: def.label,
+            ageMin: def.ageMin,
+            ageMax: def.ageMax,
+            sortOrder: def.sortOrder,
+          },
+        })
+      : await prisma.learningGrade.create({
+          data: {
+            code: def.code,
+            label: def.label,
+            ageMin: def.ageMin,
+            ageMax: def.ageMax,
+            sortOrder: def.sortOrder,
+          },
+        });
+
     await prisma.learningLevel.upsert({
       where: { code: def.level },
       update: {
@@ -77,7 +92,7 @@ export async function ensureFourGrades() {
 }
 
 async function loadCategoryHints(): Promise<Record<GradeCode, CategoryHint[]>> {
-  await ensureFourGrades();
+  // Do not recreate wiped grades here.
   const levels = await prisma.learningLevel.findMany({
     where: { code: { in: Object.values(GRADE_LEVEL) } },
     include: {
@@ -119,7 +134,6 @@ async function loadCategoryHints(): Promise<Record<GradeCode, CategoryHint[]>> {
 }
 
 export async function listGrades() {
-  await ensureFourGrades();
   return prisma.learningGrade.findMany({ orderBy: { sortOrder: "asc" } });
 }
 

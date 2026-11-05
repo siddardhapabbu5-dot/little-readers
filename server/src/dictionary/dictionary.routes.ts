@@ -66,6 +66,59 @@ dictionaryRouter.post("/uploads", upload.single("file"), async (req: Authenticat
   }
 });
 
+const inlineUploadSchema = z.object({
+  sourceName: z.string().min(1).max(180).optional(),
+  licence: z.string().min(1).max(180).optional(),
+  filename: z.string().min(1).max(180).optional(),
+  rows: z
+    .array(
+      z.object({
+        headword: z.string().min(1).max(80),
+        definition: z.string().min(1).max(500),
+        pos: z.string().max(40).optional(),
+        example: z.string().max(300).optional(),
+      })
+    )
+    .min(1)
+    .max(500),
+});
+
+/** Phone-friendly upload: JSON rows (no multipart file required). */
+dictionaryRouter.post(
+  "/uploads/inline",
+  validateBody(inlineUploadSchema),
+  async (req: AuthenticatedRequest, res, next) => {
+    try {
+      const body = req.body as z.infer<typeof inlineUploadSchema>;
+      const escape = (v: string) =>
+        /[",\n]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v;
+      const csv = [
+        "headword,definition,pos,example",
+        ...body.rows.map((r) =>
+          [
+            escape(r.headword),
+            escape(r.definition),
+            escape(r.pos ?? ""),
+            escape(r.example ?? ""),
+          ].join(",")
+        ),
+      ].join("\n");
+      const data = await createDictionaryUpload({
+        adminId: req.user!.id,
+        originalFilename: body.filename ?? "kids-inline.csv",
+        mimeType: "text/csv",
+        buffer: Buffer.from(csv, "utf8"),
+        sourceName: body.sourceName ?? "Little Readers Kids Starter",
+        licence:
+          body.licence ?? "Project-owned sample template for Little Readers",
+      });
+      res.status(201).json({ data });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
 dictionaryRouter.post("/imports/:id/classify", async (req, res, next) => {
   try {
     const data = await classifyDictionaryBatch(String(req.params.id));

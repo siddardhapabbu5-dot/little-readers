@@ -103,13 +103,14 @@ export async function registerParent(
 }
 
 export async function loginUser(input: LoginInput) {
-  const email = input.email.toLowerCase();
+  const email = input.email.trim().toLowerCase();
+  const password = input.password.trim();
   const user = await prisma.user.findUnique({ where: { email } });
   if (!user || !user.isActive) {
     throw new AppError("Invalid email or password", 401);
   }
 
-  const valid = await verifyPassword(input.password, user.passwordHash);
+  const valid = await verifyPassword(password, user.passwordHash);
   if (!valid) {
     throw new AppError("Invalid email or password", 401);
   }

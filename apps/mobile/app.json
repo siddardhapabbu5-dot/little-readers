@@ -2,7 +2,7 @@
   "expo": {
     "name": "Little Readers",
     "slug": "little-readers",
-    "version": "0.1.0",
+    "version": "1.0.0",
     "orientation": "portrait",
     "scheme": "littlereaders",
     "userInterfaceStyle": "light",
@@ -13,7 +13,7 @@
     "android": {
       "package": "com.littlereaders.app"
     },
-    "plugins": ["expo-router", "expo-secure-store"],
+    "plugins": ["expo-router", "expo-secure-store", "expo-document-picker"],
     "extra": {
       "eas": {
         "projectId": "replace-with-eas-project-id"

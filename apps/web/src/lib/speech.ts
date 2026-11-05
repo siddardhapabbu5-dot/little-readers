@@ -1,21 +1,82 @@
-/** Browser TTS for Level 1 pronunciation. Gracefully no-ops if unavailable. */
+/** Browser TTS for Grade 1 — prefers a kid/friendly English voice when available. */
 
-export function speakWord(text: string, options?: { rate?: number; pitch?: number }) {
+export type SpeakProfile = "kid" | "default";
+
+type SpeakOptions = {
+  rate?: number;
+  pitch?: number;
+  profile?: SpeakProfile;
+};
+
+const KID = { rate: 0.78, pitch: 1.35 } as const;
+
+let cachedKidVoice: SpeechSynthesisVoice | null | undefined;
+let hooked = false;
+
+function kidNameScore(name: string, lang: string): number {
+  const n = `${name} ${lang}`.toLowerCase();
+  let score = 0;
+  if (!n.includes("en")) return -1;
+  if (
+    /child|kids|kid|junior|samantha|karen|moira|tessa|fiona|victoria|zira|jenny|aria|salli|ivy|joanna|kimberly|kendra|girl|female/.test(
+      n
+    )
+  ) {
+    score += 5;
+  }
+  if (/google|microsoft|enhanced|premium|neural|natural/.test(n)) score += 2;
+  if (/male|man|guy|david|daniel|mark|alex|fred|ralph/.test(n)) score -= 3;
+  if (/en-us|en_us|en-gb|en_gb/.test(n)) score += 1;
+  return score;
+}
+
+function pickKidVoice(): SpeechSynthesisVoice | undefined {
+  if (typeof window === "undefined" || !window.speechSynthesis) return undefined;
+  const voices = window.speechSynthesis.getVoices();
+  if (!voices.length) return undefined;
+  if (cachedKidVoice !== undefined) return cachedKidVoice ?? undefined;
+  const ranked = voices
+    .map((v) => ({ v, score: kidNameScore(v.name, v.lang) }))
+    .filter((x) => x.score >= 0)
+    .sort((a, b) => b.score - a.score);
+  cachedKidVoice = ranked[0]?.v ?? null;
+  return cachedKidVoice ?? undefined;
+}
+
+function ensureVoices() {
+  if (typeof window === "undefined" || !window.speechSynthesis || hooked) return;
+  hooked = true;
+  window.speechSynthesis.addEventListener("voiceschanged", () => {
+    cachedKidVoice = undefined;
+  });
+}
+
+export function speakWord(text: string, options?: SpeakOptions) {
   if (typeof window === "undefined" || !window.speechSynthesis) return;
+  const value = text.trim();
+  if (!value) return;
 
-  const utterance = new SpeechSynthesisUtterance(text);
+  ensureVoices();
+  const profile = options?.profile ?? "kid";
+  const utterance = new SpeechSynthesisUtterance(value);
   utterance.lang = "en-US";
-  utterance.rate = options?.rate ?? 0.85;
-  utterance.pitch = options?.pitch ?? 1.05;
+  utterance.rate = options?.rate ?? (profile === "kid" ? KID.rate : 0.9);
+  utterance.pitch = options?.pitch ?? (profile === "kid" ? KID.pitch : 1);
 
   const voices = window.speechSynthesis.getVoices();
+  const kid = profile === "kid" ? pickKidVoice() : undefined;
   const english =
-    voices.find((v) => v.lang.startsWith("en") && /female|child|samantha|google/i.test(v.name)) ??
+    voices.find((v) => v.lang.startsWith("en") && /female|samantha|google/i.test(v.name)) ??
     voices.find((v) => v.lang.startsWith("en"));
-  if (english) utterance.voice = english;
+  utterance.voice = kid ?? english ?? null;
 
   window.speechSynthesis.cancel();
   window.speechSynthesis.speak(utterance);
+}
+
+export function prefetchKidVoice() {
+  ensureVoices();
+  pickKidVoice();
 }
 
 export function playCelebrateTone() {

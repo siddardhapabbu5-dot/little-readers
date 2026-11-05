@@ -130,6 +130,12 @@ export default function AdminScreen() {
   const [payments, setPayments] = useState<PaymentRow[]>([]);
   const [subs, setSubs] = useState<SubRow[]>([]);
   const [parents, setParents] = useState<ParentRow[]>([]);
+  const [learning, setLearning] = useState({
+    grades: 0,
+    pending: 0,
+    publishedWords: 0,
+    lessons: 0,
+  });
   const [showAllActions, setShowAllActions] = useState(false);
   const [showAllActivity, setShowAllActivity] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -137,16 +143,39 @@ export default function AdminScreen() {
   const load = useCallback(async () => {
     const u = await getUser<AuthUser>();
     setUser(u);
-    const [schoolRows, paymentRows, subRows, parentRows] = await Promise.all([
+    const [
+      schoolRows,
+      paymentRows,
+      subRows,
+      parentRows,
+      grades,
+      pending,
+      words,
+      lessons,
+    ] = await Promise.all([
       apiRequest<SchoolRow[]>("/admin/schools"),
       apiRequest<PaymentRow[]>("/payments/admin?take=100"),
       apiRequest<SubRow[]>("/subscriptions/admin"),
       apiRequest<ParentRow[]>("/children/admin/parents").catch(() => [] as ParentRow[]),
+      apiRequest<Array<{ id: string }>>("/admin/content/grades").catch(() => []),
+      apiRequest<Array<{ id: string }>>(
+        "/admin/dictionary/assignments?status=PENDING&take=200"
+      ).catch(() => []),
+      apiRequest<{ total: number }>("/admin/vocabulary/words?isActive=true&take=1").catch(
+        () => ({ total: 0 })
+      ),
+      apiRequest<{ total: number }>("/admin/lessons?take=1").catch(() => ({ total: 0 })),
     ]);
     setSchools(schoolRows);
     setPayments(paymentRows);
     setSubs(subRows);
     setParents(parentRows);
+    setLearning({
+      grades: grades.length,
+      pending: pending.length,
+      publishedWords: words.total ?? 0,
+      lessons: lessons.total ?? 0,
+    });
   }, []);
 
   useFocusEffect(
@@ -183,21 +212,17 @@ export default function AdminScreen() {
     "INR";
 
   const stats = useMemo(() => {
-    const totalSchools = schools.length;
     const totalStudents =
       schools.reduce((n, s) => n + (s.studentCount ?? 0), 0) ||
       parents.reduce((n, p) => n + (p.childCount ?? 0), 0);
-    const totalTeachers = schools.reduce((n, s) => n + (s.teacherCount ?? 0), 0);
-    const now = new Date();
-    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-    const monthly = sumSucceeded(payments, monthStart, now);
     return {
-      totalSchools,
+      grades: learning.grades,
+      pending: learning.pending,
+      publishedWords: learning.publishedWords,
+      lessons: learning.lessons,
       totalStudents,
-      totalTeachers,
-      monthlyLabel: formatMoney(monthly, currency),
     };
-  }, [schools, parents, payments, currency]);
+  }, [schools, parents, learning]);
 
   const alertCount = useMemo(
     () => payments.filter((p) => p.status === "PENDING" || p.status === "FAILED").length,
@@ -327,74 +352,58 @@ export default function AdminScreen() {
 
   const quickActions = [
     {
-      title: "Manage Schools",
-      subtitle: "Add, edit and manage schools",
-      href: "/admin-schools",
-      icon: "business" as const,
+      title: "Review vocabulary",
+      subtitle: learning.pending
+        ? `${learning.pending} pending review`
+        : "Approve and publish dictionary words",
+      href: "/admin-words",
+      icon: "checkmark-done" as const,
       tint: dash.purple,
       soft: dash.purpleSoft,
     },
     {
-      title: "Manage Students",
-      subtitle: "View enrolled students by school",
-      href: "/admin-schools",
-      icon: "people" as const,
+      title: "Manage categories",
+      subtitle: "Grade → level → group → category",
+      href: "/admin-structure",
+      icon: "layers" as const,
+      tint: dash.blue,
+      soft: dash.blueSoft,
+    },
+    {
+      title: "Create lesson",
+      subtitle: "Draft Listen/Spell from approved words",
+      href: "/admin-lessons",
+      icon: "school" as const,
       tint: dash.green,
       soft: dash.greenSoft,
     },
     {
-      title: "Manage Teachers",
-      subtitle: "Create and assign teachers",
-      href: "/admin-schools",
-      icon: "person-add" as const,
-      tint: dash.blue,
-      soft: dash.blueSoft,
-    },
-    {
-      title: "Manage Subscriptions",
-      subtitle: "Plans, seats and renewals",
-      href: "/subscription",
-      icon: "diamond" as const,
-      tint: dash.purple,
-      soft: dash.purpleSoft,
-    },
-    {
-      title: "Payment Management",
-      subtitle: "Orders, verify and history",
-      href: "/admin-payments",
-      icon: "card" as const,
+      title: "Programme calendar",
+      subtitle: "Six-month vocabulary schedule",
+      href: "/admin-programme",
+      icon: "calendar" as const,
       tint: dash.orange,
       soft: dash.orangeSoft,
     },
     {
-      title: "Learning Management",
-      subtitle: "Lessons, words and structure",
-      href: "/admin-lessons",
-      icon: "book" as const,
-      tint: dash.blue,
-      soft: dash.blueSoft,
-    },
-    {
-      title: "Reports & Analytics",
-      subtitle: "Platform reports status",
-      href: "/admin-reports",
-      icon: "bar-chart" as const,
+      title: "Dictionary upload",
+      subtitle: "Upload kids starter or CSV/XLSX",
+      href: "/admin-dictionary",
+      icon: "library" as const,
       tint: dash.purple,
       soft: dash.purpleSoft,
     },
     {
-      title: "Notifications",
-      subtitle: alertCount
-        ? `${alertCount} payment alert${alertCount === 1 ? "" : "s"}`
-        : "No alert API yet — payment alerts shown",
-      href: "/admin-payments",
-      icon: "notifications" as const,
-      tint: dash.red,
-      soft: "#FEE2E2",
+      title: "Schools & students",
+      subtitle: "Enrollment and classrooms",
+      href: "/admin-schools",
+      icon: "business" as const,
+      tint: dash.blue,
+      soft: dash.blueSoft,
     },
   ];
 
-  const visibleActions = showAllActions ? quickActions : quickActions.slice(0, 1);
+  const visibleActions = showAllActions ? quickActions : quickActions.slice(0, 4);
   const visibleActivity = showAllActivity ? activity.slice(0, 20) : activity.slice(0, 5);
   const initials = (user?.name ?? "A")
     .split(" ")
@@ -531,40 +540,40 @@ export default function AdminScreen() {
             ) : (
               <View style={styles.statsGrid}>
                 <AdminStatCard
-                  value={String(stats.totalSchools)}
-                  label="Schools"
-                  icon="business"
+                  value={String(stats.grades)}
+                  label="Grades"
+                  icon="layers"
                   tint={dash.blue}
                   soft={dash.blueSoft}
                   accent="rgba(59,130,246,0.12)"
-                  onPress={() => router.push("/admin-schools" as never)}
+                  onPress={() => router.push("/admin-structure" as never)}
                 />
                 <AdminStatCard
-                  value={String(stats.totalStudents)}
-                  label="Students"
-                  icon="people"
-                  tint={dash.green}
-                  soft={dash.greenSoft}
-                  accent="rgba(16,185,129,0.12)"
-                  onPress={() => router.push("/admin-schools" as never)}
-                />
-                <AdminStatCard
-                  value={String(stats.totalTeachers)}
-                  label="Teachers"
-                  icon="easel"
-                  tint={dash.purple}
-                  soft={dash.purpleSoft}
-                  accent="rgba(109,40,217,0.12)"
-                  onPress={() => router.push("/admin-schools" as never)}
-                />
-                <AdminStatCard
-                  value={stats.monthlyLabel}
-                  label="Revenue (This Month)"
-                  icon="card"
+                  value={String(stats.pending)}
+                  label="Pending review"
+                  icon="hourglass"
                   tint={dash.orange}
                   soft={dash.orangeSoft}
                   accent="rgba(245,158,11,0.14)"
-                  onPress={() => router.push("/admin-payments" as never)}
+                  onPress={() => router.push("/admin-dictionary" as never)}
+                />
+                <AdminStatCard
+                  value={String(stats.publishedWords)}
+                  label="Published words"
+                  icon="book"
+                  tint={dash.green}
+                  soft={dash.greenSoft}
+                  accent="rgba(16,185,129,0.12)"
+                  onPress={() => router.push("/admin-words" as never)}
+                />
+                <AdminStatCard
+                  value={String(stats.lessons)}
+                  label="Lessons"
+                  icon="school"
+                  tint={dash.purple}
+                  soft={dash.purpleSoft}
+                  accent="rgba(109,40,217,0.12)"
+                  onPress={() => router.push("/admin-lessons" as never)}
                 />
               </View>
             )}

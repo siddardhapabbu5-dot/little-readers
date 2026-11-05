@@ -1,4 +1,4 @@
-import { beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import request from "supertest";
 import { createApp } from "../src/app.js";
 import { prisma } from "../src/lib/prisma.js";
@@ -189,5 +189,22 @@ describe.skipIf(!hasDb)("Batch 8 — kids lessons + seat revoke", () => {
       .set("Authorization", `Bearer ${adminToken}`);
     expect(adminList.status).toBe(200);
     expect(adminList.body.data[0].seats).toBeTruthy();
+  });
+
+  afterAll(async () => {
+    if (!lessonId) return;
+    await prisma.questionAttempt.deleteMany({
+      where: { session: { lessonId } },
+    });
+    await prisma.learningSession.deleteMany({ where: { lessonId } });
+    await prisma.childLessonProgress.deleteMany({ where: { lessonId } });
+    await prisma.classroomLessonAssignment.deleteMany({ where: { lessonId } });
+    await prisma.lessonVocabItem.deleteMany({ where: { lessonId } });
+    await prisma.lesson.deleteMany({ where: { id: lessonId } });
+    if (wordIds.length) {
+      await prisma.vocabularyWord.deleteMany({
+        where: { id: { in: wordIds } },
+      });
+    }
   });
 });

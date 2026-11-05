@@ -134,6 +134,11 @@ model User {
   schoolStaff         SchoolStaff[]
   classroomTeaching   ClassroomTeacher[]
   lessonAssignmentsMade ClassroomLessonAssignment[] @relation("AssignedByTeacher")
+  programmesCreated   VocabProgramme[] @relation("ProgrammeCreatedBy")
+  programmesApproved  VocabProgramme[] @relation("ProgrammeApprovedBy")
+  programmesActivated VocabProgramme[] @relation("ProgrammeActivatedBy")
+  publisherConfigUpdates VocabPublisherConfig[] @relation("PublisherConfigUpdatedBy")
+  adminAlerts         AdminAlert[]
 
   @@index([role])
 }
@@ -232,6 +237,7 @@ model LearningGrade {
   levels      LearningLevel[]
   assignments VocabularyGradeAssignment[]
   lessons     Lesson[]
+  programmes  VocabProgramme[]
 }
 
 model LearningLevel {
@@ -384,6 +390,7 @@ model VocabularyWord {
   attempts        QuestionAttempt[]
   publishedFrom   VocabularyGradeAssignment[]
   lessonItems     LessonVocabItem[]
+  programmeItems  VocabProgrammeItem[]
 
   /// Same headword may exist in multiple grade categories; not globally unique.
   @@unique([categoryId, text])
@@ -1109,4 +1116,161 @@ model ClassroomLessonAssignment {
   @@unique([classroomId, lessonId])
   @@index([lessonId])
   @@index([assignedByUserId])
+}
+
+enum VocabProgrammeStatus {
+  DRAFT
+  APPROVED
+  ACTIVE
+  COMPLETED
+  CANCELLED
+}
+
+enum VocabProgrammeDayStatus {
+  SCHEDULED
+  PUBLISHED
+  SKIPPED
+  FAILED
+}
+
+/// Six-month (or custom) vocabulary publishing programme per grade.
+model VocabProgramme {
+  id             String               @id @default(cuid())
+  title          String
+  gradeId        String
+  startDate      DateTime             @db.Date
+  endDate        DateTime             @db.Date
+  dailyTarget    Int                  @default(1)
+  timezone       String               @default("Asia/Kolkata")
+  status         VocabProgrammeStatus @default(DRAFT)
+  createdById    String
+  approvedById   String?
+  activatedById  String?
+  approvedAt     DateTime?
+  activatedAt    DateTime?
+  createdAt      DateTime             @default(now())
+  updatedAt      DateTime             @updatedAt
+
+  grade       LearningGrade       @relation(fields: [gradeId], references: [id], onDelete: Cascade)
+  createdBy   User                @relation("ProgrammeCreatedBy", fields: [createdById], references: [id])
+  approvedBy  User?               @relation("ProgrammeApprovedBy", fields: [approvedById], references: [id])
+  activatedBy User?               @relation("ProgrammeActivatedBy", fields: [activatedById], references: [id])
+  days        VocabProgrammeDay[]
+
+  @@index([gradeId, status])
+  @@index([status, startDate])
+}
+
+model VocabProgrammeDay {
+  id          String                   @id @default(cuid())
+  programmeId String
+  date        DateTime                 @db.Date
+  status      VocabProgrammeDayStatus  @default(SCHEDULED)
+  note        String?
+  createdAt   DateTime                 @default(now())
+  updatedAt   DateTime                 @updatedAt
+
+  programme VocabProgramme           @relation(fields: [programmeId], references: [id], onDelete: Cascade)
+  items     VocabProgrammeItem[]
+  logs      VocabProgrammePublishLog[]
+  publishJob VocabPublishJob?
+
+  @@unique([programmeId, date])
+  @@index([programmeId, status])
+  @@index([date, status])
+}
+
+model VocabProgrammeItem {
+  id               String @id @default(cuid())
+  dayId            String
+  vocabularyWordId String
+  sortOrder        Int    @default(0)
+
+  day            VocabProgrammeDay @relation(fields: [dayId], references: [id], onDelete: Cascade)
+  vocabularyWord VocabularyWord    @relation(fields: [vocabularyWordId], references: [id], onDelete: Restrict)
+
+  @@unique([dayId, vocabularyWordId])
+  @@index([dayId, sortOrder])
+}
+
+model VocabProgrammePublishLog {
+  id        String   @id @default(cuid())
+  dayId     String
+  result    String
+  error     String?
+  ranAt     DateTime @default(now())
+
+  day VocabProgrammeDay @relation(fields: [dayId], references: [id], onDelete: Cascade)
+
+  @@index([dayId, ranAt])
+}
+
+enum VocabPublisherRunStatus {
+  RUNNING
+  PAUSED
+  STOPPED
+}
+
+enum VocabPublishJobStatus {
+  PENDING
+  CLAIMED
+  SUCCEEDED
+  FAILED
+  CANCELLED
+}
+
+/// Singleton-ish publisher settings (id = "default").
+model VocabPublisherConfig {
+  id            String                  @id @default("default")
+  timezone      String                  @default("Asia/Kolkata")
+  /// Local hour in timezone (0–23) when due days become publishable.
+  publishHour   Int                     @default(6)
+  publishMinute Int                     @default(0)
+  status        VocabPublisherRunStatus @default(RUNNING)
+  updatedAt     DateTime                @updatedAt
+  updatedById   String?
+
+  updatedBy User? @relation("PublisherConfigUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull)
+}
+
+/// Database-backed daily publish jobs (claimed by the API process worker).
+model VocabPublishJob {
+  id            String                @id @default(cuid())
+  dayId         String                @unique
+  programmeId   String
+  /// Calendar date to publish (UTC date matching programme day).
+  dueDate       DateTime              @db.Date
+  status        VocabPublishJobStatus @default(PENDING)
+  attempts      Int                   @default(0)
+  maxAttempts   Int                   @default(5)
+  nextAttemptAt DateTime              @default(now())
+  lastError     String?
+  claimedAt     DateTime?
+  claimedBy     String?
+  completedAt   DateTime?
+  createdAt     DateTime              @default(now())
+  updatedAt     DateTime              @updatedAt
+
+  day VocabProgrammeDay @relation(fields: [dayId], references: [id], onDelete: Cascade)
+
+  @@index([status, nextAttemptAt])
+  @@index([programmeId, status])
+  @@index([dueDate, status])
+}
+
+model AdminAlert {
+  id          String   @id @default(cuid())
+  type        String
+  title       String
+  body        String   @db.Text
+  programmeId String?
+  dayId       String?
+  isRead      Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  createdById String?
+
+  createdBy User? @relation(fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@index([isRead, createdAt])
+  @@index([type, createdAt])
 }

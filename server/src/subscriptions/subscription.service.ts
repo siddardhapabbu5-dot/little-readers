@@ -2,9 +2,9 @@ import type { Prisma, Subscription, SubscriptionStatus } from "@prisma/client";
 import { AppError } from "../lib/errors.js";
 import { prisma } from "../lib/prisma.js";
 
+/** Paid / recovering access only — no free TRIALING for client builds. */
 const ELIGIBLE: SubscriptionStatus[] = [
   "ACTIVE",
-  "TRIALING",
   "GRACE",
   "PAST_DUE", // grace-style access while payment recovers; policy can tighten later
 ];

@@ -5,6 +5,9 @@ const TOKEN_KEY = "lr_access_token";
 const INSTALL_KEY = "lr_installation_id";
 const USER_KEY = "lr_user_json";
 const CHILD_KEY = "lr_active_child";
+/** Bump when shipping a client “fresh app” so old demo sessions are cleared once. */
+const FRESH_BUILD_KEY = "lr_fresh_build_marker";
+export const CLIENT_FRESH_BUILD_MARKER = "client-v1";
 
 const memory = new Map<string, string>();
 
@@ -116,4 +119,23 @@ export async function clearSession() {
   await clearActiveChild();
   // Intentionally keep INSTALL_KEY so reinstall-without-secure-wipe still binds,
   // and logout does not release device registration.
+}
+
+let freshStartPromise: Promise<boolean> | null = null;
+
+/**
+ * One-time wipe of login/session when delivering a fresh client build.
+ * Keeps installation id (device lock). Safe to call on every cold start.
+ */
+export function ensureClientFreshStart() {
+  if (!freshStartPromise) {
+    freshStartPromise = (async () => {
+      const marker = await getItem(FRESH_BUILD_KEY);
+      if (marker === CLIENT_FRESH_BUILD_MARKER) return false;
+      await clearSession();
+      await setItem(FRESH_BUILD_KEY, CLIENT_FRESH_BUILD_MARKER);
+      return true;
+    })();
+  }
+  return freshStartPromise;
 }

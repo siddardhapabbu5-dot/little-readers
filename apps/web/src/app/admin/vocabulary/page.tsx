@@ -6,14 +6,15 @@ import { AdminShell } from "@/components/AdminShell";
 import { useAdminGate } from "@/lib/use-admin-gate";
 
 const LINKS = [
-  { href: "/admin/vocabulary/grades", title: "Manage Grades", desc: "Create/edit age bands (1–3, 4–6, 7–9, 10–12)" },
-  { href: "/admin/vocabulary/levels", title: "Manage Levels", desc: "Difficulty levels inside each grade" },
-  { href: "/admin/vocabulary/groups", title: "Manage Groups", desc: "Groups under a level (e.g. A / B)" },
-  { href: "/admin/vocabulary/categories", title: "Manage Categories", desc: "Create/edit/publish categories" },
-  { href: "/admin/vocabulary/words", title: "Manage Words", desc: "Search, edit, reclassify, bulk review" },
-  { href: "/admin/vocabulary/lessons", title: "Manage Lessons", desc: "Create lessons, attach vocab, publish Listen/Spell" },
+  { href: "/admin/vocabulary/grades", title: "Academic Structure", desc: "Grades → levels → groups → categories" },
+  { href: "/admin/vocabulary/dictionary", title: "Dictionary upload", desc: "Import, AI grade suggestions, approve & publish" },
+  { href: "/admin/vocabulary/words", title: "Vocabulary Manager", desc: "Filter by grade/category, download/upload CSV sheets" },
+  { href: "/admin/vocabulary/programme", title: "Six-month programme", desc: "Schedule daily words (scheduler follow-up)" },
+  { href: "/admin/vocabulary/lessons", title: "Lessons", desc: "Create lessons, attach vocab, publish Listen/Spell" },
+  { href: "/admin/vocabulary/categories", title: "Categories", desc: "Create/edit/publish categories" },
+  { href: "/admin/vocabulary/levels", title: "Levels", desc: "Difficulty levels inside each grade" },
+  { href: "/admin/vocabulary/groups", title: "Groups", desc: "Groups under a level (e.g. A / B)" },
   { href: "/admin/vocabulary/upload", title: "Upload Vocabulary", desc: "Excel, Word, PDF import wizard" },
-  { href: "/admin/vocabulary/dictionary", title: "Dictionary → Grades", desc: "Full dictionary import, auto grade suggestions, approve & publish" },
   { href: "/admin/vocabulary/imports", title: "Import History", desc: "Past uploads and summaries" },
 ];
 

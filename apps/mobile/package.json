@@ -4,11 +4,11 @@
   "private": true,
   "main": "expo-router/entry",
   "scripts": {
-    "start": "node ./node_modules/expo/bin/cli start --port 8081",
-    "android": "node ./node_modules/expo/bin/cli start --android --port 8081",
-    "ios": "node ./node_modules/expo/bin/cli start --ios --port 8081",
-    "web": "node ./node_modules/expo/bin/cli start --web --port 8081",
-    "typecheck": "node ./node_modules/typescript/bin/tsc --noEmit"
+    "start": "node ../../node_modules/expo/bin/cli start --port 8081",
+    "android": "node ../../node_modules/expo/bin/cli start --android --port 8081",
+    "ios": "node ../../node_modules/expo/bin/cli start --ios --port 8081",
+    "web": "node ../../node_modules/expo/bin/cli start --web --port 8081",
+    "typecheck": "node ../../node_modules/typescript/bin/tsc --noEmit -p tsconfig.json"
   },
   "dependencies": {
     "@expo/metro-runtime": "~4.0.1",
@@ -16,6 +16,7 @@
     "@little-readers/types": "file:../../packages/types",
     "expo": "~52.0.28",
     "expo-constants": "~17.0.8",
+    "expo-document-picker": "~13.0.3",
     "expo-linear-gradient": "~14.0.2",
     "expo-linking": "~7.0.5",
     "expo-router": "~4.0.17",
@@ -32,7 +33,7 @@
     "react-native-web": "~0.19.13"
   },
   "devDependencies": {
-    "@types/react": "~18.3.18",
+    "@types/react": "^18.3.18",
     "typescript": "^5.7.3"
   }
 }

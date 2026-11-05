@@ -7,7 +7,23 @@ import { AdminShell } from "@/components/AdminShell";
 import { apiRequest, ApiClientError } from "@/lib/api";
 import { useAdminGate } from "@/lib/use-admin-gate";
 
-type Category = { id: string; label: string; code: string };
+type Category = {
+  id: string;
+  label: string;
+  code: string;
+  group?: {
+    code: string;
+    level?: {
+      code: string;
+      grade?: { code: string; label: string } | null;
+    } | null;
+  } | null;
+};
+
+function categoryOptionLabel(c: Category) {
+  const grade = c.group?.level?.grade?.label ?? c.group?.level?.code ?? "";
+  return grade ? `${grade} · ${c.label}` : c.label;
+}
 type WordOpt = { id: string; text: string; meaning: string; emoji: string; isActive: boolean };
 
 type Lesson = {
@@ -258,7 +274,7 @@ export default function ManageLessonsPage() {
               <option value="">Select…</option>
               {categories.map((c) => (
                 <option key={c.id} value={c.id}>
-                  {c.label}
+                  {categoryOptionLabel(c)}
                 </option>
               ))}
             </select>
@@ -360,7 +376,7 @@ export default function ManageLessonsPage() {
                 <option value="">Select…</option>
                 {categories.map((c) => (
                   <option key={c.id} value={c.id}>
-                    {c.label}
+                    {categoryOptionLabel(c)}
                   </option>
                 ))}
               </select>

@@ -55,6 +55,10 @@ export type SeedLevel1Options = {
 /** Remove all vocabulary words (and cascaded question attempts). */
 export async function clearAllVocabularyWords(prisma: PrismaClient) {
   const deletedAttempts = await prisma.questionAttempt.deleteMany({});
+  // LessonVocabItem uses onDelete: Restrict — clear links before words
+  const deletedLessonVocab = await prisma.lessonVocabItem.deleteMany({});
+  // Drop grade suggestions too so old dictionary pending rows cannot be re-published
+  const deletedAssignments = await prisma.vocabularyGradeAssignment.deleteMany({});
   const deletedWords = await prisma.vocabularyWord.deleteMany({});
   // Legacy Phase-1 Word table (lesson words), if any
   try {
@@ -65,6 +69,8 @@ export async function clearAllVocabularyWords(prisma: PrismaClient) {
   }
   return {
     attempts: deletedAttempts.count,
+    lessonVocabItems: deletedLessonVocab.count,
+    assignments: deletedAssignments.count,
     words: deletedWords.count,
   };
 }

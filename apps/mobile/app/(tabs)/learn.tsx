@@ -72,13 +72,11 @@ const DESCRIPTIONS: Record<string, string> = {
   "Action Words": "Jump, clap and move!",
 };
 
-const LEVEL_CODES = ["LEVEL_1", "LEVEL_2", "LEVEL_3", "LEVEL_4"] as const;
-
 export default function LearnTab() {
   const router = useRouter();
   const [child, setChild] = useState<ChildRow | null>(null);
   const [levels, setLevels] = useState<LevelRow[]>([]);
-  const [selectedLevel, setSelectedLevel] = useState("LEVEL_1");
+  const [selectedLevel, setSelectedLevel] = useState("");
   const [groups, setGroups] = useState<Group[]>([]);
   const [filter, setFilter] = useState("all");
   const [lessons, setLessons] = useState<LessonRow[]>([]);
@@ -134,24 +132,34 @@ export default function LearnTab() {
           }
 
           const catalog = await apiRequest<LevelRow[]>("/learning/levels");
-          const numbered = catalog
-            .filter((l) => LEVEL_CODES.includes(l.code as (typeof LEVEL_CODES)[number]))
-            .sort((a, b) => a.sortOrder - b.sortOrder);
+          // Only real levels from API (no hardcoded L1–L4 placeholders).
+          const numbered = [...catalog].sort((a, b) => a.sortOrder - b.sortOrder);
           setLevels(numbered);
+
+          const activeCode =
+            (selectedLevel && numbered.some((l) => l.code === selectedLevel)
+              ? selectedLevel
+              : null) ??
+            numbered.find((l) => (l.wordCount ?? 0) > 0)?.code ??
+            numbered[0]?.code ??
+            "";
+          if (activeCode && activeCode !== selectedLevel) {
+            setSelectedLevel(activeCode);
+          }
 
           const lessonList = await apiRequest<LessonRow[]>(
             `/learning/lessons?childId=${encodeURIComponent(active.id)}`
           ).catch(() => [] as LessonRow[]);
           setLessons(lessonList);
 
-          const levelKey = selectedLevel.replace("LEVEL_", "");
-          if (selectedLevel === "LEVEL_1" || (numbered.find((l) => l.code === selectedLevel)?.wordCount ?? 0) > 0) {
+          if (!activeCode) {
+            setGroups([]);
+          } else {
+            const levelKey = activeCode.replace(/^LEVEL_/i, "");
             const data = await apiRequest<{ groups: Group[] }>(
               `/learning/levels/${levelKey}/groups?childId=${encodeURIComponent(active.id)}`
             );
             setGroups(data.groups);
-          } else {
-            setGroups([]);
           }
         } catch (err) {
           setError(err instanceof ApiError ? err.message : "Could not load lessons");
@@ -163,7 +171,9 @@ export default function LearnTab() {
   );
 
   const activeMeta = levels.find((l) => l.code === selectedLevel);
-  const contentReady = selectedLevel === "LEVEL_1" || (activeMeta?.wordCount ?? 0) > 0;
+  const contentReady =
+    (activeMeta?.wordCount ?? 0) > 0 ||
+    groups.some((g) => g.categories.some((c) => (c.wordCount ?? 0) > 0));
 
   const filteredGroups = useMemo(() => {
     if (filter === "all") return groups;
@@ -222,25 +232,41 @@ export default function LearnTab() {
           </View>
         ) : null}
 
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.levelRow}>
-          {LEVEL_CODES.map((code) => {
-            const meta = levels.find((l) => l.code === code);
-            const ready = code === "LEVEL_1" || (meta?.wordCount ?? 0) > 0;
-            const selected = selectedLevel === code;
-            return (
-              <Pressable
-                key={code}
-                onPress={() => setSelectedLevel(code)}
-                style={[styles.levelChip, selected && styles.levelChipOn, !ready && styles.levelChipSoon]}
-              >
-                <Text style={[styles.levelChipText, selected && styles.levelChipTextOn]}>
-                  {code.replace("LEVEL_", "L")}
-                  {!ready ? " · Soon" : ""}
-                </Text>
-              </Pressable>
-            );
-          })}
-        </ScrollView>
+        {levels.length > 1 ? (
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.levelRow}
+          >
+            {levels.map((meta) => {
+              const ready = (meta.wordCount ?? 0) > 0;
+              const selected = selectedLevel === meta.code;
+              const short =
+                meta.code.replace(/^LEVEL_/i, "L") || meta.label.slice(0, 8);
+              return (
+                <Pressable
+                  key={meta.id}
+                  onPress={() => setSelectedLevel(meta.code)}
+                  style={[
+                    styles.levelChip,
+                    selected && styles.levelChipOn,
+                    !ready && styles.levelChipSoon,
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.levelChipText,
+                      selected && styles.levelChipTextOn,
+                    ]}
+                  >
+                    {short}
+                    {!ready ? " · Soon" : ""}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </ScrollView>
+        ) : null}
 
         {!loading && child && !child.hasLearningSeat ? (
           <View style={styles.seatGate}>
@@ -311,8 +337,7 @@ export default function LearnTab() {
               <View style={styles.emptyLevel}>
                 <Text style={styles.emptyTitle}>No vocabulary in this level yet</Text>
                 <Text style={styles.emptyBody}>
-                  Groups and categories will appear after the owner uploads real words.
-                  Level 1 content and progress are unchanged.
+                  Categories appear here after Admin publishes words for this grade.
                 </Text>
               </View>
             ) : null}

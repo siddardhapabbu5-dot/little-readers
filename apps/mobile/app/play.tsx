@@ -22,7 +22,8 @@ import { IconButton, KidsHeader } from "../components/kids";
 import { AuthGate } from "../components/AuthGate";
 import { apiRequest, ApiError } from "../services/api";
 import { ROLE_SETS } from "../services/auth-errors";
-import { speakWord } from "../services/speech";
+import { displayEmoji } from "../services/emoji";
+import { prefetchKidVoice, speakWord } from "../services/speech";
 import { colors, radii, shadow } from "../theme";
 
 type Round = "LISTEN" | "LETTER" | "SPELL" | "RESULTS";
@@ -103,6 +104,10 @@ export default function PlayScreen() {
   const question = session?.questions[qIndex] ?? null;
 
   useEffect(() => {
+    prefetchKidVoice();
+  }, []);
+
+  useEffect(() => {
     void (async () => {
       setLoading(true);
       setError(null);
@@ -116,12 +121,22 @@ export default function PlayScreen() {
             childId: params.childId,
             ...(params.lessonId
               ? { lessonId: params.lessonId, resume: true }
-              : { categoryId: params.categoryId, questionCount: 8 }),
+              // Omit count → server gives remaining unlearned words (up to full category).
+              : { categoryId: params.categoryId }),
           }),
         });
-        setSession(data);
+        // Ensure Symbol emoji from A–Z sheets always render for parent/kid play.
+        const questions = data.questions.map((q) => ({
+          ...q,
+          word: { ...q.word, emoji: displayEmoji(q.word.emoji) },
+          listenOptions: q.listenOptions.map((o) => ({
+            ...o,
+            emoji: displayEmoji(o.emoji),
+          })),
+        }));
+        setSession({ ...data, questions });
         startedAt.current = Date.now();
-        if (data.questions[0]) void speakWord(data.questions[0].word.text);
+        if (questions[0]) void speakWord(questions[0].word.text, { profile: "kid" });
       } catch (err) {
         if (err instanceof ApiError && err.status === 402) {
           const code =
@@ -444,7 +459,7 @@ export default function PlayScreen() {
         ) : null}
 
         {!loading && session && question && round !== "RESULTS" ? (
-          <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+          <View style={styles.playScreen}>
             {confetti ? (
               <Animated.View
                 pointerEvents="none"
@@ -462,180 +477,189 @@ export default function PlayScreen() {
               </Animated.View>
             ) : null}
 
-            <Text style={styles.meta}>
-              {session.category.emoji} Word {question.index}/{session.questionsTotal}
-            </Text>
-
-            <Card style={{ alignItems: "center", gap: 8 }}>
-              <Text style={styles.round}>
-                {round === "LISTEN"
-                  ? "Round 1 — Listen"
-                  : round === "LETTER"
-                    ? "Letter fun"
-                    : "Spell (optional)"}
-              </Text>
-
-              {round === "LISTEN" ? (
-                <AvatarBubble emoji="👂" size={96} bg={colors.skySoft} />
-              ) : question.word.imageUrl ? (
-                <Image
-                  source={{ uri: question.word.imageUrl }}
-                  style={styles.wordImage}
-                  accessibilityLabel={question.word.text}
+            <View style={styles.promptBar}>
+              <View style={styles.promptLeft}>
+                {round === "LISTEN" ? (
+                  <AvatarBubble emoji="👂" size={52} bg={colors.skySoft} />
+                ) : question.word.imageUrl ? (
+                  <Image
+                    source={{ uri: question.word.imageUrl }}
+                    style={styles.wordImageSm}
+                    accessibilityLabel={question.word.text}
+                  />
+                ) : (
+                  <AvatarBubble
+                    emoji={displayEmoji(question.word.emoji)}
+                    size={52}
+                    bg={colors.skySoft}
+                  />
+                )}
+                <View style={styles.promptTextCol}>
+                  <Text style={styles.meta} numberOfLines={1}>
+                    {session.category.emoji} {question.index}/{session.questionsTotal}
+                    {" · "}
+                    {round === "LISTEN"
+                      ? "Listen"
+                      : round === "LETTER"
+                        ? "Letter"
+                        : "Spell"}
+                  </Text>
+                  {round === "LISTEN" ? (
+                    <Text style={styles.meaning} numberOfLines={2}>
+                      Listen, then pick the picture.
+                    </Text>
+                  ) : (
+                    <>
+                      <Text style={styles.wordSm} numberOfLines={1}>
+                        {question.word.text}
+                      </Text>
+                      <Text style={styles.meaning} numberOfLines={1}>
+                        {question.word.meaning}
+                      </Text>
+                    </>
+                  )}
+                </View>
+              </View>
+              <View style={styles.audioRow}>
+                <SoftButton
+                  label="🔊 Play"
+                  onPress={() => void speakWord(question.word.text, { profile: "kid" })}
                 />
-              ) : (
-                <AvatarBubble emoji={question.word.emoji} size={96} bg={colors.skySoft} />
-              )}
-
-              {round === "LISTEN" ? (
-                <Text style={styles.meaning}>Listen carefully, then pick the matching picture.</Text>
-              ) : (
-                <>
-                  <Text style={styles.word}>{question.word.text}</Text>
-                  <Text style={styles.meaning}>{question.word.meaning}</Text>
-                </>
-              )}
-
+                <SoftButton label="Clue" onPress={showClue} />
+              </View>
+              {clue ? (
+                <Text style={styles.clue} numberOfLines={1}>
+                  {clue}
+                </Text>
+              ) : null}
               {round === "SPELL" ? (
                 <View style={styles.spellBox}>
                   <Text style={styles.spellTyped}>{spellValue || "—"}</Text>
                 </View>
               ) : null}
+            </View>
 
-              <View style={styles.audioRow}>
-                <SoftButton
-                  label="🔊 Play"
-                  onPress={() => void speakWord(question.word.text)}
-                />
-                <SoftButton
-                  label="Replay"
-                  onPress={() => void speakWord(question.word.text)}
-                />
-                <SoftButton label="Clue" onPress={showClue} />
-              </View>
-              {clue ? <Text style={styles.clue}>{clue}</Text> : null}
-            </Card>
+            <View style={styles.playBody}>
+              {round === "LISTEN" ? (
+                <View style={styles.gridRows}>
+                  {[0, 1].map((row) => (
+                    <View key={row} style={styles.gridRow}>
+                      {question.listenOptions.slice(row * 2, row * 2 + 2).map((opt) => (
+                        <Pressable
+                          key={opt.key}
+                          style={[
+                            styles.choiceFlex,
+                            shadow.soft,
+                            highlightCorrect && opt.isCorrect ? styles.choiceHint : null,
+                          ]}
+                          disabled={feedback === "ok" || saving}
+                          onPress={() => {
+                            void speakWord(opt.text, { profile: "kid" });
+                            void onListenPick(opt);
+                          }}
+                        >
+                          <Text style={styles.choiceKey}>{opt.key}</Text>
+                          <Text style={styles.choiceEmoji}>{displayEmoji(opt.emoji)}</Text>
+                        </Pressable>
+                      ))}
+                    </View>
+                  ))}
+                </View>
+              ) : null}
 
-            {round === "LISTEN" ? (
-              <View style={styles.grid}>
-                {question.listenOptions.map((opt) => (
-                  <Pressable
-                    key={opt.key}
-                    style={[
-                      styles.choice,
-                      shadow.soft,
-                      highlightCorrect && opt.isCorrect ? styles.choiceHint : null,
-                    ]}
-                    disabled={feedback === "ok" || saving}
+              {round === "LETTER" ? (
+                <View style={styles.letterBlock}>
+                  <Text style={styles.spellHint}>Tap the first letter</Text>
+                  <View style={styles.gridRows}>
+                    {[0, 1].map((row) => (
+                      <View key={row} style={styles.gridRow}>
+                        {letterChoices.slice(row * 2, row * 2 + 2).map((letter) => (
+                          <Pressable
+                            key={letter}
+                            style={[styles.choiceFlex, shadow.soft]}
+                            disabled={feedback === "ok" || saving}
+                            onPress={() => void onLetterPick(letter)}
+                          >
+                            <Text style={styles.letterBig}>{letter}</Text>
+                          </Pressable>
+                        ))}
+                      </View>
+                    ))}
+                  </View>
+                  <SoftButton
+                    label="Spell with a grown-up →"
                     onPress={() => {
-                      void speakWord(opt.text);
-                      void onListenPick(opt);
+                      setFeedback(null);
+                      setSpellValue("");
+                      setRound("SPELL");
+                      void speakWord(question.word.text, { profile: "kid" });
                     }}
-                  >
-                    <Text style={styles.choiceKey}>{opt.key}</Text>
-                    <Text style={{ fontSize: 28 }}>{opt.emoji}</Text>
-                    <Text style={styles.choiceLabel}>Pick {opt.key}</Text>
-                  </Pressable>
-                ))}
-              </View>
-            ) : null}
-
-            {round === "LETTER" ? (
-              <View style={{ gap: 10 }}>
-                <Text style={styles.spellHint}>Tap the first letter</Text>
-                <View style={styles.grid}>
-                  {letterChoices.map((letter) => (
-                    <Pressable
-                      key={letter}
-                      style={[styles.choice, shadow.soft]}
-                      disabled={feedback === "ok" || saving}
-                      onPress={() => void onLetterPick(letter)}
-                    >
-                      <Text style={styles.letterBig}>{letter}</Text>
-                    </Pressable>
-                  ))}
-                </View>
-                <SoftButton
-                  label="Try spelling with a grown-up →"
-                  onPress={() => {
-                    setFeedback(null);
-                    setSpellValue("");
-                    setRound("SPELL");
-                    void speakWord(question.word.text);
-                  }}
-                />
-              </View>
-            ) : null}
-
-            {round === "SPELL" ? (
-              <View style={{ gap: 10 }}>
-                <Text style={styles.spellHint}>
-                  Optional with a parent — wrong answers are okay!
-                </Text>
-                <View style={styles.keyboard}>
-                  {LETTERS.map((letter) => (
-                    <Pressable
-                      key={letter}
-                      style={[styles.key, shadow.soft]}
-                      disabled={feedback === "ok" || saving}
-                      onPress={() =>
-                        setSpellValue((v) =>
-                          (v + letter).slice(0, question.word.text.length + 2)
-                        )
-                      }
-                    >
-                      <Text style={styles.letter}>{letter}</Text>
-                    </Pressable>
-                  ))}
-                </View>
-                <View style={styles.spellActions}>
-                  <SoftButton
-                    label="⌫"
-                    onPress={() => setSpellValue((t) => t.slice(0, -1))}
-                  />
-                  <SoftButton label="Clear" onPress={() => setSpellValue("")} />
-                  <SoftButton label="Okay ›" onPress={() => void onSpellSubmit()} />
-                  <SoftButton
-                    label="Skip"
-                    onPress={() => void goNextQuestion()}
                   />
                 </View>
-              </View>
-            ) : null}
+              ) : null}
+
+              {round === "SPELL" ? (
+                <View style={styles.spellBlock}>
+                  <View style={styles.keyboard}>
+                    {LETTERS.map((letter) => (
+                      <Pressable
+                        key={letter}
+                        style={[styles.key, shadow.soft]}
+                        disabled={feedback === "ok" || saving}
+                        onPress={() =>
+                          setSpellValue((v) =>
+                            (v + letter).slice(0, question.word.text.length + 2)
+                          )
+                        }
+                      >
+                        <Text style={styles.letter}>{letter}</Text>
+                      </Pressable>
+                    ))}
+                  </View>
+                  <View style={styles.spellActions}>
+                    <SoftButton
+                      label="⌫"
+                      onPress={() => setSpellValue((t) => t.slice(0, -1))}
+                    />
+                    <SoftButton label="Clear" onPress={() => setSpellValue("")} />
+                    <SoftButton label="Okay ›" onPress={() => void onSpellSubmit()} />
+                    <SoftButton label="Skip" onPress={() => void goNextQuestion()} />
+                  </View>
+                </View>
+              ) : null}
+            </View>
 
             {feedback === "ok" ? (
-              <Card color={colors.mintSoft} style={{ alignItems: "center", gap: 8 }}>
-                <Text style={{ fontSize: 40 }}>🌟</Text>
-                <Text style={styles.feedbackOk}>Good Job!</Text>
-                <Text style={styles.feedbackMeta}>
-                  {"★".repeat(starsFlash)} · +{pointsFlash} points
+              <View style={styles.feedbackBarOk}>
+                <Text style={styles.feedbackInline}>
+                  🌟 Good Job! {"★".repeat(starsFlash)} +{pointsFlash}
                 </Text>
                 <SoftButton
-                  label={saving ? "Saving…" : "Next"}
+                  label={saving ? "…" : "Next"}
                   onPress={() => {
                     if (round === "LISTEN") goNextAfterListen();
                     else void goNextQuestion();
                   }}
                 />
-              </Card>
+              </View>
             ) : null}
 
             {feedback === "try" ? (
-              <Card style={{ alignItems: "center", gap: 8 }}>
-                <Text style={styles.feedbackTry}>Nice try! Listen again.</Text>
+              <View style={styles.feedbackBarTry}>
+                <Text style={styles.feedbackTry}>Nice try!</Text>
                 <SoftButton
-                  label="Try again"
+                  label="Again"
                   onPress={() => {
                     setFeedback(null);
-                    void speakWord(question.word.text);
+                    void speakWord(question.word.text, { profile: "kid" });
                   }}
                 />
                 {round === "LETTER" || round === "SPELL" ? (
-                  <SoftButton label="Next word" onPress={() => void goNextQuestion()} />
+                  <SoftButton label="Next" onPress={() => void goNextQuestion()} />
                 ) : null}
-              </Card>
+              </View>
             ) : null}
-          </ScrollView>
+          </View>
         ) : null}
       </SafeAreaView>
     </AuthGate>
@@ -652,8 +676,21 @@ function Stat({ label, value }: { label: string; value: string }) {
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: colors.bg, paddingHorizontal: 16 },
+  safe: { flex: 1, backgroundColor: colors.bg, paddingHorizontal: 12 },
   content: { gap: 14, paddingBottom: 28 },
+  playScreen: { flex: 1, minHeight: 0, gap: 8, paddingBottom: 4 },
+  playBody: { flex: 1, minHeight: 0 },
+  promptBar: {
+    backgroundColor: "#fff",
+    borderRadius: radii.lg,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    gap: 6,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  promptLeft: { flexDirection: "row", alignItems: "center", gap: 10 },
+  promptTextCol: { flex: 1, gap: 2 },
   centerBox: { alignItems: "center", gap: 12, marginTop: 48 },
   muted: { color: colors.textMuted, fontWeight: "600" },
   scorePill: {
@@ -665,81 +702,110 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
   },
   scoreText: { fontWeight: "800", color: colors.text },
-  meta: { fontWeight: "700", color: colors.textMuted },
-  round: { color: colors.primary, fontWeight: "800" },
-  word: {
-    fontSize: 34,
+  meta: { fontWeight: "700", color: colors.textMuted, fontSize: 12 },
+  wordSm: {
+    fontSize: 22,
     fontWeight: "800",
     color: colors.text,
     textTransform: "capitalize",
   },
-  meaning: { color: colors.textMuted, textAlign: "center" },
-  wordImage: {
-    width: 120,
-    height: 120,
-    borderRadius: 24,
+  meaning: { color: colors.textMuted, fontSize: 12, fontWeight: "600" },
+  wordImageSm: {
+    width: 52,
+    height: 52,
+    borderRadius: 16,
     backgroundColor: colors.skySoft,
   },
-  audioRow: { flexDirection: "row", flexWrap: "wrap", gap: 8, justifyContent: "center" },
-  clue: { color: colors.accent, fontWeight: "700", textAlign: "center" },
-  grid: { flexDirection: "row", flexWrap: "wrap", gap: 10 },
-  choice: {
-    width: "47%",
-    flexGrow: 1,
+  audioRow: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
+  clue: { color: colors.accent, fontWeight: "700", fontSize: 12 },
+  gridRows: { flex: 1, minHeight: 0, gap: 8 },
+  gridRow: { flex: 1, flexDirection: "row", gap: 8, minHeight: 0 },
+  choiceFlex: {
+    flex: 1,
+    minHeight: 0,
     backgroundColor: "#fff",
     borderRadius: radii.lg,
-    padding: 16,
+    paddingVertical: 6,
+    paddingHorizontal: 6,
     alignItems: "center",
-    gap: 4,
+    justifyContent: "center",
+    gap: 2,
   },
   choiceHint: { borderWidth: 2, borderColor: colors.success },
-  choiceKey: { fontWeight: "800", color: colors.primary },
-  choiceLabel: { fontWeight: "700", color: colors.text },
-  letterBig: { fontSize: 32, fontWeight: "800", color: colors.primaryDark },
+  choiceKey: { fontWeight: "800", color: colors.primary, fontSize: 13 },
+  choiceEmoji: { fontSize: 42, lineHeight: 50 },
+  letterBig: { fontSize: 40, fontWeight: "800", color: colors.primaryDark },
+  letterBlock: { flex: 1, gap: 6, minHeight: 0 },
+  spellBlock: { flex: 1, gap: 8, justifyContent: "flex-end" },
   spellBox: {
-    minWidth: 160,
-    minHeight: 52,
+    minHeight: 40,
     borderRadius: radii.md,
     backgroundColor: colors.primarySoft,
     alignItems: "center",
     justifyContent: "center",
-    paddingHorizontal: 16,
+    paddingHorizontal: 12,
   },
   spellTyped: {
-    fontSize: 28,
+    fontSize: 22,
     fontWeight: "800",
     color: colors.primaryDark,
-    letterSpacing: 4,
+    letterSpacing: 3,
   },
-  spellHint: { textAlign: "center", color: colors.textMuted, fontWeight: "600" },
+  spellHint: {
+    textAlign: "center",
+    color: colors.textMuted,
+    fontWeight: "600",
+    fontSize: 12,
+  },
   keyboard: {
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: 8,
+    gap: 5,
     justifyContent: "center",
   },
   key: {
-    width: 36,
-    height: 40,
-    borderRadius: 10,
+    width: 32,
+    height: 34,
+    borderRadius: 8,
     backgroundColor: "#fff",
     alignItems: "center",
     justifyContent: "center",
   },
-  letter: { fontSize: 16, fontWeight: "800", color: colors.primaryDark },
-  spellActions: { flexDirection: "row", flexWrap: "wrap", gap: 8, justifyContent: "center" },
-  feedbackOk: { fontWeight: "800", fontSize: 22, color: colors.success },
-  feedbackMeta: { fontWeight: "700", color: colors.text },
-  feedbackTry: { fontWeight: "700", color: colors.accent, textAlign: "center" },
+  letter: { fontSize: 14, fontWeight: "800", color: colors.primaryDark },
+  spellActions: { flexDirection: "row", flexWrap: "wrap", gap: 6, justifyContent: "center" },
+  feedbackBarOk: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 8,
+    backgroundColor: colors.mintSoft,
+    borderRadius: radii.lg,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  },
+  feedbackBarTry: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 8,
+    backgroundColor: "#fff",
+    borderRadius: radii.lg,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  feedbackInline: { flex: 1, fontWeight: "800", color: colors.success, fontSize: 14 },
+  feedbackTry: { flex: 1, fontWeight: "700", color: colors.accent, fontSize: 13 },
   confetti: {
     position: "absolute",
-    top: 8,
+    top: 4,
     left: 0,
     right: 0,
     zIndex: 5,
     alignItems: "center",
   },
-  confettiText: { fontSize: 28 },
+  confettiText: { fontSize: 22 },
   resultsCard: { alignItems: "center", gap: 10, marginTop: 12 },
   resultsSub: { color: "#EDE9FE", fontWeight: "700", textAlign: "center" },
   statsGrid: {

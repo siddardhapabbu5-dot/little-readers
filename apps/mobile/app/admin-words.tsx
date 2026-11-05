@@ -1,30 +1,41 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
-  Linking,
   Platform,
   ScrollView,
+  Share,
   StyleSheet,
   Text,
   TextInput,
   View,
 } from "react-native";
-import { useFocusEffect, useRouter } from "expo-router";
+import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
+import * as DocumentPicker from "expo-document-picker";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { AdminTabBar } from "../components/AdminTabBar";
 import { Card, ErrorText, SoftButton, Title } from "../components/ui";
 import { AuthGate } from "../components/AuthGate";
-import { apiRequest, ApiError } from "../services/api";
+import { goAdminBack } from "../services/admin-nav";
+import {
+  apiDownloadText,
+  apiRequest,
+  apiUpload,
+  ApiError,
+} from "../services/api";
 import { ROLE_SETS } from "../services/auth-errors";
+import { displayEmoji } from "../services/emoji";
 import { colors } from "../theme";
 
-const WEB_ADMIN_WORDS =
-  process.env.EXPO_PUBLIC_WEB_URL?.replace(/\/$/, "") ??
-  "http://localhost:3100";
+type GradeRow = { id: string; code: string; label: string };
 
 type Category = {
   id: string;
   label: string;
-  group?: { label?: string; level?: { label?: string; grade?: { code?: string } | null } };
+  _count?: { words?: number };
+  group?: {
+    code?: string;
+    level?: { code?: string; grade?: { code?: string } | null };
+  };
 };
 
 type WordRow = {
@@ -34,7 +45,6 @@ type WordRow = {
   phonetic: string | null;
   emoji: string;
   difficulty: number;
-  sortOrder: number;
   isActive: boolean;
   origin: string;
   categoryId: string;
@@ -49,21 +59,45 @@ type WordRow = {
       };
     };
   };
-  _count?: { attempts: number };
+  dictionarySense?: {
+    definition: string;
+    entry?: {
+      headword: string;
+      sourceName: string | null;
+      licence: string | null;
+      pronunciation: string | null;
+    };
+  } | null;
 };
 
 type WordList = { total: number; words: WordRow[] };
 
-/**
- * Mobile Admin word browse / edit / reclassify.
- * Full bulk review stays on the website Admin → Manage Words.
- */
+type Assignment = {
+  id: string;
+  confidenceScore: number;
+  grade: { code: string };
+  category: { label: string };
+  sense: { definition: string; entry: { headword: string } };
+};
+
 export default function AdminWordsScreen() {
   const router = useRouter();
+  const params = useLocalSearchParams<{
+    grade?: string | string[];
+    categoryId?: string | string[];
+  }>();
+  const paramGrade = Array.isArray(params.grade) ? params.grade[0] : params.grade;
+  const paramCategoryId = Array.isArray(params.categoryId)
+    ? params.categoryId[0]
+    : params.categoryId;
   const [q, setQ] = useState("");
+  const [grade, setGrade] = useState<string>(paramGrade || "GRADE_1");
+  const [gradeRows, setGradeRows] = useState<GradeRow[]>([]);
+  const [categoryId, setCategoryId] = useState<string>(paramCategoryId || "");
   const [words, setWords] = useState<WordRow[]>([]);
   const [total, setTotal] = useState(0);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [pending, setPending] = useState<Assignment[]>([]);
   const [selected, setSelected] = useState<WordRow | null>(null);
   const [edit, setEdit] = useState({
     text: "",
@@ -77,25 +111,54 @@ export default function AdminWordsScreen() {
   const [info, setInfo] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
+  const gradeId = useMemo(
+    () => gradeRows.find((g) => g.code === grade)?.id ?? "",
+    [gradeRows, grade]
+  );
+
+  const gradeCategories = useMemo(
+    () =>
+      categories.filter((c) => c.group?.level?.grade?.code === grade),
+    [categories, grade]
+  );
+
   const load = useCallback(async () => {
     setBusy(true);
     setError(null);
     try {
-      const params = new URLSearchParams({ take: "60" });
-      if (q.trim()) params.set("q", q.trim());
-      const [list, cats] = await Promise.all([
-        apiRequest<WordList>(`/admin/vocabulary/words?${params}`),
+      const [grades, cats] = await Promise.all([
+        apiRequest<GradeRow[]>("/admin/content/grades"),
         apiRequest<Category[]>("/admin/content/categories"),
+      ]);
+      setGradeRows(grades);
+      setCategories(cats);
+      const gid = grades.find((g) => g.code === grade)?.id;
+      const params = new URLSearchParams({ take: "200", isActive: "true" });
+      if (q.trim()) params.set("q", q.trim());
+      if (gid) params.set("gradeId", gid);
+      if (categoryId) params.set("categoryId", categoryId);
+      const [list, pend] = await Promise.all([
+        apiRequest<WordList>(`/admin/vocabulary/words?${params}`),
+        apiRequest<Assignment[]>(
+          "/admin/dictionary/assignments?status=PENDING&take=80"
+        ).catch(() => [] as Assignment[]),
       ]);
       setWords(list.words);
       setTotal(list.total);
-      setCategories(cats);
+      setPending(
+        pend.filter((a) => !grade || a.grade.code === grade).slice(0, 40)
+      );
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Load failed");
     } finally {
       setBusy(false);
     }
-  }, [q]);
+  }, [q, grade, categoryId]);
+
+  useEffect(() => {
+    if (paramGrade) setGrade(paramGrade);
+    if (paramCategoryId !== undefined) setCategoryId(paramCategoryId || "");
+  }, [paramGrade, paramCategoryId]);
 
   useFocusEffect(
     useCallback(() => {
@@ -143,7 +206,6 @@ export default function AdminWordsScreen() {
   async function deactivate() {
     if (!selected) return;
     setBusy(true);
-    setError(null);
     try {
       await apiRequest(`/admin/vocabulary/words/${selected.id}/deactivate`, {
         method: "POST",
@@ -159,16 +221,146 @@ export default function AdminWordsScreen() {
     }
   }
 
+  async function downloadCsv() {
+    setBusy(true);
+    setError(null);
+    try {
+      const params = new URLSearchParams({ isActive: "true", format: "auto" });
+      if (gradeId) params.set("gradeId", gradeId);
+      if (categoryId) params.set("categoryId", categoryId);
+      let csv = await apiDownloadText(
+        `/admin/vocabulary/words/export.csv?${params}`
+      );
+      // Keep Excel emoji-safe even if an older API omitted the BOM.
+      if (!csv.startsWith("\uFEFF")) csv = `\uFEFF${csv}`;
+      const isAz = csv.includes("Capital Letter") && csv.includes("Symbol");
+      const catLabel =
+        gradeCategories.find((c) => c.id === categoryId)?.label ?? "category";
+      const safe = catLabel.replace(/[^a-zA-Z0-9]+/g, "-").replace(/^-|-$/g, "");
+      const name = isAz
+        ? `${safe || "ABC-Learning"}-A-to-Z.csv`
+        : `little-readers-${grade}${categoryId ? `-${safe}` : ""}.csv`;
+      if (Platform.OS === "web" && typeof document !== "undefined") {
+        const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = name;
+        a.click();
+        URL.revokeObjectURL(url);
+        setInfo(
+          isAz
+            ? `Downloaded live A–Z sheet (${name}) with visible emoji symbols.`
+            : `Downloaded ${name}. Edit in Excel, then Upload sheet.`
+        );
+      } else {
+        await Share.share({ message: csv, title: name });
+        setInfo("CSV shared — save the file, edit, then Upload sheet.");
+      }
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Download failed");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function uploadCsv() {
+    setBusy(true);
+    setError(null);
+    try {
+      let fileName = "sheet.csv";
+      let fileBlob: Blob | null = null;
+      let fileUri: string | null = null;
+      let mime = "application/octet-stream";
+
+      if (Platform.OS === "web" && typeof document !== "undefined") {
+        const input = document.createElement("input");
+        input.type = "file";
+        input.accept =
+          ".csv,.xlsx,.xls,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel";
+        const file = await new Promise<File | null>((resolve) => {
+          input.onchange = () => resolve(input.files?.[0] ?? null);
+          input.click();
+        });
+        if (!file) {
+          setInfo("Upload cancelled.");
+          return;
+        }
+        fileName = file.name;
+        fileBlob = file;
+        mime = file.type || mime;
+      } else {
+        const result = await DocumentPicker.getDocumentAsync({
+          type: [
+            "text/csv",
+            "text/plain",
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            "application/vnd.ms-excel",
+            "*/*",
+          ],
+          copyToCacheDirectory: true,
+          multiple: false,
+        });
+        if (result.canceled || !result.assets?.[0]) {
+          setInfo("Upload cancelled.");
+          return;
+        }
+        const asset = result.assets[0];
+        fileName = asset.name || "sheet.xlsx";
+        fileUri = asset.uri;
+        mime = asset.mimeType || mime;
+      }
+
+      const lower = fileName.toLowerCase();
+      const isAlphabet =
+        /a[_-]?to[_-]?z|alphabet/i.test(fileName) ||
+        lower.endsWith(".xlsx") ||
+        lower.endsWith(".xls");
+      if (isAlphabet && !categoryId) {
+        setError(
+          "Select a category first, then upload the A–Z alphabet sheet (Symbol / Word / Example Sentence)."
+        );
+        return;
+      }
+
+      const form = new FormData();
+      if (fileBlob) {
+        form.append("file", fileBlob, fileName);
+      } else if (fileUri) {
+        form.append("file", {
+          uri: fileUri,
+          name: fileName,
+          type: mime,
+        } as unknown as Blob);
+      }
+      if (categoryId) form.append("categoryId", categoryId);
+
+      const data = await apiUpload<{
+        created: number;
+        updated: number;
+        failed: number;
+        format?: string;
+      }>("/admin/vocabulary/words/import-sheet", form);
+      setInfo(
+        `Sheet imported${data.format === "alphabet_az" ? " (A–Z)" : ""}: ${data.created} created, ${data.updated} updated, ${data.failed} failed.`
+      );
+      await load();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Upload failed");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function reclassify() {
     if (!selected || !reclassCategoryId) return;
     setBusy(true);
-    setError(null);
     try {
       await apiRequest(`/admin/vocabulary/words/${selected.id}/reclassify`, {
         method: "POST",
         body: JSON.stringify({ categoryId: reclassCategoryId }),
       });
-      setInfo("Reclassified (same word id).");
+      setInfo("Reclassified.");
       setSelected(null);
       await load();
     } catch (err) {
@@ -178,30 +370,79 @@ export default function AdminWordsScreen() {
     }
   }
 
-  async function openBulkOnWeb() {
-    const url = `${WEB_ADMIN_WORDS}/admin/vocabulary/words`;
+  async function bulkPending(action: "approve" | "publish") {
+    if (!pending.length) return;
+    setBusy(true);
     try {
-      await Linking.openURL(url);
-    } catch {
-      setInfo(`Open bulk review on website: ${url}`);
+      const ids = pending.map((p) => p.id);
+      const path =
+        action === "approve"
+          ? "/admin/dictionary/assignments/bulk-approve"
+          : "/admin/dictionary/assignments/bulk-publish";
+      const data = await apiRequest<{ updated: number; failed: number }>(path, {
+        method: "POST",
+        body: JSON.stringify({ ids }),
+      });
+      setInfo(
+        `${action}: ${data.updated} ok` +
+          (data.failed ? `, ${data.failed} failed` : "")
+      );
+      await load();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : `Bulk ${action} failed`);
+    } finally {
+      setBusy(false);
     }
   }
 
   return (
     <AuthGate roles={ROLE_SETS.admin}>
-      <SafeAreaView style={styles.safe}>
+      <SafeAreaView style={styles.safe} edges={["top"]}>
         <ScrollView contentContainerStyle={styles.content}>
-          <SoftButton label="← Back" onPress={() => router.back()} />
-          <Title>Vocabulary words</Title>
+          <SoftButton label="← Back" onPress={() => goAdminBack(router)} />
+          <Title>Vocabulary Manager</Title>
           <Text style={styles.note}>
-            Browse and edit individual words. Bulk approve/reject/publish is on the website
-            Admin → Manage Words ({Platform.OS === "web" ? "localhost:3100" : "shared API"}).
+            Pick a category, then Upload sheet: A–Z Excel (Capital/Small Letter, Symbol, Word,
+            Example Sentence) or grade/level CSV. AI never auto-publishes.
           </Text>
           <ErrorText>{error}</ErrorText>
           {info ? <Text style={styles.info}>{info}</Text> : null}
           {busy ? <ActivityIndicator color={colors.primary} /> : null}
 
           <Card style={{ gap: 8 }}>
+            <Text style={styles.section}>Grade</Text>
+            <View style={styles.rowWrap}>
+              {(gradeRows.length
+                ? gradeRows.map((g) => g.code)
+                : ["GRADE_1", "GRADE_2", "GRADE_3", "GRADE_4"]
+              ).map((g) => (
+                <SoftButton
+                  key={g}
+                  label={g.replace("_", " ")}
+                  active={grade === g}
+                  onPress={() => {
+                    setGrade(g);
+                    setCategoryId("");
+                  }}
+                />
+              ))}
+            </View>
+            <Text style={styles.section}>Category (saves scrolling)</Text>
+            <View style={styles.rowWrap}>
+              <SoftButton
+                label="All categories"
+                active={!categoryId}
+                onPress={() => setCategoryId("")}
+              />
+              {gradeCategories.map((c) => (
+                <SoftButton
+                  key={c.id}
+                  label={`${c.label}${c._count?.words != null ? ` (${c._count.words})` : ""}`}
+                  active={categoryId === c.id}
+                  onPress={() => setCategoryId(c.id)}
+                />
+              ))}
+            </View>
             <TextInput
               style={styles.input}
               placeholder="Search word or meaning"
@@ -209,72 +450,106 @@ export default function AdminWordsScreen() {
               value={q}
               onChangeText={setQ}
             />
-            <SoftButton label="Search" onPress={() => void load()} />
-            <SoftButton label="Bulk review on website" onPress={() => void openBulkOnWeb()} />
-            <Text style={styles.row}>
-              Showing {words.length} of {total}
+            <SoftButton label="Search / refresh" onPress={() => void load()} />
+            <View style={styles.rowWrap}>
+              <SoftButton label="Download CSV" onPress={() => void downloadCsv()} />
+              <SoftButton label="Upload sheet" onPress={() => void uploadCsv()} />
+              <SoftButton
+                label="Dictionary upload"
+                onPress={() => router.push("/admin-dictionary" as never)}
+              />
+            </View>
+            <Text style={styles.meta}>
+              Showing {words.length} of {total} active words
+              {categoryId ? " in this category" : ` for ${grade}`}.
+              A–Z template: docs/templates/A_to_Z_Alphabet_with_Symbols.xlsx
+              (select category first). Grade/level CSV:
+              docs/templates/little-readers-words-by-grade-level-template.csv
             </Text>
           </Card>
 
+          {pending.length ? (
+            <Card style={{ gap: 8 }}>
+              <Text style={styles.section}>
+                Pending AI suggestions ({pending.length})
+              </Text>
+              <View style={styles.rowWrap}>
+                <SoftButton label="Approve all" onPress={() => void bulkPending("approve")} />
+                <SoftButton label="Publish all" onPress={() => void bulkPending("publish")} />
+              </View>
+              {pending.slice(0, 12).map((a) => (
+                <Text key={a.id} style={styles.meta}>
+                  {a.sense.entry.headword} → {a.grade.code} · {a.category.label}
+                </Text>
+              ))}
+            </Card>
+          ) : null}
+
           {words.map((w) => (
-            <Card key={w.id} style={{ gap: 6 }}>
+            <Card key={w.id} style={{ gap: 4 }}>
               <Text style={styles.word}>
-                {w.emoji} {w.text}
+                {displayEmoji(w.emoji, "")}
+                {displayEmoji(w.emoji, "") ? " " : ""}
+                {w.text}
               </Text>
-              <Text style={styles.row}>{w.meaning}</Text>
-              <Text style={styles.row}>
-                {w.category.group.level.grade?.code ?? "—"} / {w.category.label} ·{" "}
-                {w.isActive ? "active" : "off"} · attempts {w._count?.attempts ?? 0}
+              <Text style={styles.meta}>
+                {w.category.group.level.grade?.code} · {w.category.label} · {w.origin}
               </Text>
-              <SoftButton label="Edit" onPress={() => openWord(w)} />
+              <Text style={styles.meta} numberOfLines={2}>
+                {w.meaning}
+              </Text>
+              <SoftButton label="Open" onPress={() => openWord(w)} />
             </Card>
           ))}
 
           {selected ? (
             <Card style={{ gap: 8 }}>
-              <Text style={styles.section}>Edit {selected.text}</Text>
+              <Text style={styles.section}>Edit · {selected.text}</Text>
+              {selected.dictionarySense ? (
+                <Text style={styles.meta}>
+                  Dictionary: {selected.dictionarySense.definition}
+                  {selected.dictionarySense.entry?.sourceName
+                    ? ` · source ${selected.dictionarySense.entry.sourceName}`
+                    : ""}
+                </Text>
+              ) : null}
               <TextInput
                 style={styles.input}
                 value={edit.text}
-                onChangeText={(t) => setEdit((s) => ({ ...s, text: t }))}
+                onChangeText={(text) => setEdit({ ...edit, text })}
               />
               <TextInput
-                style={[styles.input, styles.area]}
+                style={[styles.input, { minHeight: 70 }]}
                 multiline
                 value={edit.meaning}
-                onChangeText={(t) => setEdit((s) => ({ ...s, meaning: t }))}
+                onChangeText={(meaning) => setEdit({ ...edit, meaning })}
+                placeholder="Child-friendly meaning"
               />
               <TextInput
                 style={styles.input}
-                placeholder="Phonetic"
-                placeholderTextColor={colors.textMuted}
                 value={edit.phonetic}
-                onChangeText={(t) => setEdit((s) => ({ ...s, phonetic: t }))}
+                onChangeText={(phonetic) => setEdit({ ...edit, phonetic })}
+                placeholder="Phonetic"
               />
-              <TextInput
-                style={styles.input}
-                placeholder="Emoji"
-                placeholderTextColor={colors.textMuted}
-                value={edit.emoji}
-                onChangeText={(t) => setEdit((s) => ({ ...s, emoji: t }))}
-              />
+              <Text style={styles.meta}>Move to category (same grade)</Text>
+              <View style={styles.rowWrap}>
+                {gradeCategories.slice(0, 12).map((c) => (
+                  <SoftButton
+                    key={c.id}
+                    label={c.label}
+                    active={reclassCategoryId === c.id}
+                    onPress={() => setReclassCategoryId(c.id)}
+                  />
+                ))}
+              </View>
               <SoftButton label="Save" onPress={() => void save()} />
+              <SoftButton label="Reclassify" onPress={() => void reclassify()} />
               <SoftButton label="Deactivate" onPress={() => void deactivate()} />
-
-              <Text style={styles.section}>Reclassify</Text>
-              <Text style={styles.row}>Tap a category below, then Move.</Text>
-              {categories.slice(0, 40).map((c) => (
-                <SoftButton
-                  key={c.id}
-                  label={`${reclassCategoryId === c.id ? "✓ " : ""}${c.group?.level?.grade?.code ?? "—"} / ${c.label}`}
-                  onPress={() => setReclassCategoryId(c.id)}
-                />
-              ))}
-              <SoftButton label="Move category" onPress={() => void reclassify()} />
-              <SoftButton label="Close editor" onPress={() => setSelected(null)} />
+              <SoftButton label="Close" onPress={() => setSelected(null)} />
             </Card>
           ) : null}
         </ScrollView>
+        <AdminTabBar />
       </SafeAreaView>
     </AuthGate>
   );
@@ -282,12 +557,13 @@ export default function AdminWordsScreen() {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.bg },
-  content: { padding: 16, gap: 12, paddingBottom: 40 },
+  content: { padding: 16, gap: 12, paddingBottom: 24 },
   note: { color: colors.textMuted, fontSize: 13, lineHeight: 18 },
-  info: { color: colors.primary, fontSize: 13 },
-  section: { fontWeight: "700", color: colors.text, fontSize: 16 },
-  word: { fontWeight: "700", color: colors.text, fontSize: 17 },
-  row: { color: colors.textMuted, fontSize: 13 },
+  info: { color: colors.success, fontWeight: "700" },
+  section: { fontWeight: "800", fontSize: 16, color: colors.text },
+  meta: { color: colors.textMuted, fontSize: 13, lineHeight: 18 },
+  word: { fontWeight: "800", fontSize: 17, color: colors.text },
+  rowWrap: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   input: {
     borderWidth: 1,
     borderColor: colors.border,
@@ -297,5 +573,4 @@ const styles = StyleSheet.create({
     color: colors.text,
     backgroundColor: "#fff",
   },
-  area: { minHeight: 72, textAlignVertical: "top" },
 });

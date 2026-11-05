@@ -19,6 +19,7 @@ import {
   deleteGrade,
   deleteGroup,
   deleteLevel,
+  fillCategoryStarterWords,
   listCategoriesAdmin,
   listGradesAdmin,
   listGroupsAdmin,
@@ -28,6 +29,7 @@ import {
   updateGroup,
   updateLevel,
 } from "./content-structure.service.js";
+import { listStarterPackThemes } from "./category-starter-packs.js";
 
 export const contentStructureRouter = Router();
 
@@ -101,6 +103,7 @@ const categoryCreateSchema = z.object({
   sortOrder: z.coerce.number().int().optional(),
   unlockOrder: z.coerce.number().int().optional(),
   isPublished: z.boolean().optional(),
+  fillStarters: z.boolean().optional(),
 });
 
 const categoryPatchSchema = z.object({
@@ -157,7 +160,13 @@ contentStructureRouter.post("/grades/:id/deactivate", async (req, res, next) => 
 
 contentStructureRouter.delete("/grades/:id", async (req, res, next) => {
   try {
-    res.status(200).json({ data: await deleteGrade(String(req.params.id)) });
+    const force =
+      req.query.force === "1" ||
+      req.query.force === "true" ||
+      (req.body && req.body.force === true);
+    res
+      .status(200)
+      .json({ data: await deleteGrade(String(req.params.id), { force }) });
   } catch (e) {
     next(e);
   }
@@ -283,12 +292,33 @@ contentStructureRouter.get("/categories", async (req, res, next) => {
   }
 });
 
+contentStructureRouter.get("/starter-packs", async (_req, res, next) => {
+  try {
+    res.status(200).json({ data: listStarterPackThemes() });
+  } catch (e) {
+    next(e);
+  }
+});
+
 contentStructureRouter.post(
   "/categories",
   validateBody(categoryCreateSchema),
   async (req, res, next) => {
     try {
       res.status(201).json({ data: await createCategory(req.body) });
+    } catch (e) {
+      next(e);
+    }
+  }
+);
+
+contentStructureRouter.post(
+  "/categories/:id/fill-starters",
+  async (req, res, next) => {
+    try {
+      res
+        .status(200)
+        .json({ data: await fillCategoryStarterWords(String(req.params.id)) });
     } catch (e) {
       next(e);
     }
@@ -319,7 +349,13 @@ contentStructureRouter.post("/categories/:id/deactivate", async (req, res, next)
 
 contentStructureRouter.delete("/categories/:id", async (req, res, next) => {
   try {
-    res.status(200).json({ data: await deleteCategory(String(req.params.id)) });
+    const force =
+      req.query.force === "1" ||
+      req.query.force === "true" ||
+      (req.body && req.body.force === true);
+    res
+      .status(200)
+      .json({ data: await deleteCategory(String(req.params.id), { force }) });
   } catch (e) {
     next(e);
   }

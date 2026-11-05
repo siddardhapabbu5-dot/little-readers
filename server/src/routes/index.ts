@@ -6,6 +6,8 @@ import { vocabImportRouter } from "../vocab-import/vocab-import.routes.js";
 import { dictionaryRouter } from "../dictionary/dictionary.routes.js";
 import { contentStructureRouter } from "../content-structure/content-structure.routes.js";
 import { lessonAdminRouter } from "../lessons/lesson.routes.js";
+import { programmeRouter } from "../programmes/programme.routes.js";
+import { publisherRouter } from "../programmes/publisher.routes.js";
 import {
   deviceRouter,
   subscriptionRouter,
@@ -45,6 +47,8 @@ apiRouter.use("/admin/vocabulary", vocabImportRouter);
 apiRouter.use("/admin/dictionary", dictionaryRouter);
 apiRouter.use("/admin/content", contentStructureRouter);
 apiRouter.use("/admin/lessons", lessonAdminRouter);
+apiRouter.use("/admin/programmes", programmeRouter);
+apiRouter.use("/admin/publisher", publisherRouter);
 apiRouter.use("/admin/schools", schoolAdminRouter);
 apiRouter.use("/teacher", teacherRouter);
 apiRouter.use("/devices", deviceRouter);

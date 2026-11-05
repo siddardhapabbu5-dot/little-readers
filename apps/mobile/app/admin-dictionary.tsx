@@ -1,16 +1,22 @@
 import { useCallback, useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
   Platform,
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   View,
 } from "react-native";
+import * as DocumentPicker from "expo-document-picker";
 import { useFocusEffect, useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { AdminTabBar } from "../components/AdminTabBar";
 import { Card, ErrorText, SoftButton, Title } from "../components/ui";
 import { AuthGate } from "../components/AuthGate";
+import { KIDS_STARTER_WORDS } from "../data/kids-starter-words";
+import { goAdminBack } from "../services/admin-nav";
 import { apiRequest, apiUpload, ApiError } from "../services/api";
 import { ROLE_SETS } from "../services/auth-errors";
 import { colors } from "../theme";
@@ -34,41 +40,68 @@ type BatchInfo = {
 
 type PickedFile = {
   name: string;
-  blob: Blob;
+  uri?: string;
+  blob?: Blob;
   mime: string;
 };
 
 async function pickDictionaryFile(): Promise<PickedFile | null> {
-  if (Platform.OS !== "web" || typeof document === "undefined") {
-    return null;
+  if (Platform.OS === "web" && typeof document !== "undefined") {
+    return new Promise((resolve) => {
+      const input = document.createElement("input");
+      input.type = "file";
+      input.accept = ".json,.csv,.tsv,.txt,.xlsx,.xls,.docx,.doc,.pdf";
+      input.onchange = () => {
+        const file = input.files?.[0];
+        if (!file) {
+          resolve(null);
+          return;
+        }
+        resolve({
+          name: file.name,
+          blob: file,
+          mime: file.type || "application/octet-stream",
+        });
+      };
+      input.click();
+    });
   }
-  return new Promise((resolve) => {
-    const input = document.createElement("input");
-    input.type = "file";
-    input.accept = ".json,.csv,.tsv,.txt,.xlsx,.xls,.docx,.doc,.pdf";
-    input.onchange = () => {
-      const file = input.files?.[0];
-      if (!file) {
-        resolve(null);
-        return;
-      }
-      resolve({
-        name: file.name,
-        blob: file,
-        mime: file.type || "application/octet-stream",
-      });
-    };
-    input.click();
+
+  const result = await DocumentPicker.getDocumentAsync({
+    type: [
+      "text/csv",
+      "text/plain",
+      "application/json",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      "application/vnd.ms-excel",
+      "application/pdf",
+      "application/msword",
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      "*/*",
+    ],
+    copyToCacheDirectory: true,
+    multiple: false,
   });
+  if (result.canceled || !result.assets?.[0]) return null;
+  const asset = result.assets[0];
+  return {
+    name: asset.name || "dictionary.csv",
+    uri: asset.uri,
+    mime: asset.mimeType || "application/octet-stream",
+  };
 }
 
 /**
- * Same dictionary → grade flow as website /admin/vocabulary/dictionary.
- * Phone (:8081) and website (:3100) both call API :4100 — data stays shared.
+ * Phone Admin dictionary upload → classify → approve → publish.
+ * Same API as website Admin Dictionary.
  */
 export default function AdminDictionaryScreen() {
   const router = useRouter();
   const [picked, setPicked] = useState<PickedFile | null>(null);
+  const [sourceName, setSourceName] = useState("Little Readers Kids Starter");
+  const [licence, setLicence] = useState(
+    "Project-owned sample template for Little Readers"
+  );
   const [batch, setBatch] = useState<BatchInfo | null>(null);
   const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -77,7 +110,7 @@ export default function AdminDictionaryScreen() {
 
   const loadPending = useCallback(async () => {
     const data = await apiRequest<Assignment[]>(
-      "/admin/dictionary/assignments?status=PENDING&take=40"
+      "/admin/dictionary/assignments?status=PENDING&take=200"
     );
     setAssignments(data);
   }, []);
@@ -90,19 +123,17 @@ export default function AdminDictionaryScreen() {
 
   async function pickFile() {
     setError(null);
-    if (Platform.OS !== "web") {
-      setError(
-        "File pick works in Expo web (http://localhost:8081). On a physical phone install, use the website Admin → Dictionary, or open this app in the browser."
-      );
-      return;
+    try {
+      const file = await pickDictionaryFile();
+      if (!file) return;
+      setPicked(file);
+      setInfo(`Selected ${file.name}`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not open file picker");
     }
-    const file = await pickDictionaryFile();
-    if (!file) return;
-    setPicked(file);
-    setInfo(`Selected ${file.name}`);
   }
 
-  async function upload() {
+  async function uploadPicked() {
     if (!picked) {
       setError("Pick a dictionary file first");
       return;
@@ -112,9 +143,22 @@ export default function AdminDictionaryScreen() {
     setInfo(null);
     try {
       const form = new FormData();
-      form.append("file", picked.blob, picked.name);
-      form.append("sourceName", "English-English Dictionary");
-      form.append("licence", "provided-by-admin");
+      if (picked.blob) {
+        form.append("file", picked.blob, picked.name);
+      } else if (picked.uri) {
+        form.append("file", {
+          uri: picked.uri,
+          name: picked.name,
+          type: picked.mime,
+        } as unknown as Blob);
+      } else {
+        throw new Error("No file data");
+      }
+      form.append("sourceName", sourceName.trim() || "Little Readers Kids Starter");
+      form.append(
+        "licence",
+        licence.trim() || "Project-owned sample template for Little Readers"
+      );
 
       const data = await apiUpload<BatchInfo>("/admin/dictionary/uploads", form);
       setBatch(data);
@@ -123,6 +167,33 @@ export default function AdminDictionaryScreen() {
       );
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Upload failed");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function uploadKidsStarter() {
+    setBusy(true);
+    setError(null);
+    setInfo(null);
+    try {
+      const data = await apiRequest<BatchInfo>("/admin/dictionary/uploads/inline", {
+        method: "POST",
+        body: JSON.stringify({
+          sourceName: sourceName.trim() || "Little Readers Kids Starter",
+          licence:
+            licence.trim() || "Project-owned sample template for Little Readers",
+          filename: "little-readers-kids-dictionary-template.csv",
+          rows: KIDS_STARTER_WORDS,
+        }),
+      });
+      setBatch(data);
+      setPicked(null);
+      setInfo(
+        `Kids starter uploaded (${data.entryCount} entries). Tap Classify, then Approve all + Publish all.`
+      );
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Starter upload failed");
     } finally {
       setBusy(false);
     }
@@ -141,7 +212,7 @@ export default function AdminDictionaryScreen() {
         body: "{}",
       });
       await loadPending();
-      setInfo("Classification done. Pending list matches the website.");
+      setInfo("Classification done. Review pending, then Approve all / Publish all.");
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Classify failed");
     } finally {
@@ -158,9 +229,77 @@ export default function AdminDictionaryScreen() {
         body: "{}",
       });
       await loadPending();
-      setInfo(`${action} saved — published words appear in Kids Zone on phone and website.`);
+      setInfo(`${action} saved — published words appear in Kids Zone.`);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Action failed");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function bulk(action: "approve" | "publish") {
+    if (!assignments.length) {
+      setError("No pending suggestions");
+      return;
+    }
+    setBusy(true);
+    setError(null);
+    try {
+      const ids = assignments.map((a) => a.id);
+      const path =
+        action === "approve"
+          ? "/admin/dictionary/assignments/bulk-approve"
+          : "/admin/dictionary/assignments/bulk-publish";
+      const data = await apiRequest<{ updated: number; failed: number }>(path, {
+        method: "POST",
+        body: JSON.stringify({ ids }),
+      });
+      await loadPending();
+      setInfo(
+        `${action}: ${data.updated} ok` +
+          (data.failed ? `, ${data.failed} failed` : "")
+      );
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : `Bulk ${action} failed`);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  function confirmClearOldWords() {
+    const message =
+      "Deletes all published kids words so you can replace them with the new dictionary. Dictionary upload history is kept.";
+    if (Platform.OS === "web") {
+      if (typeof window !== "undefined" && window.confirm(`Clear old vocabulary?\n\n${message}`)) {
+        void clearOldWords();
+      }
+      return;
+    }
+    Alert.alert("Clear old vocabulary?", message, [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Delete all words",
+        style: "destructive",
+        onPress: () => void clearOldWords(),
+      },
+    ]);
+  }
+
+  async function clearOldWords() {
+    setBusy(true);
+    setError(null);
+    setInfo(null);
+    try {
+      const data = await apiRequest<{ words: number; attempts: number }>(
+        "/admin/vocabulary/words/clear-all",
+        {
+          method: "POST",
+          body: JSON.stringify({ confirm: "DELETE_ALL_WORDS" }),
+        }
+      );
+      setInfo(`Cleared ${data.words} old words. Upload kids starter next.`);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Clear failed");
     } finally {
       setBusy(false);
     }
@@ -170,37 +309,72 @@ export default function AdminDictionaryScreen() {
     <AuthGate roles={ROLE_SETS.admin}>
       <SafeAreaView style={styles.safe}>
         <ScrollView contentContainerStyle={styles.content}>
-          <SoftButton label="← Back" onPress={() => router.back()} />
+          <SoftButton label="← Back" onPress={() => goAdminBack(router)} />
           <Title>Dictionary → Grades</Title>
           <Text style={styles.note}>
-            Use this phone app (:8081) or the website (:3100). Both talk to the same API
-            (:4100), so uploads and publishes stay in sync.
+            Mixed word list + classifier only — not Google photos. Words go only into
+            matching categories that already exist (fruits need a Fruits category). For
+            one topic (Family / Fruits), use Vocabulary → Upload CSV instead.
           </Text>
           <ErrorText>{error}</ErrorText>
           {info ? <Text style={styles.info}>{info}</Text> : null}
           {busy ? <ActivityIndicator color={colors.primary} /> : null}
 
           <Card style={{ gap: 10 }}>
-            <Text style={styles.section}>1. Upload dictionary</Text>
+            <Text style={styles.section}>0. Replace old words</Text>
             <Text style={styles.meta}>
-              JSON / CSV / XLSX / DOC / PDF — one full English–English file.
+              Clear previous published vocabulary before loading the kids starter.
             </Text>
-            <SoftButton label="Pick file" onPress={() => void pickFile()} />
+            <SoftButton label="Clear old vocabulary words" onPress={confirmClearOldWords} />
+          </Card>
+
+          <Card style={{ gap: 10 }}>
+            <Text style={styles.section}>1. Upload dictionary</Text>
+            <Text style={styles.meta}>Source name</Text>
+            <TextInput
+              style={styles.input}
+              value={sourceName}
+              onChangeText={setSourceName}
+              placeholder="Little Readers Kids Starter"
+              placeholderTextColor={colors.textMuted}
+            />
+            <Text style={styles.meta}>Licence</Text>
+            <TextInput
+              style={styles.input}
+              value={licence}
+              onChangeText={setLicence}
+              placeholder="Project-owned sample…"
+              placeholderTextColor={colors.textMuted}
+            />
+            <SoftButton
+              label="Upload kids starter (50 words)"
+              onPress={() => void uploadKidsStarter()}
+            />
+            <Text style={styles.meta}>Or pick your own CSV / XLSX file</Text>
+            <SoftButton label="Pick file from phone" onPress={() => void pickFile()} />
             {picked ? <Text style={styles.meta}>File: {picked.name}</Text> : null}
-            <SoftButton label="Upload to server" onPress={() => void upload()} />
+            <SoftButton label="Upload picked file" onPress={() => void uploadPicked()} />
           </Card>
 
           <Card style={{ gap: 10 }}>
             <Text style={styles.section}>2. Classify</Text>
             <SoftButton
-              label={batch ? `Classify batch ${batch.id.slice(0, 8)}…` : "Classify (after upload)"}
+              label={
+                batch
+                  ? `Classify batch ${batch.id.slice(0, 8)}…`
+                  : "Classify (after upload)"
+              }
               onPress={() => void classify()}
             />
           </Card>
 
           <Card style={{ gap: 10 }}>
             <Text style={styles.section}>3. Pending suggestions</Text>
-            <SoftButton label="Refresh" onPress={() => void loadPending()} />
+            <View style={styles.row}>
+              <SoftButton label="Refresh" onPress={() => void loadPending()} />
+              <SoftButton label="Approve all" onPress={() => void bulk("approve")} />
+              <SoftButton label="Publish all" onPress={() => void bulk("publish")} />
+            </View>
             {!assignments.length ? (
               <Text style={styles.meta}>No pending assignments.</Text>
             ) : null}
@@ -223,6 +397,7 @@ export default function AdminDictionaryScreen() {
             ))}
           </Card>
         </ScrollView>
+        <AdminTabBar />
       </SafeAreaView>
     </AuthGate>
   );
@@ -235,6 +410,15 @@ const styles = StyleSheet.create({
   info: { color: colors.success, fontWeight: "700" },
   section: { fontWeight: "800", fontSize: 16, color: colors.text },
   meta: { color: colors.textMuted, fontSize: 13, lineHeight: 18 },
+  input: {
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    color: colors.text,
+    backgroundColor: "#fff",
+  },
   item: { gap: 4, paddingTop: 10, borderTopWidth: 1, borderTopColor: colors.border },
   word: { fontWeight: "800", color: colors.text },
   row: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 6 },

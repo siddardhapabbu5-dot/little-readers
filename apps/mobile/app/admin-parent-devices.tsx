@@ -11,13 +11,20 @@ import {
 import { useFocusEffect } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
+import { parsePhoneNumberFromString, type CountryCode } from "libphonenumber-js";
 import { AdminTabBar } from "../components/AdminTabBar";
 import { AuthGate } from "../components/AuthGate";
+import { CountryCodePicker } from "../components/CountryCodePicker";
 import { PrimaryButton } from "../components/ui";
 import { goAdminBack } from "../services/admin-nav";
 import { apiRequest, ApiError } from "../services/api";
 import { ROLE_SETS } from "../services/auth-errors";
 import { adminColors, radii, shadow } from "../theme";
+import {
+  DEFAULT_COUNTRY_ISO,
+  findCountry,
+  sanitizeNationalInput,
+} from "../utils/phone";
 
 type ActiveSession = {
   id: string;
@@ -68,6 +75,7 @@ export default function AdminParentDevicesScreen() {
   const [selected, setSelected] = useState<ParentRow | null>(null);
   const [sessions, setSessions] = useState<SessionRow[]>([]);
   const [mobileDraft, setMobileDraft] = useState("");
+  const [countryIso, setCountryIso] = useState<CountryCode>(DEFAULT_COUNTRY_ISO);
   const [busy, setBusy] = useState(false);
 
   const load = useCallback(async () => {
@@ -91,7 +99,11 @@ export default function AdminParentDevicesScreen() {
 
   async function openParent(row: ParentRow) {
     setSelected(row);
-    setMobileDraft(row.mobileE164?.replace(/^\+91/, "") ?? "");
+    const parsed = row.mobileE164
+      ? parsePhoneNumberFromString(row.mobileE164)
+      : undefined;
+    setCountryIso((parsed?.country as CountryCode | undefined) ?? DEFAULT_COUNTRY_ISO);
+    setMobileDraft(parsed?.nationalNumber ?? "");
     setBusy(true);
     setError(null);
     try {
@@ -121,7 +133,10 @@ export default function AdminParentDevicesScreen() {
         mobileE164: string | null;
       }>(`/admin/parents/${selected.id}/mobile`, {
         method: "PATCH",
-        body: JSON.stringify({ mobile: mobileDraft, countryCode: "+91" }),
+        body: JSON.stringify({
+          mobile: mobileDraft,
+          countryCode: findCountry(countryIso).callingCode,
+        }),
       });
       setSelected({ ...selected, mobileE164: updated.mobileE164 });
       await load();
@@ -199,13 +214,15 @@ export default function AdminParentDevicesScreen() {
                   Mobile: {selected.mobileE164 ?? "not set"}
                 </Text>
                 <View style={styles.mobileRow}>
-                  <Text style={styles.cc}>+91</Text>
+                  <CountryCodePicker
+                    value={countryIso}
+                    disabled={busy}
+                    onChange={setCountryIso}
+                  />
                   <TextInput
                     style={styles.input}
                     value={mobileDraft}
-                    onChangeText={(v) =>
-                      setMobileDraft(v.replace(/\D/g, "").slice(0, 10))
-                    }
+                    onChangeText={(v) => setMobileDraft(sanitizeNationalInput(v))}
                     placeholder="Link mobile"
                     keyboardType="phone-pad"
                   />
@@ -312,7 +329,6 @@ const styles = StyleSheet.create({
     gap: 8,
     marginTop: 6,
   },
-  cc: { fontWeight: "800", color: adminColors.text },
   input: {
     flex: 1,
     borderWidth: 1,

@@ -6,14 +6,18 @@ import {
   Linking,
   Platform,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
+  useWindowDimensions,
   View,
   type TextInput as TextInputType,
 } from "react-native";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import type { CountryCode } from "libphonenumber-js";
+import { CountryCodePicker } from "../components/CountryCodePicker";
 import { apiRequest, ApiError } from "../services/api";
 import {
   friendlyAuthError,
@@ -28,31 +32,46 @@ import {
   saveUser,
 } from "../services/secure";
 import { colors, radii } from "../theme";
+import {
+  DEFAULT_COUNTRY_ISO,
+  findCountry,
+  sanitizeNationalInput,
+  validateNationalPhone,
+} from "../utils/phone";
 
-/** One scene only — books, kids, grass, bottom books / open book / cup */
-const LOGIN_SCENE = require("../assets/login-bg-scene.jpg");
+const BG_BOTTOM = require("../assets/login-bottom-scene.jpg");
+const LOGO_BOOKS = require("../assets/login-books-logo.jpg");
+const BOY = require("../assets/login-boy.jpg");
+const GIRL = require("../assets/login-girl.jpg");
 
-type LoginMode = "parent_otp" | "email";
+/** Staff/admin email login is hidden from the main student OTP UI. */
+type VisibleMode = "student_otp" | "staff_email";
 
 export default function LoginScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { height: winH } = useWindowDimensions();
+  const scrollRef = useRef<ScrollView>(null);
   const passwordRef = useRef<TextInputType>(null);
   const otpRef = useRef<TextInputType>(null);
+  const emailFieldY = useRef(0);
+  const passwordFieldY = useRef(0);
 
-  const [mode, setMode] = useState<LoginMode>("parent_otp");
+  const [mode, setMode] = useState<VisibleMode>("student_otp");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [countryIso, setCountryIso] = useState<CountryCode>(DEFAULT_COUNTRY_ISO);
   const [mobile, setMobile] = useState("");
   const [otp, setOtp] = useState("");
   const [otpSent, setOtpSent] = useState(false);
   const [resendIn, setResendIn] = useState(0);
-  const [devOtp, setDevOtp] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [fieldHint, setFieldHint] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+
+  const bottomArtH = Math.max(110, Math.round(winH * 0.18));
 
   useEffect(() => {
     void consumeSessionRevokedMessage().then((msg) => {
@@ -66,28 +85,33 @@ export default function LoginScreen() {
     return () => clearTimeout(t);
   }, [resendIn]);
 
-  function switchMode(next: LoginMode) {
-    setMode(next);
+  function clearMessages() {
     setError(null);
     setFieldHint(null);
     setInfo(null);
-    setOtpSent(false);
-    setOtp("");
-    setDevOtp(null);
+  }
+
+  function scrollToY(y: number) {
+    // Keep focused field visible without jumping to top.
+    requestAnimationFrame(() => {
+      scrollRef.current?.scrollTo({
+        y: Math.max(0, y - 24),
+        animated: true,
+      });
+    });
   }
 
   async function onSendOtp() {
     if (loading) return;
-    setError(null);
-    setInfo(null);
-    setFieldHint(null);
-    const digits = mobile.replace(/\D/g, "");
-    if (digits.length < 10) {
-      setFieldHint("Enter a valid 10-digit mobile number.");
+    clearMessages();
+    const checked = validateNationalPhone(mobile, countryIso);
+    if (!checked.ok) {
+      setFieldHint(checked.error);
       return;
     }
     setLoading(true);
     try {
+      const country = findCountry(countryIso);
       const data = await apiRequest<{
         mobileE164: string;
         expiresInSec: number;
@@ -97,15 +121,17 @@ export default function LoginScreen() {
       }>("/parent/auth/send-otp", {
         method: "POST",
         mobile: false,
-        body: JSON.stringify({ mobile: digits, countryCode: "+91" }),
+        body: JSON.stringify({
+          mobile: mobile,
+          countryCode: country.callingCode,
+        }),
       });
       setOtpSent(true);
       setResendIn(data.resendInSec ?? 60);
-      setDevOtp(data.devOtp ?? null);
-      setInfo("OTP sent. Check your SMS.");
+      setInfo("Student OTP sent. Check your SMS.");
       if (data.devOtp) {
         setOtp(data.devOtp);
-        setInfo(`Dev OTP: ${data.devOtp}`);
+        setInfo(`Dev Student OTP: ${data.devOtp}`);
       }
       otpRef.current?.focus();
     } catch (err) {
@@ -117,17 +143,20 @@ export default function LoginScreen() {
 
   async function onVerifyOtp() {
     if (loading) return;
-    setError(null);
-    setInfo(null);
-    setFieldHint(null);
-    const digits = mobile.replace(/\D/g, "");
+    clearMessages();
+    const checked = validateNationalPhone(mobile, countryIso);
+    if (!checked.ok) {
+      setFieldHint(checked.error);
+      return;
+    }
     const code = otp.replace(/\D/g, "");
     if (code.length !== 6) {
-      setFieldHint("Enter the 6-digit OTP.");
+      setFieldHint("Enter the 6-digit Student OTP.");
       return;
     }
     setLoading(true);
     try {
+      const country = findCountry(countryIso);
       const deviceId = await getOrCreateInstallationId();
       const data = await apiRequest<{
         user: { id: string; name: string; email: string; role: string };
@@ -136,8 +165,8 @@ export default function LoginScreen() {
         method: "POST",
         mobile: true,
         body: JSON.stringify({
-          mobile: digits,
-          countryCode: "+91",
+          mobile: mobile,
+          countryCode: country.callingCode,
           otp: code,
           deviceId,
           platform: Platform.OS,
@@ -159,9 +188,7 @@ export default function LoginScreen() {
 
   async function onEmailLogin() {
     if (loading) return;
-    setError(null);
-    setInfo(null);
-    setFieldHint(null);
+    clearMessages();
 
     const trimmed = email.trim();
     if (!trimmed || !password) {
@@ -198,48 +225,77 @@ export default function LoginScreen() {
 
   return (
     <View style={styles.root}>
+      <View style={styles.sky} />
       <Image
-        source={LOGIN_SCENE}
-        style={styles.scene}
-        resizeMode="contain"
+        source={BG_BOTTOM}
+        style={[styles.bottomArt, { height: bottomArtH }]}
+        resizeMode="cover"
         accessibilityIgnoresInvertColors
       />
 
       <KeyboardAvoidingView
         style={styles.overlay}
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
         keyboardVerticalOffset={Platform.OS === "ios" ? 8 : 0}
       >
-        <View
-          style={[
+        <ScrollView
+          ref={scrollRef}
+          style={styles.overlay}
+          contentContainerStyle={[
             styles.page,
             {
-              paddingTop: Math.max(insets.top, 8) + 72,
-              paddingBottom: Math.max(insets.bottom, 8) + 120,
+              paddingTop: Math.max(insets.top, 10) + 6,
+              paddingBottom: Math.max(insets.bottom, 12) + bottomArtH + 16,
             },
           ]}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
+          showsVerticalScrollIndicator={false}
+          automaticallyAdjustKeyboardInsets={Platform.OS === "ios"}
         >
           <View
             style={styles.header}
             accessibilityRole="header"
             accessibilityLabel="Little Readers. Learn, Listen, Spell."
           >
-            <Text style={styles.brand}>Little Readers</Text>
-            <View style={styles.pill}>
-              <Text style={styles.pillText}>Learn • Listen • Spell</Text>
+            <View style={styles.heroRow}>
+              <Image
+                source={BOY}
+                style={styles.mascot}
+                resizeMode="contain"
+                accessibilityLabel="Little Readers boy character"
+              />
+              <View style={styles.brandCenter}>
+                <Image
+                  source={LOGO_BOOKS}
+                  style={styles.booksLogo}
+                  resizeMode="contain"
+                  accessibilityLabel="Little Readers books logo"
+                />
+                <Text style={styles.brand}>Little Readers</Text>
+                <View style={styles.pill}>
+                  <Text style={styles.pillText}>Learn • Listen • Spell</Text>
+                </View>
+                <Text style={styles.tagline}>
+                  A little learning, a big adventure!
+                </Text>
+                <View style={styles.taglineUnderline} />
+              </View>
+              <Image
+                source={GIRL}
+                style={styles.mascot}
+                resizeMode="contain"
+                accessibilityLabel="Little Readers girl character"
+              />
             </View>
-            <Text style={styles.tagline}>A little learning, a big adventure!</Text>
-            <View style={styles.taglineUnderline} />
           </View>
-
-          <View style={styles.mascotGap} pointerEvents="none" />
 
           <View style={styles.card}>
             <Text style={styles.welcome}>Welcome Back!</Text>
             <Text style={styles.welcomeSub}>
-              {mode === "parent_otp"
-                ? "Parents: sign in with your mobile number (OTP)."
-                : "Sign in with email and password (Parent, Admin, or Super)."}
+              {mode === "student_otp"
+                ? "Sign in with Student OTP on your registered mobile."
+                : "Staff sign-in (Admin / Super Admin)."}
             </Text>
             <View style={styles.starRule}>
               <View style={styles.ruleLine} />
@@ -247,74 +303,19 @@ export default function LoginScreen() {
               <View style={styles.ruleLine} />
             </View>
 
-            <View style={styles.modeRow}>
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel="Parent OTP login"
-                onPress={() => switchMode("parent_otp")}
-                style={[
-                  styles.modeBtn,
-                  mode === "parent_otp" && styles.modeBtnActive,
-                ]}
-              >
-                <Text
-                  style={[
-                    styles.modeBtnText,
-                    mode === "parent_otp" && styles.modeBtnTextActive,
-                  ]}
-                >
-                  Parent OTP
-                </Text>
-              </Pressable>
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel="Email and password login"
-                onPress={() => switchMode("email")}
-                style={[
-                  styles.modeBtn,
-                  mode === "email" && styles.modeBtnActive,
-                ]}
-              >
-                <Text
-                  style={[
-                    styles.modeBtnText,
-                    mode === "email" && styles.modeBtnTextActive,
-                  ]}
-                >
-                  Email
-                </Text>
-              </Pressable>
-            </View>
-
-            {__DEV__ && process.env.EXPO_PUBLIC_ENABLE_DEMO !== "0" ? (
+            {__DEV__ &&
+            process.env.EXPO_PUBLIC_ENABLE_DEMO !== "0" &&
+            mode === "staff_email" ? (
               <View style={styles.devRow} accessibilityLabel="Demo quick login">
                 <Text style={styles.devLabel}>Demo (tap to fill)</Text>
                 <View style={styles.devBtns}>
                   <Pressable
                     accessibilityRole="button"
-                    accessibilityLabel="Fill parent demo email login"
-                    onPress={() => {
-                      switchMode("email");
-                      setEmail("parent@littlereaders.test");
-                      setPassword("ParentDemo1");
-                      setError(null);
-                      setFieldHint(null);
-                      setInfo(null);
-                    }}
-                    style={styles.devBtn}
-                  >
-                    <Text style={styles.devBtnText}>Parent</Text>
-                  </Pressable>
-                  <Pressable
-                    accessibilityRole="button"
                     accessibilityLabel="Fill admin demo login"
                     onPress={() => {
-                      switchMode("email");
                       setEmail("admin@littlereaders.test");
                       setPassword("AdminDemo1");
-                      setError(null);
-                      setFieldHint(null);
-                      setInfo(null);
+                      clearMessages();
                     }}
                     style={styles.devBtn}
                   >
@@ -324,12 +325,9 @@ export default function LoginScreen() {
                     accessibilityRole="button"
                     accessibilityLabel="Fill super admin demo login"
                     onPress={() => {
-                      switchMode("email");
                       setEmail("superadmin@littlereaders.test");
                       setPassword("SuperDemo1");
-                      setError(null);
-                      setFieldHint(null);
-                      setInfo(null);
+                      clearMessages();
                     }}
                     style={styles.devBtn}
                   >
@@ -339,24 +337,35 @@ export default function LoginScreen() {
               </View>
             ) : null}
 
-            {mode === "parent_otp" ? (
+            {mode === "student_otp" ? (
               <>
                 <View style={styles.inputRow}>
-                  <Text style={styles.cc}>+91</Text>
-                  <TextInput
-                    style={styles.input}
-                    value={mobile}
-                    onChangeText={(v) => {
-                      setMobile(v.replace(/[^\d]/g, "").slice(0, 10));
+                  <CountryCodePicker
+                    value={countryIso}
+                    disabled={loading}
+                    onChange={(iso) => {
+                      setCountryIso(iso);
                       setFieldHint(null);
                       setError(null);
                       if (otpSent) {
                         setOtpSent(false);
                         setOtp("");
-                        setDevOtp(null);
                       }
                     }}
-                    placeholder="10-digit mobile number"
+                  />
+                  <TextInput
+                    style={styles.input}
+                    value={mobile}
+                    onChangeText={(v) => {
+                      setMobile(sanitizeNationalInput(v));
+                      setFieldHint(null);
+                      setError(null);
+                      if (otpSent) {
+                        setOtpSent(false);
+                        setOtp("");
+                      }
+                    }}
+                    placeholder="Mobile number"
                     placeholderTextColor="#9B8EC4"
                     keyboardType="phone-pad"
                     textContentType="telephoneNumber"
@@ -379,11 +388,11 @@ export default function LoginScreen() {
                         setFieldHint(null);
                         setError(null);
                       }}
-                      placeholder="6-digit OTP"
+                      placeholder="6-digit Student OTP"
                       placeholderTextColor="#9B8EC4"
                       keyboardType="number-pad"
                       editable={!loading}
-                      accessibilityLabel="OTP code"
+                      accessibilityLabel="Student OTP code"
                       onSubmitEditing={() => void onVerifyOtp()}
                     />
                   </View>
@@ -391,7 +400,12 @@ export default function LoginScreen() {
               </>
             ) : (
               <>
-                <View style={styles.inputRow}>
+                <View
+                  style={styles.inputRow}
+                  onLayout={(e) => {
+                    emailFieldY.current = e.nativeEvent.layout.y;
+                  }}
+                >
                   <Text style={styles.inputIcon} accessibilityElementsHidden>
                     ✉
                   </Text>
@@ -412,13 +426,19 @@ export default function LoginScreen() {
                     autoComplete="email"
                     returnKeyType="next"
                     blurOnSubmit={false}
+                    onFocus={() => scrollToY(emailFieldY.current + 160)}
                     onSubmitEditing={() => passwordRef.current?.focus()}
                     editable={!loading}
                     accessibilityLabel="Email address"
                   />
                 </View>
 
-                <View style={styles.inputRow}>
+                <View
+                  style={styles.inputRow}
+                  onLayout={(e) => {
+                    passwordFieldY.current = e.nativeEvent.layout.y;
+                  }}
+                >
                   <Text style={styles.inputIcon} accessibilityElementsHidden>
                     🔒
                   </Text>
@@ -437,6 +457,7 @@ export default function LoginScreen() {
                     textContentType="password"
                     autoComplete="password"
                     returnKeyType="go"
+                    onFocus={() => scrollToY(passwordFieldY.current + 200)}
                     onSubmitEditing={() => void onEmailLogin()}
                     editable={!loading}
                     accessibilityLabel="Password"
@@ -471,11 +492,13 @@ export default function LoginScreen() {
               </View>
             )}
 
-            {mode === "parent_otp" ? (
+            {mode === "student_otp" ? (
               <>
                 <Pressable
                   accessibilityRole="button"
-                  accessibilityLabel={otpSent ? "Verify OTP" : "Send OTP"}
+                  accessibilityLabel={
+                    otpSent ? "Verify Student OTP" : "Send Student OTP"
+                  }
                   disabled={loading}
                   onPress={() =>
                     void (otpSent ? onVerifyOtp() : onSendOtp())
@@ -490,7 +513,7 @@ export default function LoginScreen() {
                   ) : (
                     <>
                       <Text style={styles.loginBtnText}>
-                        {otpSent ? "Verify & Log In" : "Send OTP"}
+                        {otpSent ? "Verify Student OTP" : "Send Student OTP"}
                       </Text>
                       <View style={styles.loginArrow}>
                         <Text style={styles.loginArrowText}>→</Text>
@@ -507,15 +530,14 @@ export default function LoginScreen() {
                     >
                       <Text style={styles.forgotText}>
                         {resendIn > 0
-                          ? `Resend OTP in ${resendIn}s`
-                          : "Resend OTP"}
+                          ? `Resend Student OTP in ${resendIn}s`
+                          : "Resend Student OTP"}
                       </Text>
                     </Pressable>
                     <Pressable
                       onPress={() => {
                         setOtpSent(false);
                         setOtp("");
-                        setDevOtp(null);
                         setInfo(null);
                       }}
                       style={styles.forgotBtn}
@@ -587,12 +609,25 @@ export default function LoginScreen() {
                     const adminForgot =
                       e.includes("admin@") || e.includes("superadmin@");
                     router.push(
-                      adminForgot ? "/admin-forgot-password" : "/forgot-password"
+                      adminForgot
+                        ? "/admin-forgot-password"
+                        : "/forgot-password"
                     );
                   }}
                   style={styles.forgotBtn}
                 >
                   <Text style={styles.forgotText}>Forgot password?</Text>
+                </Pressable>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="Back to Student OTP"
+                  onPress={() => {
+                    setMode("student_otp");
+                    clearMessages();
+                  }}
+                  style={styles.forgotBtn}
+                >
+                  <Text style={styles.forgotText}>← Back to Student OTP</Text>
                 </Pressable>
               </>
             )}
@@ -602,7 +637,7 @@ export default function LoginScreen() {
             <Text style={styles.newUser}>New to Little Readers?</Text>
             <Pressable
               accessibilityRole="button"
-              accessibilityLabel="Create Parent Account"
+              accessibilityLabel="Create Student Account"
               onPress={() => router.push("/register")}
               style={({ pressed }) => [
                 styles.createBtn,
@@ -610,10 +645,23 @@ export default function LoginScreen() {
               ]}
             >
               <Text style={styles.createIcon}>👤+</Text>
-              <Text style={styles.createText}>Create Parent Account</Text>
+              <Text style={styles.createText}>Create Student Account</Text>
             </Pressable>
+            {mode === "student_otp" ? (
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Staff sign-in for Admin or Super Admin"
+                onPress={() => {
+                  setMode("staff_email");
+                  clearMessages();
+                }}
+                style={styles.staffLink}
+              >
+                <Text style={styles.staffLinkText}>Staff sign-in</Text>
+              </Pressable>
+            ) : null}
           </View>
-        </View>
+        </ScrollView>
       </KeyboardAvoidingView>
     </View>
   );
@@ -624,25 +672,53 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#E8E2FF",
   },
-  scene: {
+  sky: {
     ...StyleSheet.absoluteFillObject,
+    backgroundColor: "#E8E2FF",
+  },
+  bottomArt: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    bottom: 0,
     width: "100%",
-    height: "100%",
+    opacity: 0.95,
   },
   overlay: {
     flex: 1,
   },
   page: {
-    flex: 1,
     paddingHorizontal: 20,
-    justifyContent: "flex-start",
+    gap: 12,
   },
   header: {
     alignItems: "center",
+  },
+  heroRow: {
+    flexDirection: "row",
+    alignItems: "flex-end",
+    justifyContent: "center",
+    width: "100%",
     gap: 2,
+    minHeight: 132,
+  },
+  mascot: {
+    width: 78,
+    height: 110,
+  },
+  brandCenter: {
+    flex: 1,
+    alignItems: "center",
+    gap: 2,
+    paddingBottom: 8,
+  },
+  booksLogo: {
+    width: 52,
+    height: 44,
+    marginBottom: 2,
   },
   brand: {
-    fontSize: 26,
+    fontSize: 24,
     fontWeight: "800",
     color: "#3D2E8A",
     textAlign: "center",
@@ -664,7 +740,7 @@ const styles = StyleSheet.create({
     color: "#4C3D99",
     fontWeight: "600",
     fontStyle: "italic",
-    fontSize: 12,
+    fontSize: 11,
     textAlign: "center",
   },
   taglineUnderline: {
@@ -673,18 +749,21 @@ const styles = StyleSheet.create({
     borderRadius: 2,
     backgroundColor: "#F5C542",
   },
-  mascotGap: {
-    height: 56,
-  },
   card: {
-    backgroundColor: "rgba(255,255,255,0.97)",
+    backgroundColor: "rgba(255,255,255,0.98)",
     borderRadius: 24,
     paddingHorizontal: 14,
-    paddingTop: 10,
-    paddingBottom: 6,
-    gap: 5,
+    paddingTop: 12,
+    paddingBottom: 10,
+    gap: 8,
     borderWidth: 1,
     borderColor: "#fff",
+    zIndex: 2,
+    elevation: 3,
+    shadowColor: "#3D2E8A",
+    shadowOpacity: 0.08,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
   },
   welcome: {
     fontSize: 22,
@@ -692,32 +771,19 @@ const styles = StyleSheet.create({
     color: colors.primaryDark,
     textAlign: "center",
   },
-  modeRow: {
+  welcomeSub: {
+    color: colors.textMuted,
+    textAlign: "center",
+    fontWeight: "600",
+    fontSize: 12,
+  },
+  starRule: {
     flexDirection: "row",
-    gap: 8,
-    marginBottom: 2,
-  },
-  modeBtn: {
-    flex: 1,
-    borderRadius: 999,
-    borderWidth: 1,
-    borderColor: "#D4CBF5",
-    backgroundColor: "#F7F4FF",
-    paddingVertical: 8,
     alignItems: "center",
+    gap: 8,
   },
-  modeBtnActive: {
-    backgroundColor: colors.primary,
-    borderColor: colors.primary,
-  },
-  modeBtnText: {
-    color: colors.primaryDark,
-    fontWeight: "700",
-    fontSize: 13,
-  },
-  modeBtnTextActive: {
-    color: "#fff",
-  },
+  ruleLine: { flex: 1, height: 1, backgroundColor: "#E5E0F5" },
+  star: { color: "#F5C542", fontSize: 11 },
   devRow: {
     gap: 4,
     marginBottom: 2,
@@ -747,19 +813,6 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     fontSize: 12,
   },
-  welcomeSub: {
-    color: colors.textMuted,
-    textAlign: "center",
-    fontWeight: "600",
-    fontSize: 12,
-  },
-  starRule: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-  },
-  ruleLine: { flex: 1, height: 1, backgroundColor: "#E5E0F5" },
-  star: { color: "#F5C542", fontSize: 11 },
   inputRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -768,13 +821,7 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     borderColor: "#D8D0F5",
     paddingHorizontal: 10,
-    minHeight: 40,
-  },
-  cc: {
-    fontWeight: "800",
-    color: colors.primaryDark,
-    marginRight: 8,
-    fontSize: 14,
+    minHeight: 44,
   },
   inputIcon: { fontSize: 14, marginRight: 6 },
   input: {
@@ -782,7 +829,7 @@ const styles = StyleSheet.create({
     color: colors.text,
     fontSize: 14,
     fontWeight: "600",
-    paddingVertical: 6,
+    paddingVertical: 8,
     ...(Platform.OS === "web" ? ({ outlineStyle: "none" } as object) : null),
   },
   inputPassword: { paddingRight: 4 },
@@ -809,7 +856,7 @@ const styles = StyleSheet.create({
     marginTop: 2,
     backgroundColor: colors.primary,
     borderRadius: radii.pill,
-    minHeight: 42,
+    minHeight: 44,
     paddingHorizontal: 16,
     flexDirection: "row",
     alignItems: "center",
@@ -833,14 +880,14 @@ const styles = StyleSheet.create({
   },
   forgotBtn: {
     alignSelf: "center",
-    paddingVertical: 2,
+    paddingVertical: 4,
     minHeight: 28,
     justifyContent: "center",
   },
   forgotText: { color: colors.primary, fontWeight: "700", fontSize: 13 },
   footer: {
-    marginTop: 10,
-    gap: 4,
+    marginTop: 4,
+    gap: 8,
     alignItems: "center",
   },
   newUser: {
@@ -858,10 +905,21 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: colors.primary,
     borderRadius: radii.pill,
-    minHeight: 40,
+    minHeight: 44,
     paddingHorizontal: 14,
     width: "100%",
   },
   createIcon: { color: colors.primary, fontWeight: "800", fontSize: 13 },
   createText: { color: colors.primaryDark, fontWeight: "800", fontSize: 14 },
+  staffLink: {
+    paddingVertical: 6,
+    minHeight: 32,
+    justifyContent: "center",
+  },
+  staffLinkText: {
+    color: "#7C6BB5",
+    fontWeight: "600",
+    fontSize: 12,
+    textDecorationLine: "underline",
+  },
 });

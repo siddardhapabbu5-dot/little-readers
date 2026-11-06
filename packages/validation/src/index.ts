@@ -40,9 +40,9 @@ export const registerSchema = z.object({
   name: z.string().trim().min(2, "Name is required").max(100),
   email: z.string().trim().email("Valid email is required").max(255),
   password: passwordSchema,
-  /** Optional 10-digit or E.164 mobile for Parent OTP login (+91 default on server). */
-  mobile: z.string().trim().min(10).max(20).optional(),
-  countryCode: z.string().trim().min(1).max(6).optional(),
+  /** Optional national or E.164 mobile for Student OTP (guardian User.mobileE164; default country +91). */
+  mobile: z.string().trim().min(8).max(20).optional(),
+  countryCode: z.string().trim().min(1).max(8).optional(),
   acceptTerms: z.literal(true, {
     errorMap: () => ({ message: "You must accept the terms of service" }),
   }),

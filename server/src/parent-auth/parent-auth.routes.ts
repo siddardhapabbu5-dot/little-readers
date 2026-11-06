@@ -10,6 +10,11 @@ import {
 import { validateBody } from "../middleware/validate.js";
 import { sendParentOtp } from "./otp.service.js";
 import {
+  getParentGateStatus,
+  setParentPin,
+  verifyParentPin,
+} from "./parent-gate.service.js";
+import {
   createParentSessionFromOtp,
   getParentSessionStatus,
   logoutParentSession,
@@ -135,6 +140,54 @@ parentAuthRouter.post(
         sessionId: sid,
         deviceId: req.body.deviceId,
       });
+      res.status(200).json({ data });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+const pinBodySchema = z.object({
+  pin: z.string().min(4).max(6),
+});
+
+parentAuthRouter.get(
+  "/gate/status",
+  requireAuth,
+  requireRoles("PARENT", "ADMIN", "SUPER_ADMIN", "SCHOOL_ADMIN"),
+  async (req: AuthenticatedRequest, res, next) => {
+    try {
+      const data = await getParentGateStatus(req.user!.id);
+      res.status(200).json({ data });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+parentAuthRouter.post(
+  "/gate/set-pin",
+  requireAuth,
+  requireRoles("PARENT", "ADMIN", "SUPER_ADMIN", "SCHOOL_ADMIN"),
+  validateBody(pinBodySchema),
+  async (req: AuthenticatedRequest, res, next) => {
+    try {
+      const data = await setParentPin(req.user!.id, req.body.pin);
+      res.status(200).json({ data });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+parentAuthRouter.post(
+  "/gate/verify-pin",
+  requireAuth,
+  requireRoles("PARENT", "ADMIN", "SUPER_ADMIN", "SCHOOL_ADMIN"),
+  validateBody(pinBodySchema),
+  async (req: AuthenticatedRequest, res, next) => {
+    try {
+      const data = await verifyParentPin(req.user!.id, req.body.pin);
       res.status(200).json({ data });
     } catch (error) {
       next(error);

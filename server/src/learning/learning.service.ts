@@ -954,6 +954,19 @@ export async function completeLearningSession(
   return buildResult(durationSec, nextCategory, updated.nextWords);
 }
 
+/** Calendar day bounds in Asia/Kolkata (IST, UTC+05:30). */
+export function kolkataDayBounds(now = new Date()) {
+  const date = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Kolkata",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(now);
+  const start = new Date(`${date}T00:00:00+05:30`);
+  const end = new Date(`${date}T23:59:59.999+05:30`);
+  return { date, start, end, timezone: "Asia/Kolkata" as const };
+}
+
 export async function getChildLearningOverview(
   parentId: string,
   childId: string,
@@ -961,7 +974,10 @@ export async function getChildLearningOverview(
 ) {
   await assertChildOwnedByParent(parentId, childId, role);
 
-  const [progressRows, sessions, achievements, learningProgress] = await Promise.all([
+  const day = kolkataDayBounds();
+
+  const [progressRows, sessions, achievements, learningProgress, dailyWordGroups] =
+    await Promise.all([
     prisma.childCategoryProgress.findMany({
       where: { childId },
       include: {
@@ -990,7 +1006,20 @@ export async function getChildLearningOverview(
       orderBy: { earnedAt: "desc" },
     }),
     prisma.learningProgress.findUnique({ where: { childId } }),
+    // Distinct words with a correct LISTEN or SPELL attempt today (IST).
+    prisma.questionAttempt.groupBy({
+      by: ["wordId"],
+      where: {
+        isCorrect: true,
+        round: { in: ["LISTEN", "SPELL"] },
+        createdAt: { gte: day.start, lte: day.end },
+        session: { childId },
+      },
+    }),
   ]);
+
+  const dailyTarget = 5;
+  const wordsLearnedToday = dailyWordGroups.length;
 
   return {
     summary: {
@@ -1012,6 +1041,13 @@ export async function getChildLearningOverview(
         const correct = progressRows.reduce((s, p) => s + p.spellCorrect, 0);
         return attempts ? Math.round((correct / attempts) * 100) : 0;
       })(),
+      daily: {
+        wordsLearnedToday,
+        target: dailyTarget,
+        date: day.date,
+        timezone: day.timezone,
+        completed: wordsLearnedToday >= dailyTarget,
+      },
     },
     categories: progressRows.map((p) => ({
       categoryId: p.category.id,

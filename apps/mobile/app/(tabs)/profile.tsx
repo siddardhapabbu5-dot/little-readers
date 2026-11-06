@@ -9,14 +9,22 @@ import {
   SoftButton,
   Title,
 } from "../../components/ui";
+import {
+  ParentGateModal,
+  isParentGateUnlocked,
+} from "../../components/ParentGateModal";
 import { clearSession, getUser } from "../../services/secure";
 import { colors } from "../../theme";
 
 type AuthUser = { id: string; name: string; email: string; role: string };
 
+type GateTarget = "/parent" | "/subscription" | "/devices";
+
 export default function ProfileTab() {
   const router = useRouter();
   const [user, setUser] = useState<AuthUser | null>(null);
+  const [gateOpen, setGateOpen] = useState(false);
+  const [gateTarget, setGateTarget] = useState<GateTarget | null>(null);
 
   useFocusEffect(
     useCallback(() => {
@@ -28,6 +36,15 @@ export default function ProfileTab() {
     await clearSession();
     // replace — do not leave protected screens in the back stack
     router.replace("/login");
+  }
+
+  function openAdult(target: GateTarget) {
+    if (isParentGateUnlocked()) {
+      router.push(target);
+      return;
+    }
+    setGateTarget(target);
+    setGateOpen(true);
   }
 
   const role = user?.role ?? "";
@@ -56,9 +73,18 @@ export default function ProfileTab() {
         <Card style={{ gap: 10 }}>
           {isParentFamily ? (
             <>
-              <MenuRow label="Parent dashboard" onPress={() => router.push("/parent")} />
-              <MenuRow label="Subscription" onPress={() => router.push("/subscription")} />
-              <MenuRow label="Device management" onPress={() => router.push("/devices")} />
+              <MenuRow
+                label="Parent dashboard"
+                onPress={() => openAdult("/parent")}
+              />
+              <MenuRow
+                label="Subscription"
+                onPress={() => openAdult("/subscription")}
+              />
+              <MenuRow
+                label="Device management"
+                onPress={() => openAdult("/devices")}
+              />
             </>
           ) : null}
 
@@ -99,6 +125,17 @@ export default function ProfileTab() {
           <SoftButton label="Open Learn" onPress={() => router.push("/(tabs)/learn")} />
         ) : null}
       </ScrollView>
+      <ParentGateModal
+        visible={gateOpen}
+        onClose={() => {
+          setGateOpen(false);
+          setGateTarget(null);
+        }}
+        onUnlocked={() => {
+          if (gateTarget) router.push(gateTarget);
+          setGateTarget(null);
+        }}
+      />
     </SafeAreaView>
   );
 }

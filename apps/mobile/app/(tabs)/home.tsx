@@ -1,8 +1,14 @@
 import { useCallback, useMemo, useState } from "react";
-import { ScrollView, StyleSheet, View } from "react-native";
+import {
+  ActivityIndicator,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
 import { useFocusEffect, useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { ErrorText } from "../../components/ui";
+import { ErrorText, SoftButton } from "../../components/ui";
 import {
   ContinueCard,
   DailyGoalCard,
@@ -21,8 +27,10 @@ type ChildRow = {
   id: string;
   displayName: string;
   birthYear: number;
+  birthDate?: string | null;
   level: string;
   levelId?: string | null;
+  hasLearningSeat?: boolean;
 };
 type Category = {
   id: string;
@@ -33,27 +41,68 @@ type Category = {
   progress: { wordsLearned: number; stars: number; completed: boolean } | null;
 };
 type Group = { id: string; code: string; label: string; categories: Category[] };
+type ProgressPayload = {
+  summary?: {
+    wordsLearned?: number;
+    stars?: number;
+    points?: number;
+    categoriesCompleted?: number;
+    daily?: {
+      wordsLearnedToday: number;
+      target: number;
+      date: string;
+      timezone: string;
+      completed: boolean;
+    };
+  };
+};
+
+function ageFromChild(child: ChildRow): string | null {
+  if (child.birthDate && /^\d{2}\/\d{2}\/\d{4}$/.test(child.birthDate)) {
+    const [dd, mm, yyyy] = child.birthDate.split("/").map(Number);
+    const born = new Date(yyyy, mm - 1, dd);
+    const now = new Date();
+    let age = now.getFullYear() - born.getFullYear();
+    const m = now.getMonth() - born.getMonth();
+    if (m < 0 || (m === 0 && now.getDate() < born.getDate())) age -= 1;
+    if (age >= 0 && age <= 18) return `Age ${age}`;
+  }
+  if (child.birthYear) {
+    const age = new Date().getFullYear() - child.birthYear;
+    if (age >= 0 && age <= 18) return `Age ~${age}`;
+  }
+  return null;
+}
+
+function levelLabel(code?: string) {
+  if (!code) return null;
+  return code.replace(/^LEVEL_/i, "Level ");
+}
 
 export default function HomeTab() {
   const router = useRouter();
   const [user, setUser] = useState<AuthUser | null>(null);
   const [child, setChild] = useState<ChildRow | null>(null);
   const [groups, setGroups] = useState<Group[]>([]);
-  const [progress, setProgress] = useState<any>(null);
+  const [progress, setProgress] = useState<ProgressPayload | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useFocusEffect(
     useCallback(() => {
       void (async () => {
+        setLoading(true);
         try {
           const u = await getUser<AuthUser>();
           setUser(u);
-          if (!u) return;
+          if (!u) {
+            setLoading(false);
+            return;
+          }
 
           let active = await getActiveChild<ChildRow>();
           if (u.role === "PARENT") {
             const kids = await apiRequest<ChildRow[]>("/children");
-            // Prefer fresh API row so level/grade stay in sync when switching children.
             const match = active
               ? kids.find((k) => k.id === active!.id) ?? kids[0]
               : kids[0];
@@ -62,25 +111,29 @@ export default function HomeTab() {
           }
           setChild(active);
 
-          if (active) {
+          if (active?.hasLearningSeat !== false && active) {
             const levelKey = active.level || "LEVEL_1";
             const [p, curriculum] = await Promise.all([
-              apiRequest(`/learning/progress/${active.id}`),
+              apiRequest<ProgressPayload>(`/learning/progress/${active.id}`),
               apiRequest<{ groups: Group[] }>(
                 `/learning/levels/${encodeURIComponent(levelKey)}/groups?childId=${encodeURIComponent(active.id)}`
               ),
             ]);
             setProgress(p);
-            setGroups(curriculum.groups);
+            setGroups(curriculum.groups ?? []);
+          } else {
+            setProgress(null);
+            setGroups([]);
           }
           setError(null);
         } catch (err) {
-          // Never show rate-limit noise on the kids home screen.
           if (err instanceof ApiError && err.status === 429) {
             setError(null);
-            return;
+          } else {
+            setError(err instanceof ApiError ? err.message : "Could not load home");
           }
-          setError(err instanceof ApiError ? err.message : "Could not load home");
+        } finally {
+          setLoading(false);
         }
       })();
     }, [])
@@ -97,17 +150,31 @@ export default function HomeTab() {
     categories[0];
 
   const recommended = categories.filter((c) => c.unlocked).slice(0, 4);
+  const daily = progress?.summary?.daily;
+  const dailyCompleted = daily?.wordsLearnedToday ?? 0;
+  const dailyTarget = daily?.target ?? 5;
+  const stars = progress?.summary?.stars ?? 0;
   const words = progress?.summary?.wordsLearned ?? 0;
-  const dailyCompleted = Math.min(words, 5);
+  const metaParts = [
+    child ? ageFromChild(child) : null,
+    child ? levelLabel(child.level) : null,
+    child ? `⭐ ${stars}` : null,
+    child && words > 0 ? `${words} words` : null,
+  ].filter(Boolean);
 
-  function openCategory(cat?: Category) {
+  function openCategory(cat?: Category, startRound?: "LISTEN" | "SPELL") {
     if (!cat || !child) {
       router.push("/(tabs)/learn");
       return;
     }
     router.push({
       pathname: "/play",
-      params: { categoryId: cat.id, childId: child.id, title: cat.label },
+      params: {
+        categoryId: cat.id,
+        childId: child.id,
+        title: cat.label,
+        ...(startRound ? { startRound } : {}),
+      },
     });
   }
 
@@ -116,60 +183,105 @@ export default function HomeTab() {
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <KidsHeader
           left={<IconButton emoji="☰" onPress={() => router.push("/(tabs)/profile")} />}
-          right={<IconButton emoji="🔍" bg={colors.primarySoft} onPress={() => router.push("/(tabs)/learn")} />}
+          right={<IconButton emoji="🎓" bg={colors.primarySoft} onPress={() => router.push("/(tabs)/learn")} />}
         />
 
         <WelcomeHero
-          name={child?.displayName ?? user?.name?.split(" ")[0] ?? "Champ"}
+          name={child?.displayName ?? "Champ"}
+          message={
+            metaParts.length
+              ? metaParts.join(" · ")
+              : "Ready to learn something awesome today?"
+          }
           character="🧒"
         />
 
         <ErrorText>{error}</ErrorText>
 
-        <DailyGoalCard
-          completed={dailyCompleted}
-          target={5}
-          message={
-            dailyCompleted >= 5
-              ? "Amazing! Daily goal complete."
-              : "Keep it up! You're doing great."
-          }
-        />
-
-        <SectionRow
-          title="Continue Learning"
-          action="See all"
-          onAction={() => router.push("/(tabs)/learn")}
-        />
-        {continueCat ? (
-          <ContinueCard
-            emoji={continueCat.emoji}
-            title={continueCat.label}
-            subtitle={`${continueCat.group ?? "Level 1"} · Listen & Spell`}
-            progressPct={Math.round(
-              ((continueCat.progress?.wordsLearned ?? 0) / Math.max(continueCat.wordCount, 1)) * 100
-            )}
-            onContinue={() => openCategory(continueCat)}
-          />
-        ) : null}
-
-        <SectionRow title="Recommended for You" />
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={{ gap: 12 }}
-        >
-          {recommended.map((cat, i) => (
-            <RecommendCard
-              key={cat.id}
-              emoji={cat.emoji}
-              title={cat.label}
-              tag={i % 2 === 0 ? "Listen" : "Spell"}
-              tint={i % 2 === 0 ? colors.skySoft : colors.yellowSoft}
-              onPress={() => openCategory(cat)}
+        {loading ? (
+          <View style={styles.centerBox}>
+            <ActivityIndicator color={colors.primary} size="large" />
+            <Text style={styles.hint}>Loading your home…</Text>
+          </View>
+        ) : !child ? (
+          <View style={styles.centerBox}>
+            <Text style={styles.emptyTitle}>Add a student to start</Text>
+            <Text style={styles.hint}>
+              Create a student profile on the Parent screen, then come back here.
+            </Text>
+            <SoftButton label="Open Parent dashboard" onPress={() => router.push("/parent")} />
+          </View>
+        ) : child.hasLearningSeat === false ? (
+          <View style={styles.centerBox}>
+            <Text style={styles.emptyTitle}>Activate a learning seat</Text>
+            <Text style={styles.hint}>
+              {child.displayName} needs a seat before Kids Zone unlocks.
+            </Text>
+            <SoftButton label="Subscription / seats" onPress={() => router.push("/subscription")} />
+            <SoftButton label="Parent dashboard" onPress={() => router.push("/parent")} />
+          </View>
+        ) : (
+          <>
+            <DailyGoalCard
+              completed={dailyCompleted}
+              target={dailyTarget}
+              message={
+                dailyCompleted >= dailyTarget
+                  ? "Amazing! Daily goal complete."
+                  : "Learn new words today with Listen & Spell."
+              }
             />
-          ))}
-        </ScrollView>
+
+            <SectionRow
+              title="Continue Learning"
+              action="See all"
+              onAction={() => router.push("/(tabs)/learn")}
+            />
+            {continueCat ? (
+              <ContinueCard
+                emoji={continueCat.emoji}
+                title={continueCat.label}
+                subtitle={`${continueCat.group ?? "Level 1"} · Listen & Spell`}
+                progressPct={Math.round(
+                  ((continueCat.progress?.wordsLearned ?? 0) /
+                    Math.max(continueCat.wordCount, 1)) *
+                    100
+                )}
+                onContinue={() => openCategory(continueCat)}
+              />
+            ) : (
+              <Text style={styles.hint}>
+                Vocabulary is loading or not published yet. Check Learn for updates.
+              </Text>
+            )}
+
+            <SectionRow title="Recommended for You" />
+            {recommended.length ? (
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={{ gap: 12 }}
+              >
+                {recommended.map((cat, i) => {
+                  const startRound: "LISTEN" | "SPELL" =
+                    i % 2 === 0 ? "LISTEN" : "SPELL";
+                  return (
+                    <RecommendCard
+                      key={`${cat.id}-${startRound}`}
+                      emoji={cat.emoji}
+                      title={cat.label}
+                      tag={startRound === "LISTEN" ? "Listen" : "Spell"}
+                      tint={startRound === "LISTEN" ? colors.skySoft : colors.yellowSoft}
+                      onPress={() => openCategory(cat, startRound)}
+                    />
+                  );
+                })}
+              </ScrollView>
+            ) : (
+              <Text style={styles.hint}>No unlocked categories yet.</Text>
+            )}
+          </>
+        )}
 
         <View style={{ height: 8 }} />
       </ScrollView>
@@ -180,4 +292,7 @@ export default function HomeTab() {
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.bg },
   content: { padding: 20, gap: 16, paddingBottom: 28 },
+  centerBox: { gap: 10, paddingVertical: 12 },
+  emptyTitle: { fontWeight: "800", fontSize: 18, color: colors.text },
+  hint: { color: colors.textMuted, fontWeight: "600", lineHeight: 20 },
 });

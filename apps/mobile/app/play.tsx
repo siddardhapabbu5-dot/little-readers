@@ -78,6 +78,8 @@ export default function PlayScreen() {
     lessonId?: string;
     childId: string;
     title?: string;
+    /** Deep-link into Listen or Spell for the first word. */
+    startRound?: string;
   }>();
 
   const [session, setSession] = useState<SessionPayload | null>(null);
@@ -136,6 +138,13 @@ export default function PlayScreen() {
         }));
         setSession({ ...data, questions });
         startedAt.current = Date.now();
+        const preferred =
+          String(params.startRound ?? "").toUpperCase() === "SPELL"
+            ? "SPELL"
+            : String(params.startRound ?? "").toUpperCase() === "LETTER"
+              ? "LETTER"
+              : "LISTEN";
+        setRound(preferred);
         if (questions[0]) void speakWord(questions[0].word.text, { profile: "kid" });
       } catch (err) {
         if (err instanceof ApiError && err.status === 402) {
@@ -155,7 +164,7 @@ export default function PlayScreen() {
         setLoading(false);
       }
     })();
-  }, [params.categoryId, params.lessonId, params.childId]);
+  }, [params.categoryId, params.lessonId, params.childId, params.startRound]);
 
   const letterChoices = useMemo(() => {
     if (!question) return [];

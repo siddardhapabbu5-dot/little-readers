@@ -12,25 +12,28 @@ export default function GamesTab() {
       <View style={styles.content}>
         <SectionRow title="Games" />
         <Text style={styles.sub}>
-          Listen & Spell lives in Learn. Extra game modes are coming soon.
+          Listen & Spell are ready in Learn. Extra game modes are listed below.
         </Text>
 
         <LearningBanner
-          title="Listen & Spell"
+          title="Listen & Spell — Available"
           body="Open Learn, pick a category, then play Listen and Spell rounds."
           emoji="🎧"
           color={colors.skySoft}
         />
+        <SoftButton
+          label="Open Listen & Spell (Learn)"
+          onPress={() => router.push("/(tabs)/learn")}
+        />
 
         <View style={[styles.card, shadow.card]}>
-          <Text style={styles.cardTitle}>More games</Text>
+          <Text style={styles.cardTitle}>Coming soon</Text>
           <Text style={styles.cardBody}>
-            Matching, Quiz, and Revision are coming soon — not available yet.
+            These games are not available yet — buttons do not start a session:
           </Text>
-          <SoftButton
-            label="Open Learn hub"
-            onPress={() => router.push("/(tabs)/learn")}
-          />
+          <Text style={styles.soonItem}>• Matching</Text>
+          <Text style={styles.soonItem}>• Quiz</Text>
+          <Text style={styles.soonItem}>• Revision</Text>
         </View>
       </View>
     </SafeAreaView>
@@ -45,8 +48,9 @@ const styles = StyleSheet.create({
     backgroundColor: "#fff",
     borderRadius: radii.xl,
     padding: 16,
-    gap: 10,
+    gap: 8,
   },
   cardTitle: { fontWeight: "800", fontSize: 18, color: colors.text },
   cardBody: { color: colors.textMuted, marginBottom: 4 },
+  soonItem: { color: colors.textMuted, fontWeight: "700" },
 });

@@ -21,7 +21,18 @@ async function getItem(key: string): Promise<string | null> {
       return memory.get(key) ?? null;
     }
   }
-  return SecureStore.getItemAsync(key);
+  try {
+    return await SecureStore.getItemAsync(key);
+  } catch {
+    // Keystore/decrypt failures must not crash cold start on Android.
+    memory.delete(key);
+    try {
+      await SecureStore.deleteItemAsync(key);
+    } catch {
+      /* ignore */
+    }
+    return memory.get(key) ?? null;
+  }
 }
 
 async function setItem(key: string, value: string): Promise<void> {
@@ -34,7 +45,12 @@ async function setItem(key: string, value: string): Promise<void> {
     }
     return;
   }
-  await SecureStore.setItemAsync(key, value);
+  memory.set(key, value);
+  try {
+    await SecureStore.setItemAsync(key, value);
+  } catch {
+    /* keep in-memory fallback so login can continue */
+  }
 }
 
 async function deleteItem(key: string): Promise<void> {
@@ -47,7 +63,12 @@ async function deleteItem(key: string): Promise<void> {
     }
     return;
   }
-  await SecureStore.deleteItemAsync(key);
+  memory.delete(key);
+  try {
+    await SecureStore.deleteItemAsync(key);
+  } catch {
+    /* ignore */
+  }
 }
 
 function randomId() {

@@ -18,7 +18,7 @@
     },
     "android": {
       "package": "com.littlereaders.app",
-      "versionCode": 6,
+      "versionCode": 8,
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#F3E8FF"
@@ -30,7 +30,12 @@
     },
     "plugins": [
       "expo-router",
-      "expo-secure-store",
+      [
+        "expo-secure-store",
+        {
+          "configureAndroidBackup": false
+        }
+      ],
       "expo-document-picker",
       [
         "expo-build-properties",

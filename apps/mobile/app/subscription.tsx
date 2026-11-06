@@ -101,7 +101,8 @@ type Pay = {
 };
 
 const WEB_CHECKOUT =
-  process.env.EXPO_PUBLIC_WEB_APP_URL?.replace(/\/$/, "") || "http://localhost:3100";
+  process.env.EXPO_PUBLIC_WEB_APP_URL?.replace(/\/$/, "") ||
+  "https://siwiapp.shop";
 
 export default function SubscriptionScreen() {
   const router = useRouter();

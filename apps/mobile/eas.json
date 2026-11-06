@@ -1,11 +1,18 @@
 {
   "cli": {
-    "version": ">= 12.0.0"
+    "version": ">= 12.0.0",
+    "appVersionSource": "local"
   },
   "build": {
     "development": {
       "developmentClient": true,
-      "distribution": "internal"
+      "distribution": "internal",
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://api.siwiapp.shop/api",
+        "EXPO_PUBLIC_WEB_APP_URL": "https://siwiapp.shop",
+        "EXPO_PUBLIC_WEB_URL": "https://siwiapp.shop",
+        "EXPO_PUBLIC_ENABLE_DEMO": "1"
+      }
     },
     "preview": {
       "distribution": "internal",
@@ -14,11 +21,23 @@
       },
       "ios": {
         "simulator": false
+      },
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://api.siwiapp.shop/api",
+        "EXPO_PUBLIC_WEB_APP_URL": "https://siwiapp.shop",
+        "EXPO_PUBLIC_WEB_URL": "https://siwiapp.shop",
+        "EXPO_PUBLIC_ENABLE_DEMO": "0"
       }
     },
     "production": {
       "android": {
         "buildType": "app-bundle"
+      },
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://api.siwiapp.shop/api",
+        "EXPO_PUBLIC_WEB_APP_URL": "https://siwiapp.shop",
+        "EXPO_PUBLIC_WEB_URL": "https://siwiapp.shop",
+        "EXPO_PUBLIC_ENABLE_DEMO": "0"
       }
     }
   },

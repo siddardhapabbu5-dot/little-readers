@@ -8,7 +8,11 @@ const typesRoot = path.resolve(monorepoRoot, "packages/types");
 
 const config = getDefaultConfig(projectRoot);
 
-config.watchFolders = [monorepoRoot];
+// Keep Expo defaults, then add monorepo roots (required for workspaces).
+const defaults = config.watchFolders ?? [];
+config.watchFolders = Array.from(
+  new Set([...defaults, monorepoRoot, sharedRoot, typesRoot])
+);
 config.resolver.nodeModulesPaths = [
   path.resolve(projectRoot, "node_modules"),
   path.resolve(monorepoRoot, "node_modules"),

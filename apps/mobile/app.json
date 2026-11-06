@@ -6,18 +6,53 @@
     "orientation": "portrait",
     "scheme": "littlereaders",
     "userInterfaceStyle": "light",
+    "icon": "./assets/icon.png",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#F3E8FF"
+    },
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.littlereaders.app"
     },
     "android": {
-      "package": "com.littlereaders.app"
+      "package": "com.littlereaders.app",
+      "versionCode": 6,
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#F3E8FF"
+      },
+      "permissions": [
+        "INTERNET",
+        "ACCESS_NETWORK_STATE"
+      ]
     },
-    "plugins": ["expo-router", "expo-secure-store", "expo-document-picker"],
+    "plugins": [
+      "expo-router",
+      "expo-secure-store",
+      "expo-document-picker",
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "kotlinVersion": "1.9.25",
+            "compileSdkVersion": 35,
+            "targetSdkVersion": 34,
+            "minSdkVersion": 24
+          }
+        }
+      ],
+      "./plugins/withAndroidKotlinFix.js"
+    ],
     "extra": {
       "eas": {
-        "projectId": "replace-with-eas-project-id"
+        "projectId": "05c9d4b3-b240-4dc7-9f2b-648e7243e2d0"
+      },
+      "router": {
+        "origin": false
       }
-    }
+    },
+    "owner": "tjgf-hjgl"
   }
 }

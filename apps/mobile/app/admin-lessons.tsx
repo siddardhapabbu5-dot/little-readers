@@ -21,7 +21,7 @@ import { colors } from "../theme";
 
 const WEB_LESSONS =
   (process.env.EXPO_PUBLIC_WEB_URL?.replace(/\/$/, "") ??
-    "http://localhost:3100") + "/admin/vocabulary/lessons";
+    "https://siwiapp.shop") + "/admin/vocabulary/lessons";
 
 type Category = {
   id: string;

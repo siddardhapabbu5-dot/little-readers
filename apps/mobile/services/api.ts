@@ -8,7 +8,8 @@ import { notifyUnauthorized } from "./session";
 
 const API_URL =
   process.env.EXPO_PUBLIC_API_URL?.replace(/\/$/, "") ??
-  "http://localhost:4100/api";
+  // Release/EAS builds must set EXPO_PUBLIC_API_URL; live default avoids localhost APKs.
+  "https://api.siwiapp.shop/api";
 
 export class ApiError extends Error {
   status: number;

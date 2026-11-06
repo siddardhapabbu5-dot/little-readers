@@ -11,6 +11,10 @@ out/
 .expo/
 *.tsbuildinfo
 
+# Expo CNG — never commit/upload prebuild output (EAS must regenerate)
+apps/mobile/android/
+apps/mobile/ios/
+
 # Env & secrets
 .env
 .env.local

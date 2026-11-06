@@ -286,7 +286,7 @@ export default function LoginScreen() {
               </Pressable>
             </View>
 
-            {__DEV__ ? (
+            {__DEV__ && process.env.EXPO_PUBLIC_ENABLE_DEMO !== "0" ? (
               <View style={styles.devRow} accessibilityLabel="Demo quick login">
                 <Text style={styles.devLabel}>Demo (tap to fill)</Text>
                 <View style={styles.devBtns}>

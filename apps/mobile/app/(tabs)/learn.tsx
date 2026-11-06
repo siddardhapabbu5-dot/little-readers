@@ -326,11 +326,12 @@ export default function LearnTab() {
                     locked={!cat.unlocked}
                     onPress={() =>
                       router.push({
-                        pathname: "/play",
+                        pathname: "/category-play",
                         params: {
                           categoryId: cat.id,
                           childId: child?.id ?? "",
                           title: cat.label,
+                          emoji: cat.emoji,
                         },
                       })
                     }

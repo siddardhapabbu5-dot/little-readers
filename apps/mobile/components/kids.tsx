@@ -106,7 +106,7 @@ export function DailyGoalCard({
       <View style={{ flex: 1, gap: 8 }}>
         <Text style={styles.goalEyebrow}>Daily Goal</Text>
         <Text style={styles.goalTitle}>
-          {Math.min(completed, target)}/{target} Lessons
+          {Math.min(completed, target)}/{target} Words today
         </Text>
         <ProgressBar value={completed} max={target} color="#FFD56A" />
         <Text style={styles.goalMsg}>{message}</Text>

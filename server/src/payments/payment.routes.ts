@@ -88,6 +88,29 @@ paymentsRouter.get(
   }
 );
 
+paymentsRouter.post(
+  "/cancel",
+  requireAuth,
+  requireRoles("PARENT", "ADMIN", "SUPER_ADMIN"),
+  validateBody(
+    z.object({
+      orderId: z.string().min(1).optional(),
+      paymentId: z.string().min(1).optional(),
+    })
+  ),
+  async (req: AuthenticatedRequest, res, next) => {
+    try {
+      const data = await paymentService.cancelPendingPayment(
+        req.user!.id,
+        req.body
+      );
+      res.json({ data });
+    } catch (e) {
+      next(e);
+    }
+  }
+);
+
 paymentsRouter.get(
   "/admin",
   requireAuth,

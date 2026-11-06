@@ -18,6 +18,10 @@ import {
   submitQuestionAttempt,
 } from "./learning.service.js";
 import {
+  getChildLearningHistory,
+  listWeakWords,
+} from "./progress-rewards.js";
+import {
   getPublishedLessonForChild,
   listPublishedLessonsForChild,
 } from "../lessons/lesson.service.js";
@@ -31,7 +35,25 @@ import { prisma } from "../lib/prisma.js";
 
 export const learningRouter = Router();
 
-learningRouter.use(requireAuth, requireRoles("PARENT", "ADMIN", "SUPER_ADMIN"));
+learningRouter.use(requireAuth);
+
+const progressReadRoles = requireRoles(
+  "PARENT",
+  "TEACHER",
+  "SCHOOL_ADMIN",
+  "ADMIN",
+  "SUPER_ADMIN"
+);
+
+const parentAdminRoles = requireRoles("PARENT", "ADMIN", "SUPER_ADMIN");
+
+/** Teachers may only hit /progress* read APIs; everything else stays parent/admin. */
+learningRouter.use((req, res, next) => {
+  if (req.path.startsWith("/progress")) {
+    return next();
+  }
+  return parentAdminRoles(req, res, next);
+});
 
 /** Catalog: all learning levels */
 learningRouter.get("/levels", async (_req: AuthenticatedRequest, res, next) => {
@@ -119,11 +141,64 @@ learningRouter.get(
 
 learningRouter.get(
   "/progress/:childId",
+  progressReadRoles,
   async (req: AuthenticatedRequest, res, next) => {
     try {
       const data = await getChildLearningOverview(
         req.user!.id,
         String(req.params.childId),
+        req.user!.role
+      );
+      res.status(200).json({ data });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+learningRouter.get(
+  "/progress/:childId/history",
+  progressReadRoles,
+  async (req: AuthenticatedRequest, res, next) => {
+    try {
+      const limit =
+        typeof req.query.limit === "string"
+          ? Number(req.query.limit)
+          : undefined;
+      const offset =
+        typeof req.query.offset === "string"
+          ? Number(req.query.offset)
+          : undefined;
+      const data = await getChildLearningHistory(
+        req.user!.id,
+        String(req.params.childId),
+        { limit, offset },
+        req.user!.role
+      );
+      res.status(200).json({ data });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+learningRouter.get(
+  "/progress/:childId/weak-words",
+  progressReadRoles,
+  async (req: AuthenticatedRequest, res, next) => {
+    try {
+      const categoryId =
+        typeof req.query.categoryId === "string"
+          ? req.query.categoryId
+          : undefined;
+      const limit =
+        typeof req.query.limit === "string"
+          ? Number(req.query.limit)
+          : undefined;
+      const data = await listWeakWords(
+        req.user!.id,
+        String(req.params.childId),
+        { categoryId, limit },
         req.user!.role
       );
       res.status(200).json({ data });

@@ -8,7 +8,12 @@ import { apiRequest, ApiClientError } from "@/lib/api";
 import { clearToken, getToken } from "@/lib/auth-storage";
 
 type Plan = {
-  purpose: "FAMILY_MONTHLY" | "FAMILY_YEARLY" | "EXTRA_SEATS";
+  purpose:
+    | "FAMILY_MONTHLY"
+    | "FAMILY_YEARLY"
+    | "FAMILY_3_MONTH"
+    | "FAMILY_6_MONTH"
+    | "EXTRA_SEATS";
   code: string;
   label: string;
   description: string;
@@ -19,6 +24,8 @@ type Plan = {
   taxPaise: number;
   totalPaise: number;
   currency: string;
+  planId?: string;
+  durationMonths?: number;
 };
 
 type Catalog = {
@@ -57,18 +64,22 @@ export default function ParentCheckoutPage() {
   const [token, setToken] = useState<string | null>(null);
   const [catalog, setCatalog] = useState<Catalog | null>(null);
   const [extraSeats, setExtraSeats] = useState(1);
-  const [selected, setSelected] = useState<Plan["purpose"] | null>(null);
+  const [selectedKey, setSelectedKey] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [phase, setPhase] = useState<"pick" | "pending" | "success" | "failure">(
     "pick"
   );
+  const [pendingOrderId, setPendingOrderId] = useState<string | null>(null);
 
   const load = useCallback(async (t: string) => {
     const data = await apiRequest<Catalog>("/payments/plans", { token: t });
     setCatalog(data);
-    if (data.plans[0]) setSelected(data.plans[0].purpose);
+    const first = data.plans[0];
+    if (first) {
+      setSelectedKey(first.planId ?? first.code ?? first.purpose);
+    }
   }, []);
 
   useEffect(() => {
@@ -82,18 +93,22 @@ export default function ParentCheckoutPage() {
   }, [router, load]);
 
   const plan =
-    catalog?.plans.find((p) => p.purpose === selected) ??
-    null;
+    catalog?.plans.find(
+      (p) => (p.planId ?? p.code ?? p.purpose) === selectedKey
+    ) ?? null;
   const orderPlan =
     plan?.purpose === "EXTRA_SEATS"
       ? {
           ...plan,
           seatsPurchased: extraSeats,
-          amountPaise: (plan.amountPaise / Math.max(1, plan.seatsPurchased)) * extraSeats,
+          amountPaise:
+            (plan.amountPaise / Math.max(1, plan.seatsPurchased)) * extraSeats,
           taxPaise:
             Math.round(
-              (((plan.amountPaise / Math.max(1, plan.seatsPurchased)) * extraSeats) *
-                (plan.taxPaise / Math.max(1, plan.amountPaise || 1)))
+              (((plan.amountPaise / Math.max(1, plan.seatsPurchased)) *
+                extraSeats *
+                plan.taxPaise) /
+                Math.max(1, plan.amountPaise || 1))
             ) || plan.taxPaise * extraSeats,
           totalPaise: 0,
         }
@@ -103,10 +118,10 @@ export default function ParentCheckoutPage() {
   const previewTotal =
     plan?.purpose === "EXTRA_SEATS"
       ? (plan.totalPaise / Math.max(1, plan.seatsPurchased)) * extraSeats
-      : plan?.totalPaise ?? 0;
+      : (plan?.totalPaise ?? 0);
 
   async function startCheckout() {
-    if (!token || !selected) return;
+    if (!token || !plan) return;
     setBusy(true);
     setError(null);
     setMessage(null);
@@ -123,8 +138,9 @@ export default function ParentCheckoutPage() {
         method: "POST",
         token,
         body: JSON.stringify({
-          purpose: selected,
-          seats: selected === "EXTRA_SEATS" ? extraSeats : undefined,
+          planId: plan.planId,
+          purpose: plan.planId ? undefined : plan.purpose,
+          seats: plan.purpose === "EXTRA_SEATS" ? extraSeats : undefined,
         }),
       });
 
@@ -132,6 +148,7 @@ export default function ParentCheckoutPage() {
         throw new Error("Razorpay key missing");
       }
 
+      setPendingOrderId(order.orderId);
       await loadRazorpayScript();
       if (!window.Razorpay) throw new Error("Razorpay Checkout unavailable");
 
@@ -160,6 +177,7 @@ export default function ParentCheckoutPage() {
               });
               setPhase("success");
               setMessage("Payment verified. Subscription / seats updated.");
+              setPendingOrderId(null);
               resolve();
             } catch (e) {
               setPhase("failure");
@@ -173,8 +191,14 @@ export default function ParentCheckoutPage() {
           },
           modal: {
             ondismiss: () => {
+              void apiRequest("/payments/cancel", {
+                method: "POST",
+                token,
+                body: JSON.stringify({ orderId: order.orderId }),
+              }).catch(() => undefined);
               setPhase("failure");
               setError("Checkout was cancelled or dismissed.");
+              setPendingOrderId(null);
               resolve();
             },
           },
@@ -184,6 +208,13 @@ export default function ParentCheckoutPage() {
     } catch (e) {
       setPhase("failure");
       setError(e instanceof ApiClientError ? e.message : String(e));
+      if (pendingOrderId && token) {
+        void apiRequest("/payments/cancel", {
+          method: "POST",
+          token,
+          body: JSON.stringify({ orderId: pendingOrderId }),
+        }).catch(() => undefined);
+      }
     } finally {
       setBusy(false);
     }
@@ -244,27 +275,42 @@ export default function ParentCheckoutPage() {
         <>
           <div className="panel" style={{ display: "grid", gap: 10 }}>
             <strong>Available plans</strong>
-            {catalog.plans.map((p) => (
-              <label key={p.code} style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
-                <input
-                  type="radio"
-                  name="plan"
-                  checked={selected === p.purpose}
-                  onChange={() => setSelected(p.purpose)}
-                />
-                <span>
-                  <strong>{p.label}</strong> — {formatMoney(p.totalPaise, p.currency)}
-                  <div style={{ fontSize: 13, opacity: 0.75 }}>{p.description}</div>
-                  {p.taxPaise > 0 ? (
-                    <div style={{ fontSize: 12 }}>
-                      Base {formatMoney(p.amountPaise, p.currency)} + tax{" "}
-                      {formatMoney(p.taxPaise, p.currency)}
+            {catalog.plans.map((p) => {
+              const key = p.planId ?? p.code ?? p.purpose;
+              return (
+                <label
+                  key={key}
+                  style={{ display: "flex", gap: 10, alignItems: "flex-start" }}
+                >
+                  <input
+                    type="radio"
+                    name="plan"
+                    checked={selectedKey === key}
+                    onChange={() => setSelectedKey(key)}
+                  />
+                  <span>
+                    <strong>{p.label}</strong> —{" "}
+                    {formatMoney(p.totalPaise, p.currency)}
+                    <div style={{ fontSize: 13, opacity: 0.75 }}>
+                      {p.description}
                     </div>
-                  ) : null}
-                </span>
-              </label>
-            ))}
-            {selected === "EXTRA_SEATS" ? (
+                    {p.includedSeats ? (
+                      <div style={{ fontSize: 12 }}>
+                        Includes {p.includedSeats} child seat
+                        {p.includedSeats === 1 ? "" : "s"}
+                      </div>
+                    ) : null}
+                    {p.taxPaise > 0 ? (
+                      <div style={{ fontSize: 12 }}>
+                        Base {formatMoney(p.amountPaise, p.currency)} + tax{" "}
+                        {formatMoney(p.taxPaise, p.currency)}
+                      </div>
+                    ) : null}
+                  </span>
+                </label>
+              );
+            })}
+            {plan?.purpose === "EXTRA_SEATS" ? (
               <label>
                 Extra seats:{" "}
                 <input
@@ -282,20 +328,22 @@ export default function ParentCheckoutPage() {
             <strong>Order summary</strong>
             <p style={{ margin: "8px 0" }}>
               {orderPlan?.label ?? "—"}
-              {selected === "EXTRA_SEATS" ? ` × ${extraSeats}` : ""}
+              {plan?.purpose === "EXTRA_SEATS" ? ` × ${extraSeats}` : ""}
             </p>
             <p style={{ margin: 0 }}>
               Total (incl. tax if configured):{" "}
               <strong>
-                {plan
-                  ? formatMoney(previewTotal, plan.currency)
-                  : "—"}
+                {plan ? formatMoney(previewTotal, plan.currency) : "—"}
               </strong>
             </p>
             <p style={{ fontSize: 13, opacity: 0.75 }}>
-              Base plan includes 2 child seats. Frontend success alone never grants access.
+              Subscription activates only after server-side Razorpay verification.
+              Live payments stay disabled until production approval.
             </p>
-            <Button disabled={busy || !selected} onClick={() => void startCheckout()}>
+            <Button
+              disabled={busy || !plan || !catalog.enabled}
+              onClick={() => void startCheckout()}
+            >
               Pay securely with Razorpay
             </Button>
           </div>

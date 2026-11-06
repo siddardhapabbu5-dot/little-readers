@@ -135,7 +135,19 @@ export default function LoginScreen() {
       }
       otpRef.current?.focus();
     } catch (err) {
-      setError(friendlyAuthError(err));
+      if (
+        err instanceof ApiError &&
+        err.details &&
+        typeof err.details === "object" &&
+        "code" in err.details &&
+        (err.details as { code?: string }).code === "SMS_FAILED"
+      ) {
+        setError(
+          "Could not send OTP. SMS is not configured or the provider failed. Ask an admin to check SMS settings — login is not skipped."
+        );
+      } else {
+        setError(friendlyAuthError(err));
+      }
     } finally {
       setLoading(false);
     }

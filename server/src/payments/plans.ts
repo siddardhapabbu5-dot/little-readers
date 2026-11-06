@@ -115,7 +115,9 @@ export function paymentsEnabled() {
     env.PAYMENT_ENABLED;
   const keyId = process.env.RAZORPAY_KEY_ID || env.RAZORPAY_KEY_ID;
   const secret = process.env.RAZORPAY_KEY_SECRET || env.RAZORPAY_KEY_SECRET;
-  return Boolean(flag && keyId && secret && listConfiguredPlans().length > 0);
+  // Env plan amounts OR published DB catalog (checked at order time) — keys + flag required.
+  // Live stays off until PAYMENT_ENABLED=true is set explicitly.
+  return Boolean(flag && keyId && secret);
 }
 
 export function publicKeyId() {

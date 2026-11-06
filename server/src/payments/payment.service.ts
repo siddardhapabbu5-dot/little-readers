@@ -182,6 +182,7 @@ export async function createCheckoutOrder(
       planCode: dbPlan.code,
       planName: dbPlan.name,
       durationMonths: dbPlan.durationMonths,
+      includedSeats: dbPlan.includedSeats,
       amountPaise: dbPlan.amountPaise,
       taxPaise: dbPlan.taxPaise,
       totalPaise: dbPlan.totalPaise,
@@ -207,6 +208,15 @@ export async function createCheckoutOrder(
             : purpose === "FAMILY_YEARLY"
               ? 12
               : undefined;
+    snapshot = {
+      planCode: envPlan.code,
+      planName: envPlan.label,
+      durationMonths,
+      includedSeats: envPlan.includedSeats,
+      amountPaise: envPlan.amountPaise,
+      taxPaise: envPlan.taxPaise,
+      totalPaise: envPlan.totalPaise,
+    };
   }
 
   if (plan.purpose === "EXTRA_SEATS") {
@@ -308,8 +318,12 @@ async function activateVerifiedPayment(
 
     const purpose = payment.purpose as PlanPurpose | "MANUAL_ADMIN";
     const now = new Date();
-    let meta: { durationMonths?: number; planCode?: string; planName?: string } =
-      {};
+    let meta: {
+      durationMonths?: number;
+      planCode?: string;
+      planName?: string;
+      includedSeats?: number;
+    } = {};
     try {
       meta = payment.metadataJson
         ? (JSON.parse(payment.metadataJson) as typeof meta)
@@ -340,6 +354,15 @@ async function activateVerifiedPayment(
           : purpose === "FAMILY_YEARLY"
             ? "YEARLY"
             : purpose);
+      const includedSeats = Math.max(
+        1,
+        Math.min(
+          20,
+          Number(meta.includedSeats) > 0
+            ? Number(meta.includedSeats)
+            : BASE_INCLUDED
+        )
+      );
 
       if (subscription) {
         subscription = await tx.subscription.update({
@@ -352,7 +375,7 @@ async function activateVerifiedPayment(
             cancelledAt: null,
             provider: "razorpay",
             providerRef: razorpayPaymentId,
-            includedSeats: BASE_INCLUDED,
+            includedSeats,
             startedAt: subscription.startedAt ?? now,
           },
         });
@@ -366,7 +389,7 @@ async function activateVerifiedPayment(
             expiresAt,
             provider: "razorpay",
             providerRef: razorpayPaymentId,
-            includedSeats: BASE_INCLUDED,
+            includedSeats,
             extraSeats: 0,
           },
         });
@@ -525,6 +548,61 @@ export async function handleWebhook(rawBody: string, signature: string | undefin
   }
 
   return { ignored: true, reason: `unhandled event ${event}` };
+}
+
+/** Mark a pending checkout as failed when the user dismisses Razorpay. */
+export async function cancelPendingPayment(
+  userId: string,
+  input: { orderId?: string; paymentId?: string }
+) {
+  if (!input.paymentId && !input.orderId) {
+    throw new AppError("orderId or paymentId is required", 400);
+  }
+  const payment = await prisma.payment.findFirst({
+    where: input.paymentId
+      ? { id: input.paymentId, userId }
+      : { razorpayOrderId: input.orderId!, userId },
+  });
+  if (!payment) throw new AppError("Payment not found", 404);
+  if (payment.status === "SUCCEEDED") {
+    return {
+      paymentId: payment.id,
+      status: "SUCCEEDED" as const,
+      alreadySucceeded: true,
+      message: "Payment already succeeded — not cancelled",
+    };
+  }
+  if (payment.status === "REFUNDED") {
+    return {
+      paymentId: payment.id,
+      status: "REFUNDED" as const,
+      alreadySucceeded: false,
+      message: "Payment was refunded",
+    };
+  }
+  let meta: Record<string, unknown> = {};
+  try {
+    meta = payment.metadataJson
+      ? (JSON.parse(payment.metadataJson) as Record<string, unknown>)
+      : {};
+  } catch {
+    meta = {};
+  }
+  meta.cancelledByUser = true;
+  meta.cancelledAt = new Date().toISOString();
+  const updated = await prisma.payment.update({
+    where: { id: payment.id },
+    data: {
+      status: "FAILED",
+      metadataJson: JSON.stringify(meta),
+    },
+  });
+  return {
+    paymentId: updated.id,
+    status: updated.status,
+    alreadySucceeded: false,
+    message: "Pending payment marked cancelled",
+  };
 }
 
 export async function listMyPayments(userId: string) {

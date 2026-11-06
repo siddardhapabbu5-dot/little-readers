@@ -12,9 +12,18 @@ const ELIGIBLE: SubscriptionStatus[] = [
 const BASE_INCLUDED_SEATS = 2;
 
 export function isSubscriptionRecordEligible(
-  sub: Pick<Subscription, "status" | "expiresAt" | "graceEndsAt">,
+  sub: Pick<
+    Subscription,
+    "status" | "expiresAt" | "graceEndsAt" | "cancelledAt"
+  >,
   now = new Date()
 ): boolean {
+  // Cancelled at period end: access continues until expiresAt.
+  if (sub.status === "CANCELLED") {
+    if (sub.expiresAt > now) return true;
+    if (sub.graceEndsAt && sub.graceEndsAt > now) return true;
+    return false;
+  }
   if (!ELIGIBLE.includes(sub.status)) {
     if (sub.status === "GRACE" && sub.graceEndsAt && sub.graceEndsAt > now) {
       return true;
@@ -44,7 +53,11 @@ async function latestSubscription(userId: string, tx: Prisma.TransactionClient |
 
 export async function getSeatSnapshot(parentId: string, tx: Prisma.TransactionClient | typeof prisma = prisma) {
   const subscription = await latestSubscription(parentId, tx);
-  const capacity = seatCapacity(subscription);
+  const eligible = subscription
+    ? isSubscriptionRecordEligible(subscription)
+    : false;
+  // Expired / missing subscriptions grant zero claimable seats.
+  const capacity = eligible ? seatCapacity(subscription) : 0;
   const [assigned, children] = await Promise.all([
     tx.child.count({
       where: { parentId, isActive: true, hasLearningSeat: true },
@@ -63,9 +76,13 @@ export async function getSeatSnapshot(parentId: string, tx: Prisma.TransactionCl
 
   return {
     subscription,
+    eligible,
     included: subscription?.includedSeats ?? BASE_INCLUDED_SEATS,
     extra: subscription?.extraSeats ?? 0,
+    /** Plan capacity when eligible; 0 when expired/missing. */
     capacity,
+    /** Raw plan capacity ignoring eligibility (for Parent UI messaging). */
+    planCapacity: seatCapacity(subscription),
     assigned,
     available: Math.max(0, capacity - assigned),
     children: children.map((c) => ({
@@ -101,8 +118,14 @@ export async function tryAssignLearningSeat(
   if (!child) throw new AppError("Child not found", 404);
   if (child.hasLearningSeat) return true;
 
-  // No active subscription → no seats to claim.
-  if (!subscription || capacity <= 0) return false;
+  // No eligible subscription → no seats to claim.
+  if (
+    !subscription ||
+    !isSubscriptionRecordEligible(subscription) ||
+    capacity <= 0
+  ) {
+    return false;
+  }
 
   const assigned = await tx.child.count({
     where: { parentId, isActive: true, hasLearningSeat: true },
@@ -188,7 +211,67 @@ export async function assertChildHasLearningSeat(parentId: string, childId: stri
   );
 }
 
+/** Mark ACTIVE/CANCELLED rows EXPIRED when past expiresAt (and grace). Idempotent. */
+export async function syncSubscriptionExpiry(userId: string) {
+  const subscription = await latestSubscription(userId);
+  if (!subscription) return null;
+  const now = new Date();
+  if (subscription.expiresAt > now) return subscription;
+  if (subscription.graceEndsAt && subscription.graceEndsAt > now) {
+    return subscription;
+  }
+  if (
+    subscription.status === "EXPIRED" ||
+    subscription.status === "SUSPENDED"
+  ) {
+    return subscription;
+  }
+  return prisma.subscription.update({
+    where: { id: subscription.id },
+    data: { status: "EXPIRED" },
+  });
+}
+
+/**
+ * Parent cancels renewal. Access continues until expiresAt; then EXPIRED.
+ */
+export async function cancelParentSubscription(userId: string) {
+  const subscription = await latestSubscription(userId);
+  if (!subscription) {
+    throw new AppError("No subscription to cancel", 404);
+  }
+  if (subscription.status === "EXPIRED") {
+    throw new AppError("Subscription already expired", 400);
+  }
+  if (subscription.status === "CANCELLED" && subscription.cancelledAt) {
+    return {
+      id: subscription.id,
+      status: subscription.status,
+      cancelledAt: subscription.cancelledAt,
+      expiresAt: subscription.expiresAt,
+      message: "Subscription was already cancelled. Access continues until expiry.",
+    };
+  }
+  const updated = await prisma.subscription.update({
+    where: { id: subscription.id },
+    data: {
+      status: "CANCELLED",
+      cancelledAt: new Date(),
+    },
+  });
+  return {
+    id: updated.id,
+    status: updated.status,
+    cancelledAt: updated.cancelledAt,
+    expiresAt: updated.expiresAt,
+    message:
+      "Subscription cancelled. Learning access continues until the current period ends.",
+  };
+}
+
 export async function getParentSubscription(userId: string) {
+  await syncSubscriptionExpiry(userId);
+
   const subscription = await prisma.subscription.findFirst({
     where: { userId },
     orderBy: { createdAt: "desc" },
@@ -211,6 +294,7 @@ export async function getParentSubscription(userId: string) {
         included: seats.included,
         extra: seats.extra,
         capacity: seats.capacity,
+        planCapacity: seats.planCapacity,
         assigned: seats.assigned,
         available: seats.available,
         children: seats.children,
@@ -241,6 +325,7 @@ export async function getParentSubscription(userId: string) {
       included: seats.included,
       extra: seats.extra,
       capacity: seats.capacity,
+      planCapacity: seats.planCapacity,
       assigned: seats.assigned,
       available: seats.available,
       children: seats.children,

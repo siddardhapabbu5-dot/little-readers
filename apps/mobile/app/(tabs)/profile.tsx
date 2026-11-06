@@ -89,7 +89,17 @@ export default function ProfileTab() {
           ) : null}
 
           {isAdmin ? (
-            <MenuRow label="Admin overview" onPress={() => router.push("/admin")} />
+            <>
+              <MenuRow label="Admin overview" onPress={() => router.push("/admin")} />
+              <MenuRow
+                label="Manage accounts"
+                onPress={() => router.push("/admin-users")}
+              />
+              <MenuRow
+                label="Schools & classrooms"
+                onPress={() => router.push("/admin-schools")}
+              />
+            </>
           ) : null}
 
           {isSuperAdmin ? (
@@ -97,11 +107,7 @@ export default function ProfileTab() {
           ) : null}
 
           {isTeacher ? (
-            <MenuRow
-              label="Teacher (not finished on mobile)"
-              disabled
-              onPress={() => undefined}
-            />
+            <MenuRow label="Teacher dashboard" onPress={() => router.push("/teacher")} />
           ) : null}
 
           {isStudent ? (

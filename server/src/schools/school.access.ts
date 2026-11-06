@@ -96,3 +96,35 @@ export async function listManagedSchoolIds(actor: {
   });
   return rows.map((r) => r.schoolId);
 }
+
+/**
+ * Teacher / school admin may view progress for children enrolled in
+ * classrooms they are authorized to access. Does not grant parent write rights.
+ */
+export async function assertTeacherCanViewChild(
+  actor: { id: string; role: UserRole },
+  childId: string
+) {
+  const enrollments = await prisma.classroomEnrollment.findMany({
+    where: { childId, isActive: true, leftAt: null },
+    select: { classroomId: true },
+  });
+  if (!enrollments.length) {
+    throw new AppError("Student is not in an authorized classroom", 403);
+  }
+
+  for (const e of enrollments) {
+    try {
+      await assertClassroomAccess(actor, e.classroomId);
+      const child = await prisma.child.findFirst({
+        where: { id: childId, isActive: true },
+        select: { id: true, displayName: true },
+      });
+      if (!child) throw new AppError("Child not found", 404);
+      return child;
+    } catch {
+      /* try next classroom */
+    }
+  }
+  throw new AppError("Insufficient permissions for this student", 403);
+}

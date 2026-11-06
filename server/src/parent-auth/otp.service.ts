@@ -40,6 +40,21 @@ export async function sendParentOtp(input: {
     );
   }
 
+  const hourAgo = new Date(Date.now() - 60 * 60 * 1000);
+  const sendsLastHour = await prisma.parentOtpVerification.count({
+    where: { mobileE164, createdAt: { gte: hourAgo } },
+  });
+  if (sendsLastHour >= env.OTP_MAX_SENDS_PER_HOUR) {
+    throw new AppError(
+      "Too many OTP requests for this number. Please try again later.",
+      429,
+      {
+        code: "OTP_HOURLY_LIMIT",
+        retryAfterSec: 3600,
+      }
+    );
+  }
+
   const latest = await prisma.parentOtpVerification.findFirst({
     where: { mobileE164, invalidatedAt: null, consumedAt: null },
     orderBy: { createdAt: "desc" },

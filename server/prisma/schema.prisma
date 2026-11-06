@@ -403,6 +403,9 @@ enum VocabRound {
   LISTEN
   SPELL
   LETTER
+  MATCHING
+  QUIZ
+  REVISION
 }
 
 enum LearningSessionStatus {

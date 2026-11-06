@@ -1,31 +1,48 @@
 import { env } from "../config/env.js";
 
+function logDevOtp(mobileE164: string, otp: string, note: string) {
+  if (env.NODE_ENV === "production") return;
+  console.info(`[OTP_DEV] ${note} → ${mobileE164}`);
+  if (env.OTP_DEV_MODE) {
+    console.info(`[OTP_DEV] OTP for ${mobileE164}: ${otp}`);
+  }
+}
+
+/**
+ * Send OTP SMS via configured provider.
+ * Never bypass OTP. Production with msg91/http requires credentials (no silent console success).
+ */
 export async function sendOtpSms(input: {
   mobileE164: string;
   otp: string;
 }): Promise<{ provider: string; ok: boolean }> {
   const provider = env.SMS_PROVIDER;
+  const isProd = env.NODE_ENV === "production";
 
-  if (provider === "console" || env.OTP_DEV_MODE || env.NODE_ENV !== "production") {
-    // Dev only — never log OTP in production without OTP_DEV_MODE.
-    if (env.NODE_ENV !== "production" || env.OTP_DEV_MODE) {
-      console.info(
-        `[OTP_DEV] SMS to ${input.mobileE164}: code generated (check secure channel / console provider)`
+  if (provider === "console") {
+    if (isProd) {
+      console.error(
+        "[SMS] PRODUCTION SMS_PROVIDER=console — OTPs will not reach parents. Set SMS_PROVIDER=msg91|http with credentials."
       );
-      if (env.OTP_DEV_MODE && env.NODE_ENV !== "production") {
-        console.info(`[OTP_DEV] OTP for ${input.mobileE164}: ${input.otp}`);
-      }
     }
+    logDevOtp(input.mobileE164, input.otp, "console provider");
     return { provider: "console", ok: true };
   }
 
   if (provider === "msg91") {
-    if (!env.SMS_API_KEY) {
-      throw new Error("SMS_API_KEY required for MSG91");
+    if (!env.SMS_API_KEY || !env.SMS_TEMPLATE_ID || !env.SMS_SENDER_ID) {
+      if (!isProd) {
+        console.warn(
+          "[SMS] MSG91 credentials missing — non-prod console fallback (OTP still required)"
+        );
+        logDevOtp(input.mobileE164, input.otp, "msg91 fallback");
+        return { provider: "console-fallback", ok: true };
+      }
+      throw new Error(
+        "SMS_API_KEY, SMS_TEMPLATE_ID and SMS_SENDER_ID are required for MSG91"
+      );
     }
-    const url =
-      env.SMS_HTTP_URL ||
-      "https://control.msg91.com/api/v5/flow/";
+    const url = env.SMS_HTTP_URL || "https://control.msg91.com/api/v5/flow/";
     const res = await fetch(url, {
       method: "POST",
       headers: {
@@ -54,6 +71,13 @@ export async function sendOtpSms(input: {
 
   if (provider === "http") {
     if (!env.SMS_HTTP_URL || !env.SMS_API_KEY) {
+      if (!isProd) {
+        console.warn(
+          "[SMS] HTTP credentials missing — non-prod console fallback (OTP still required)"
+        );
+        logDevOtp(input.mobileE164, input.otp, "http fallback");
+        return { provider: "console-fallback", ok: true };
+      }
       throw new Error("SMS_HTTP_URL and SMS_API_KEY required for http provider");
     }
     const res = await fetch(env.SMS_HTTP_URL, {

@@ -1,5 +1,6 @@
 import { useCallback, useState } from "react";
 import {
+  Alert,
   Linking,
   Platform,
   Pressable,
@@ -213,6 +214,58 @@ export default function SubscriptionScreen() {
             ) : null}
 
             <SoftButton label="Manage children / seats" onPress={() => router.push("/parent")} />
+            {sub && data?.eligible && sub.status !== "CANCELLED" ? (
+              <SoftButton
+                label="Cancel renewal"
+                onPress={() => {
+                  const run = () => {
+                    void (async () => {
+                      try {
+                        const res = await apiRequest<{ message?: string }>(
+                          "/subscriptions/cancel",
+                          { method: "POST", body: JSON.stringify({}) }
+                        );
+                        setError(null);
+                        const me = await apiRequest("/subscriptions/me");
+                        setData(me);
+                        const msg =
+                          res.message ??
+                          "Access continues until the current period ends.";
+                        if (Platform.OS === "web") {
+                          globalThis.alert?.(msg);
+                        } else {
+                          Alert.alert("Subscription cancelled", msg);
+                        }
+                      } catch (err) {
+                        setError(
+                          err instanceof ApiError
+                            ? err.message
+                            : "Could not cancel subscription"
+                        );
+                      }
+                    })();
+                  };
+                  if (Platform.OS === "web") {
+                    if (
+                      globalThis.confirm?.(
+                        "Cancel renewal? Access continues until expiry."
+                      )
+                    ) {
+                      run();
+                    }
+                    return;
+                  }
+                  Alert.alert(
+                    "Cancel renewal?",
+                    "Access continues until the current period ends.",
+                    [
+                      { text: "Keep", style: "cancel" },
+                      { text: "Cancel renewal", style: "destructive", onPress: run },
+                    ]
+                  );
+                }}
+              />
+            ) : null}
           </Card>
 
           <Card style={{ gap: 14 }}>

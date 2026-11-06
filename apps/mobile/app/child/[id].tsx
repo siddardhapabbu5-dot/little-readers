@@ -19,6 +19,7 @@ import {
   Title,
 } from "../../components/ui";
 import { AuthGate } from "../../components/AuthGate";
+import { RequireParentGate } from "../../components/RequireParentGate";
 import { apiRequest, ApiError } from "../../services/api";
 import { ROLE_SETS } from "../../services/auth-errors";
 import { clearActiveChild, getActiveChild, saveActiveChild } from "../../services/secure";
@@ -109,6 +110,48 @@ export default function ChildDetailScreen() {
   const [error, setError] = useState<string | null>(null);
   const [profile, setProfile] = useState<ChildProfile | null>(null);
   const [progress, setProgress] = useState<ProgressPayload | null>(null);
+  const [dashboard, setDashboard] = useState<{
+    summary?: {
+      wordsAttempted?: number;
+      wordsCorrect?: number;
+      wordsNeedingPractice?: number;
+      accuracy?: number;
+      activitiesCompleted?: number;
+      points?: number;
+      stars?: number;
+      categoriesCompleted?: number;
+      daily?: { wordsLearnedToday: number; target: number };
+      weekly?: { wordsLearned: number };
+    };
+    weakWords?: Array<{ text: string; emoji: string; categoryLabel: string }>;
+    history?: Array<{
+      sessionId: string;
+      activityType: string;
+      category: { label: string; emoji: string };
+      accuracy: number;
+      correctAnswers: number;
+      incorrectAnswers: number;
+      status: string;
+      completedAt?: string | null;
+      startedAt: string;
+    }>;
+    achievements?: Array<{
+      code: string;
+      title: string;
+      unlocked: boolean;
+      earnedAt?: string | null;
+    }>;
+    categories?: Array<{
+      categoryId: string;
+      label: string;
+      emoji: string;
+      wordsLearned: number;
+      wordCount: number;
+      completed: boolean;
+      stars: number;
+      progressPct: number;
+    }>;
+  } | null>(null);
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState("");
   const [birthDate, setBirthDate] = useState("");
@@ -126,12 +169,18 @@ export default function ChildDetailScreen() {
     setLoading(true);
     setError(null);
     try {
-      const [p, prog] = await Promise.all([
+      const [p, prog, dash] = await Promise.all([
         apiRequest<ChildProfile>(`/children/${childId}`),
-        apiRequest<ProgressPayload>(`/children/${childId}/progress`),
+        apiRequest<ProgressPayload>(`/children/${childId}/progress`).catch(
+          () => null
+        ),
+        apiRequest<NonNullable<typeof dashboard>>(
+          `/learning/progress/${childId}`
+        ).catch(() => null),
       ]);
       setProfile(p);
       setProgress(prog);
+      setDashboard(dash);
       setName(p.displayName);
       setBirthDate(p.birthDate ?? `01/01/${p.birthYear}`);
       setEditLevelId(p.levelId ?? p.level?.id ?? null);
@@ -230,11 +279,23 @@ export default function ChildDetailScreen() {
 
   return (
     <AuthGate roles={ROLE_SETS.parentFamily}>
+      <RequireParentGate>
       <SafeAreaView style={styles.safe}>
         <ScrollView contentContainerStyle={styles.content}>
           <SoftButton label="← Back" onPress={() => router.back()} />
           <Title>{profile?.displayName ?? "Child profile"}</Title>
           <ErrorText>{error}</ErrorText>
+          {childId ? (
+            <SoftButton
+              label="Full learning history"
+              onPress={() =>
+                router.push({
+                  pathname: "/learning-history",
+                  params: { childId },
+                })
+              }
+            />
+          ) : null}
 
           {loading ? (
             <ActivityIndicator color={colors.primary} style={{ marginTop: 24 }} />
@@ -350,38 +411,74 @@ export default function ChildDetailScreen() {
               </Card>
 
               <Card style={{ gap: 8 }}>
-                <Text style={styles.section}>Learning progress</Text>
-                {!l1 ? (
+                <Text style={styles.section}>Learning progress report</Text>
+                {!dashboard?.summary && !l1 ? (
                   <Text style={styles.meta}>No progress data yet.</Text>
                 ) : (
                   <>
                     <Text style={styles.stat}>
-                      Words {l1.wordsLearned} · Stars {l1.stars} · Points {l1.points}
+                      Correct {dashboard?.summary?.wordsCorrect ?? l1?.wordsLearned ?? 0} ·
+                      Tried {dashboard?.summary?.wordsAttempted ?? "—"} · Accuracy{" "}
+                      {dashboard?.summary?.accuracy ?? 0}%
                     </Text>
                     <Text style={styles.meta}>
-                      Categories completed {l1.categoriesCompleted} · Minutes {l1.minutesLearned}
+                      Today {dashboard?.summary?.daily?.wordsLearnedToday ?? 0}/
+                      {dashboard?.summary?.daily?.target ?? 5} · Week{" "}
+                      {dashboard?.summary?.weekly?.wordsLearned ?? 0} · Activities{" "}
+                      {dashboard?.summary?.activitiesCompleted ?? 0}
+                    </Text>
+                    <Text style={styles.meta}>
+                      Stars {dashboard?.summary?.stars ?? l1?.stars ?? 0} · Points{" "}
+                      {dashboard?.summary?.points ?? l1?.points ?? 0} · Need practice{" "}
+                      {dashboard?.summary?.wordsNeedingPractice ?? 0}
                     </Text>
                   </>
                 )}
               </Card>
 
               <Card style={{ gap: 8 }}>
-                <Text style={styles.section}>Categories</Text>
-                {!l1?.categories?.length ? (
-                  <Text style={styles.meta}>No category progress yet. Start Listen & Spell from Learn.</Text>
+                <Text style={styles.section}>Needs practice</Text>
+                {!dashboard?.weakWords?.length ? (
+                  <Text style={styles.meta}>
+                    No weak words recorded. Incorrect answers appear here for Revision.
+                  </Text>
                 ) : (
-                  l1.categories.map((c) => (
+                  dashboard.weakWords.slice(0, 10).map((w, i) => (
+                    <Text key={`${w.text}-${i}`} style={styles.meta}>
+                      {w.emoji} {w.text} · {w.categoryLabel}
+                    </Text>
+                  ))
+                )}
+              </Card>
+
+              <Card style={{ gap: 8 }}>
+                <Text style={styles.section}>Categories</Text>
+                {!(dashboard?.categories?.length || l1?.categories?.length) ? (
+                  <Text style={styles.meta}>
+                    No category progress yet. Start an activity from Learn or Games.
+                  </Text>
+                ) : dashboard?.categories?.length ? (
+                  dashboard.categories.map((c) => (
+                    <View key={c.categoryId} style={styles.catRow}>
+                      <Text style={styles.catTitle}>
+                        {c.emoji} {c.label}
+                        {c.completed ? " · done" : ""}
+                      </Text>
+                      <Text style={styles.meta}>
+                        {c.wordsLearned}/{c.wordCount || "?"} words · {c.progressPct}% · ⭐{" "}
+                        {c.stars}
+                      </Text>
+                    </View>
+                  ))
+                ) : (
+                  l1!.categories.map((c) => (
                     <View key={`${c.group}-${c.label}`} style={styles.catRow}>
                       <Text style={styles.catTitle}>
                         {c.emoji} {c.label}
                       </Text>
                       <Text style={styles.meta}>
-                        {c.group} · words {c.wordsLearned} · ⭐ {c.stars} · pts {c.points}
+                        {c.group} · words {c.wordsLearned} · ⭐ {c.stars}
                         {c.completed ? " · done" : ""}
-                      </Text>
-                      <Text style={styles.meta}>
-                        Listen {c.listenCorrect}/{c.listenAttempts} · Spell {c.spellCorrect}/
-                        {c.spellAttempts}
                       </Text>
                     </View>
                   ))
@@ -389,14 +486,47 @@ export default function ChildDetailScreen() {
               </Card>
 
               <Card style={{ gap: 8 }}>
-                <Text style={styles.section}>Achievements</Text>
-                {!l1?.achievements?.length ? (
-                  <Text style={styles.meta}>No achievements earned yet.</Text>
+                <Text style={styles.section}>Recent activity</Text>
+                {!dashboard?.history?.length ? (
+                  <Text style={styles.meta}>No sessions yet.</Text>
                 ) : (
-                  l1.achievements.map((a) => (
+                  dashboard.history.slice(0, 8).map((h) => (
+                    <Text key={h.sessionId} style={styles.meta}>
+                      {h.category.emoji} {h.category.label} · {h.activityType} · ✅{" "}
+                      {h.correctAnswers}/❌ {h.incorrectAnswers} · {h.accuracy}% ·{" "}
+                      {h.status}
+                    </Text>
+                  ))
+                )}
+              </Card>
+
+              <Card style={{ gap: 8 }}>
+                <Text style={styles.section}>Achievements</Text>
+                {!(
+                  dashboard?.achievements?.some((a) => a.unlocked) ||
+                  l1?.achievements?.length
+                ) ? (
+                  <Text style={styles.meta}>No achievements earned yet.</Text>
+                ) : dashboard?.achievements?.length ? (
+                  dashboard.achievements
+                    .filter((a) => a.unlocked)
+                    .map((a) => (
+                      <Text key={a.code} style={styles.meta}>
+                        {a.title}
+                        {a.earnedAt
+                          ? ` · ${new Date(a.earnedAt).toLocaleDateString("en-IN", {
+                              timeZone: "Asia/Kolkata",
+                            })}`
+                          : ""}
+                      </Text>
+                    ))
+                ) : (
+                  l1!.achievements.map((a) => (
                     <Text key={a.id} style={styles.meta}>
                       {a.title}
-                      {a.earnedAt ? ` · ${new Date(a.earnedAt).toLocaleDateString()}` : ""}
+                      {a.earnedAt
+                        ? ` · ${new Date(a.earnedAt).toLocaleDateString()}`
+                        : ""}
                     </Text>
                   ))
                 )}
@@ -426,6 +556,7 @@ export default function ChildDetailScreen() {
           )}
         </ScrollView>
       </SafeAreaView>
+      </RequireParentGate>
     </AuthGate>
   );
 }

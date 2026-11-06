@@ -1,6 +1,8 @@
 import { useCallback, useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
+  Platform,
   ScrollView,
   StyleSheet,
   Text,
@@ -38,11 +40,25 @@ export default function AdminSchoolsScreen() {
   const [tEmail, setTEmail] = useState("");
   const [tPassword, setTPassword] = useState("");
   const [cName, setCName] = useState("");
+  const [search, setSearch] = useState("");
+  const [classrooms, setClassrooms] = useState<
+    Array<{ id: string; name: string; studentCount?: number }>
+  >([]);
+  const [teachers, setTeachers] = useState<
+    Array<{ userId?: string; id?: string; name?: string; email?: string; user?: { id: string; name: string; email: string } }>
+  >([]);
+  const [assignClassroomId, setAssignClassroomId] = useState("");
+  const [assignTeacherId, setAssignTeacherId] = useState("");
+  const [enrollChildId, setEnrollChildId] = useState("");
 
   const load = useCallback(async () => {
-    const data = await apiRequest<SchoolRow[]>("/admin/schools");
+    const params = new URLSearchParams();
+    if (search.trim()) params.set("q", search.trim());
+    const data = await apiRequest<SchoolRow[]>(
+      `/admin/schools${params.toString() ? `?${params}` : ""}`
+    );
     setRows(data);
-  }, []);
+  }, [search]);
 
   useFocusEffect(
     useCallback(() => {
@@ -113,8 +129,100 @@ export default function AdminSchoolsScreen() {
       setMessage("Classroom created");
       setCName("");
       await load();
+      await openManage(selected);
     } catch (e) {
       setError(e instanceof ApiError ? e.message : "Classroom create failed");
+    }
+  }
+
+  async function openManage(s: SchoolRow) {
+    setSelected(s);
+    setMessage(null);
+    setError(null);
+    try {
+      const [t, c] = await Promise.all([
+        apiRequest<typeof teachers>(`/admin/schools/${s.id}/teachers`),
+        apiRequest<typeof classrooms>(`/admin/schools/${s.id}/classrooms`),
+      ]);
+      setTeachers(t);
+      setClassrooms(c);
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : "Could not load school detail");
+    }
+  }
+
+  function deactivateSchool(s: SchoolRow) {
+    const run = () => {
+      void (async () => {
+        setError(null);
+        try {
+          await apiRequest(`/admin/schools/${s.id}/deactivate`, {
+            method: "POST",
+          });
+          setMessage("School deactivated (records kept)");
+          await load();
+          setSelected(null);
+        } catch (e) {
+          setError(e instanceof ApiError ? e.message : "Deactivate failed");
+        }
+      })();
+    };
+    if (Platform.OS === "web") {
+      if (
+        globalThis.confirm?.(
+          `Deactivate school "${s.name}"? Records and learning history stay.`
+        )
+      ) {
+        run();
+      }
+      return;
+    }
+    Alert.alert(
+      "Deactivate school?",
+      `${s.name}. Classrooms and student history are kept.`,
+      [
+        { text: "Cancel", style: "cancel" },
+        { text: "Deactivate", style: "destructive", onPress: run },
+      ]
+    );
+  }
+
+  async function activateSchool(s: SchoolRow) {
+    try {
+      await apiRequest(`/admin/schools/${s.id}/activate`, { method: "POST" });
+      setMessage("School activated");
+      await load();
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : "Activate failed");
+    }
+  }
+
+  async function assignTeacher() {
+    if (!selected || !assignClassroomId || !assignTeacherId) return;
+    try {
+      await apiRequest(`/admin/schools/classrooms/${assignClassroomId}/teachers`, {
+        method: "POST",
+        body: JSON.stringify({ teacherUserId: assignTeacherId }),
+      });
+      setMessage("Teacher assigned to classroom");
+      await openManage(selected);
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : "Assign failed");
+    }
+  }
+
+  async function enrollChild() {
+    if (!selected || !assignClassroomId || !enrollChildId.trim()) return;
+    try {
+      await apiRequest(`/admin/schools/classrooms/${assignClassroomId}/students`, {
+        method: "POST",
+        body: JSON.stringify({ childId: enrollChildId.trim() }),
+      });
+      setMessage("Student enrolled");
+      setEnrollChildId("");
+      await openManage(selected);
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : "Enroll failed");
     }
   }
 
@@ -155,6 +263,13 @@ export default function AdminSchoolsScreen() {
 
           <Card style={{ gap: 8 }}>
             <Text style={styles.section}>Schools</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="Search schools"
+              value={search}
+              onChangeText={setSearch}
+            />
+            <SoftButton label="Search" onPress={() => void load()} />
             {rows.map((s) => (
               <View key={s.id} style={styles.rowBlock}>
                 <Text style={styles.rowTitle}>
@@ -164,7 +279,20 @@ export default function AdminSchoolsScreen() {
                   {s.teacherCount} teachers · {s.classroomCount} classrooms ·{" "}
                   {s.studentCount} students
                 </Text>
-                <SoftButton label="Manage" onPress={() => setSelected(s)} />
+                <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+                  <SoftButton label="Manage" onPress={() => void openManage(s)} />
+                  {s.isActive ? (
+                    <SoftButton
+                      label="Deactivate"
+                      onPress={() => deactivateSchool(s)}
+                    />
+                  ) : (
+                    <SoftButton
+                      label="Activate"
+                      onPress={() => void activateSchool(s)}
+                    />
+                  )}
+                </View>
               </View>
             ))}
           </Card>
@@ -207,6 +335,49 @@ export default function AdminSchoolsScreen() {
                 label="Create classroom"
                 onPress={() => void createClassroom()}
                 disabled={!cName.trim()}
+              />
+
+              <Text style={styles.section}>Classrooms</Text>
+              {classrooms.map((c) => (
+                <SoftButton
+                  key={c.id}
+                  label={`${c.name}${c.studentCount != null ? ` (${c.studentCount})` : ""}`}
+                  active={assignClassroomId === c.id}
+                  onPress={() => setAssignClassroomId(c.id)}
+                />
+              ))}
+
+              <Text style={styles.section}>Assign teacher → classroom</Text>
+              {teachers.map((t) => {
+                const id = t.userId ?? t.user?.id ?? t.id ?? "";
+                const label = t.user?.name ?? t.name ?? t.user?.email ?? t.email ?? id;
+                return (
+                  <SoftButton
+                    key={id}
+                    label={label}
+                    active={assignTeacherId === id}
+                    onPress={() => setAssignTeacherId(id)}
+                  />
+                );
+              })}
+              <PrimaryButton
+                label="Assign selected teacher"
+                onPress={() => void assignTeacher()}
+                disabled={!assignClassroomId || !assignTeacherId}
+              />
+
+              <Text style={styles.section}>Enroll student (child ID)</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="Child profile ID"
+                value={enrollChildId}
+                onChangeText={setEnrollChildId}
+                autoCapitalize="none"
+              />
+              <PrimaryButton
+                label="Enroll in selected classroom"
+                onPress={() => void enrollChild()}
+                disabled={!assignClassroomId || !enrollChildId.trim()}
               />
             </Card>
           ) : null}

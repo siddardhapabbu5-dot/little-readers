@@ -21,6 +21,8 @@ const envSchema = z.object({
   OTP_EXPIRY_SECONDS: z.coerce.number().int().min(60).max(900).default(300),
   OTP_RESEND_SECONDS: z.coerce.number().int().min(30).max(300).default(60),
   OTP_MAX_ATTEMPTS: z.coerce.number().int().min(3).max(10).default(5),
+  /** Max OTP sends per mobile per rolling hour (in addition to resend cooldown). */
+  OTP_MAX_SENDS_PER_HOUR: z.coerce.number().int().min(3).max(30).default(5),
   /**
    * When true (non-production), OTP is logged to server console for local testing.
    * Never enable in production — OTP is never returned in API JSON in production.
@@ -130,6 +132,7 @@ export const env =
         OTP_EXPIRY_SECONDS: 300,
         OTP_RESEND_SECONDS: 60,
         OTP_MAX_ATTEMPTS: 5,
+        OTP_MAX_SENDS_PER_HOUR: 5,
         OTP_DEV_MODE: true,
         SMS_PROVIDER: "console" as const,
         SMS_API_KEY: undefined,

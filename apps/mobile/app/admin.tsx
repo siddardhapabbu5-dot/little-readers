@@ -406,6 +406,14 @@ export default function AdminScreen() {
       tint: dash.blue,
       soft: dash.blueSoft,
     },
+    {
+      title: "Manage accounts",
+      subtitle: "Parents, teachers & access status",
+      href: "/admin-users",
+      icon: "people" as const,
+      tint: dash.purple,
+      soft: dash.purpleSoft,
+    },
   ];
 
   const visibleActions = showAllActions ? quickActions : quickActions.slice(0, 4);

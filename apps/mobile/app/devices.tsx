@@ -12,6 +12,7 @@ import {
   Title,
 } from "../components/ui";
 import { AuthGate } from "../components/AuthGate";
+import { RequireParentGate } from "../components/RequireParentGate";
 import { apiRequest, ApiError } from "../services/api";
 import { ROLE_SETS } from "../services/auth-errors";
 import { getOrCreateInstallationId } from "../services/secure";
@@ -86,6 +87,7 @@ export default function DevicesScreen() {
 
   return (
     <AuthGate roles={ROLE_SETS.parentFamily}>
+    <RequireParentGate>
     <SafeAreaView style={styles.safe}>
       <ScrollView contentContainerStyle={styles.content}>
         <SoftButton label="← Back" onPress={() => router.back()} />
@@ -138,6 +140,7 @@ export default function DevicesScreen() {
         ))}
       </ScrollView>
     </SafeAreaView>
+    </RequireParentGate>
     </AuthGate>
   );
 }

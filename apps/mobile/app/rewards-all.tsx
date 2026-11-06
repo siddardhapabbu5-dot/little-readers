@@ -16,31 +16,26 @@ import { ROLE_SETS } from "../services/auth-errors";
 import { getActiveChild } from "../services/secure";
 import { colors, radii } from "../theme";
 
-type Achievement = {
-  id: string;
+type AchievementRow = {
   code: string;
   title: string;
   description?: string | null;
-  earnedAt: string;
+  emoji?: string;
+  unlocked: boolean;
+  earnedAt?: string | null;
 };
 
 type ProgressPayload = {
+  child?: { displayName: string };
   summary?: {
-    wordsLearned?: number;
+    wordsCorrect?: number;
     stars?: number;
     points?: number;
     categoriesCompleted?: number;
+    accuracy?: number;
   };
-  achievements?: Achievement[];
+  achievements?: AchievementRow[];
 };
-
-const BADGE_EMOJIS = ["👣", "⭐", "📚", "📖", "🏆", "🎯", "🌟", "🎖️"];
-
-function emojiFor(code: string, index: number) {
-  let hash = 0;
-  for (let i = 0; i < code.length; i++) hash = (hash + code.charCodeAt(i) * (i + 1)) % 997;
-  return BADGE_EMOJIS[(hash + index) % BADGE_EMOJIS.length];
-}
 
 export default function RewardsAllScreen() {
   const router = useRouter();
@@ -48,7 +43,7 @@ export default function RewardsAllScreen() {
   const [error, setError] = useState<string | null>(null);
   const [childName, setChildName] = useState("Champ");
   const [summary, setSummary] = useState<ProgressPayload["summary"] | null>(null);
-  const [achievements, setAchievements] = useState<Achievement[]>([]);
+  const [achievements, setAchievements] = useState<AchievementRow[]>([]);
 
   useFocusEffect(
     useCallback(() => {
@@ -63,7 +58,9 @@ export default function RewardsAllScreen() {
             return;
           }
           setChildName(child.displayName);
-          const data = await apiRequest<ProgressPayload>(`/learning/progress/${child.id}`);
+          const data = await apiRequest<ProgressPayload>(
+            `/learning/progress/${child.id}`
+          );
           setSummary(data.summary ?? null);
           setAchievements(data.achievements ?? []);
           setError(null);
@@ -76,69 +73,78 @@ export default function RewardsAllScreen() {
     }, [])
   );
 
-  const stars = summary?.stars ?? 0;
-  const points = summary?.points ?? 0;
-  const words = summary?.wordsLearned ?? 0;
-  const lessons = summary?.categoriesCompleted ?? 0;
+  const unlocked = achievements.filter((a) => a.unlocked);
+  const locked = achievements.filter((a) => !a.unlocked);
 
   return (
     <AuthGate roles={ROLE_SETS.kidsLearning}>
       <SafeAreaView style={styles.safe} edges={["top", "bottom"]}>
         <KidsHeader
           left={<IconButton emoji="←" onPress={() => router.back()} />}
-          title="All rewards"
+          title="Achievements"
         />
 
         {loading ? (
           <View style={styles.center}>
             <ActivityIndicator color={colors.primary} size="large" />
-            <Text style={styles.muted}>Loading rewards…</Text>
           </View>
         ) : (
-          <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+          <ScrollView contentContainerStyle={styles.content}>
             <Title>{childName}</Title>
             <ErrorText>{error}</ErrorText>
 
             <Card style={{ gap: 10 }}>
-              <Text style={styles.section}>Progress</Text>
+              <Text style={styles.section}>From real learning</Text>
               <View style={styles.statsRow}>
-                <Stat label="Stars" value={String(stars)} emoji="⭐" />
-                <Stat label="Points" value={String(points)} emoji="🪙" />
-                <Stat label="Words" value={String(words)} emoji="📚" />
-                <Stat label="Lessons" value={String(lessons)} emoji="✅" />
+                <Stat label="Words correct" value={String(summary?.wordsCorrect ?? 0)} />
+                <Stat label="Stars" value={String(summary?.stars ?? 0)} />
+                <Stat label="Points" value={String(summary?.points ?? 0)} />
+                <Stat label="Accuracy" value={`${summary?.accuracy ?? 0}%`} />
               </View>
             </Card>
 
-            <Text style={styles.section}>Badges & achievements</Text>
-            {achievements.length === 0 ? (
+            <Text style={styles.section}>Unlocked</Text>
+            {unlocked.length === 0 ? (
               <Card>
-                <Text style={styles.emptyTitle}>No badges yet</Text>
                 <Text style={styles.muted}>
-                  Keep playing Listen & Spell — earned badges from the server will show up here.
-                  Nothing is invented on this screen.
+                  No achievements unlocked yet. Complete activities to earn them — the
+                  server confirms each one.
                 </Text>
-                <SoftButton
-                  label="Open Learn"
-                  onPress={() => router.push("/(tabs)/learn")}
-                />
+                <SoftButton label="Open Learn" onPress={() => router.push("/(tabs)/learn")} />
               </Card>
             ) : (
-              <View style={styles.badgeGrid}>
-                {achievements.map((a, i) => (
-                  <View key={a.id} style={styles.badgeCard}>
-                    <BadgeChip
-                      emoji={emojiFor(a.code, i)}
-                      title={a.title || a.code}
-                    />
+              <View style={styles.grid}>
+                {unlocked.map((a) => (
+                  <View key={a.code} style={styles.badgeCard}>
+                    <BadgeChip emoji={a.emoji ?? "🏅"} title={a.title} />
                     {a.description ? (
                       <Text style={styles.desc}>{a.description}</Text>
                     ) : null}
-                    <Text style={styles.earned}>
-                      Earned {new Date(a.earnedAt).toLocaleDateString()}
-                    </Text>
+                    {a.earnedAt ? (
+                      <Text style={styles.earned}>
+                        Earned{" "}
+                        {new Date(a.earnedAt).toLocaleDateString("en-IN", {
+                          timeZone: "Asia/Kolkata",
+                        })}
+                      </Text>
+                    ) : null}
                   </View>
                 ))}
               </View>
+            )}
+
+            <Text style={styles.section}>Locked</Text>
+            {locked.length === 0 ? (
+              <Text style={styles.muted}>All listed milestones unlocked.</Text>
+            ) : (
+              locked.map((a) => (
+                <View key={a.code} style={styles.lockedRow}>
+                  <Text style={styles.lockedTitle}>🔒 {a.title}</Text>
+                  {a.description ? (
+                    <Text style={styles.desc}>{a.description}</Text>
+                  ) : null}
+                </View>
+              ))
             )}
           </ScrollView>
         )}
@@ -147,18 +153,9 @@ export default function RewardsAllScreen() {
   );
 }
 
-function Stat({
-  label,
-  value,
-  emoji,
-}: {
-  label: string;
-  value: string;
-  emoji: string;
-}) {
+function Stat({ label, value }: { label: string; value: string }) {
   return (
     <View style={styles.stat}>
-      <Text style={styles.statEmoji}>{emoji}</Text>
       <Text style={styles.statValue}>{value}</Text>
       <Text style={styles.statLabel}>{label}</Text>
     </View>
@@ -166,33 +163,35 @@ function Stat({
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: colors.bg, paddingHorizontal: 16 },
-  content: { gap: 14, paddingBottom: 28 },
-  center: { flex: 1, alignItems: "center", justifyContent: "center", gap: 10 },
+  safe: { flex: 1, backgroundColor: colors.bg },
+  content: { padding: 20, gap: 12, paddingBottom: 36 },
+  center: { padding: 40, alignItems: "center" },
   section: { fontWeight: "800", fontSize: 16, color: colors.text },
-  muted: { color: colors.textMuted, lineHeight: 20 },
-  emptyTitle: { fontWeight: "800", fontSize: 16, color: colors.text, marginBottom: 6 },
-  statsRow: { flexDirection: "row", flexWrap: "wrap", gap: 10 },
+  muted: { color: colors.textMuted, fontWeight: "600", lineHeight: 20 },
+  statsRow: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   stat: {
     width: "47%",
-    backgroundColor: colors.bg,
-    borderRadius: radii.lg,
-    padding: 12,
-    alignItems: "center",
-    gap: 2,
+    backgroundColor: colors.primarySoft,
+    borderRadius: radii.md,
+    padding: 10,
   },
-  statEmoji: { fontSize: 18 },
-  statValue: { fontWeight: "800", fontSize: 20, color: colors.text },
-  statLabel: { color: colors.textMuted, fontWeight: "600", fontSize: 12 },
-  badgeGrid: { gap: 12 },
+  statValue: { fontWeight: "900", fontSize: 18, color: colors.primaryDark },
+  statLabel: { fontWeight: "700", fontSize: 11, color: colors.textMuted },
+  grid: { gap: 10 },
   badgeCard: {
     backgroundColor: "#fff",
-    borderRadius: radii.xl,
-    padding: 14,
+    borderRadius: radii.lg,
+    padding: 12,
     gap: 6,
-    borderWidth: 1,
-    borderColor: colors.border,
   },
-  desc: { color: colors.textMuted, lineHeight: 18 },
-  earned: { color: colors.primary, fontWeight: "700", fontSize: 12 },
+  desc: { color: colors.textMuted, fontWeight: "600", fontSize: 12 },
+  earned: { color: colors.mintDeep, fontWeight: "700", fontSize: 11 },
+  lockedRow: {
+    backgroundColor: "#fff",
+    borderRadius: radii.lg,
+    padding: 12,
+    gap: 4,
+    opacity: 0.85,
+  },
+  lockedTitle: { fontWeight: "800", color: colors.textMuted },
 });

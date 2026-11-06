@@ -4,6 +4,10 @@ import {
   getToken,
   saveSessionRevokedMessage,
 } from "./secure";
+import {
+  markNetworkReachable,
+  markNetworkUnreachable,
+} from "./network";
 import { notifyUnauthorized } from "./session";
 
 const API_URL =
@@ -61,20 +65,32 @@ export async function apiRequest<T>(
   const auth = token ?? (await getToken()) ?? undefined;
   const installationId = mobile ? await getOrCreateInstallationId() : undefined;
 
-  const response = await fetch(`${API_URL}${path}`, {
-    ...rest,
-    headers: {
-      "Content-Type": "application/json",
-      ...(auth ? { Authorization: `Bearer ${auth}` } : {}),
-      // Always send real platform (web|ios|android). Never map web → android.
-      "X-Client-Platform": Platform.OS,
-      ...(mobile && installationId
-        ? { "X-Installation-Id": installationId }
-        : {}),
-      ...headers,
-    },
-  });
+  let response: Response;
+  try {
+    response = await fetch(`${API_URL}${path}`, {
+      ...rest,
+      headers: {
+        "Content-Type": "application/json",
+        ...(auth ? { Authorization: `Bearer ${auth}` } : {}),
+        // Always send real platform (web|ios|android). Never map web → android.
+        "X-Client-Platform": Platform.OS,
+        ...(mobile && installationId
+          ? { "X-Installation-Id": installationId }
+          : {}),
+        ...headers,
+      },
+    });
+  } catch (err) {
+    markNetworkUnreachable();
+    throw new ApiError(
+      "We couldn't reach Little Readers. Check your connection and try again.",
+      0,
+      undefined,
+      "NETWORK_UNAVAILABLE"
+    );
+  }
 
+  markNetworkReachable();
   const body = await response.json().catch(() => ({}));
   if (!response.ok) {
     handleAuthFailure(response.status, auth, body);
@@ -98,18 +114,30 @@ export async function apiUpload<T>(
   const auth = options.token ?? (await getToken()) ?? undefined;
   const installationId = mobile ? await getOrCreateInstallationId() : undefined;
 
-  const response = await fetch(`${API_URL}${path}`, {
-    method: "POST",
-    headers: {
-      ...(auth ? { Authorization: `Bearer ${auth}` } : {}),
-      "X-Client-Platform": Platform.OS,
-      ...(mobile && installationId
-        ? { "X-Installation-Id": installationId }
-        : {}),
-    },
-    body: formData,
-  });
+  let response: Response;
+  try {
+    response = await fetch(`${API_URL}${path}`, {
+      method: "POST",
+      headers: {
+        ...(auth ? { Authorization: `Bearer ${auth}` } : {}),
+        "X-Client-Platform": Platform.OS,
+        ...(mobile && installationId
+          ? { "X-Installation-Id": installationId }
+          : {}),
+      },
+      body: formData,
+    });
+  } catch {
+    markNetworkUnreachable();
+    throw new ApiError(
+      "We couldn't reach Little Readers. Check your connection and try again.",
+      0,
+      undefined,
+      "NETWORK_UNAVAILABLE"
+    );
+  }
 
+  markNetworkReachable();
   const body = await response.json().catch(() => ({}));
   if (!response.ok) {
     handleAuthFailure(response.status, auth, body);
@@ -124,9 +152,18 @@ export async function apiUpload<T>(
 }
 
 export async function healthCheck() {
-  const response = await fetch(`${API_URL}/health`);
-  if (!response.ok) throw new Error("API health check failed");
-  return response.json();
+  try {
+    const response = await fetch(`${API_URL}/health`);
+    if (!response.ok) {
+      markNetworkUnreachable();
+      throw new Error("API health check failed");
+    }
+    markNetworkReachable();
+    return response.json();
+  } catch (err) {
+    markNetworkUnreachable();
+    throw err;
+  }
 }
 
 /** Authenticated CSV (or other text) download — returns raw body text. */

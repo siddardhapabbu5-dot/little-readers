@@ -14,6 +14,7 @@ import {
 } from "./device.service.js";
 import {
   assignLearningSeat,
+  cancelParentSubscription,
   getParentSubscription,
   grantExtraSeats,
   listSubscriptionsForAdmin,
@@ -195,6 +196,28 @@ subscriptionRouter.post(
         ...req.body,
         grantedByUserId: req.user!.id,
       });
+      res.status(200).json({ data });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+subscriptionRouter.post(
+  "/cancel",
+  requireRoles("PARENT", "ADMIN", "SUPER_ADMIN"),
+  async (req: AuthenticatedRequest, res, next) => {
+    try {
+      const parentUserId =
+        req.user!.role === "PARENT"
+          ? req.user!.id
+          : typeof req.body?.parentUserId === "string"
+            ? req.body.parentUserId
+            : req.user!.id;
+      if (req.user!.role === "PARENT" && parentUserId !== req.user!.id) {
+        throw new AppError("Parents may only cancel their own subscription", 403);
+      }
+      const data = await cancelParentSubscription(parentUserId);
       res.status(200).json({ data });
     } catch (error) {
       next(error);

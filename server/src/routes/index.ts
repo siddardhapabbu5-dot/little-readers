@@ -16,6 +16,7 @@ import {
   schoolAdminRouter,
   teacherRouter,
 } from "../schools/school.routes.js";
+import { adminUsersRouter } from "../admin-users/admin-users.routes.js";
 import {
   paymentsRouter,
   paymentsWebhookHandler,
@@ -62,6 +63,7 @@ apiRouter.use("/admin/lessons", lessonAdminRouter);
 apiRouter.use("/admin/programmes", programmeRouter);
 apiRouter.use("/admin/publisher", publisherRouter);
 apiRouter.use("/admin/schools", schoolAdminRouter);
+apiRouter.use("/admin/users", adminUsersRouter);
 apiRouter.use("/teacher", teacherRouter);
 apiRouter.use("/devices", deviceRouter);
 apiRouter.use("/subscriptions", subscriptionRouter);

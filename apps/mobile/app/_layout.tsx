@@ -9,8 +9,10 @@ import {
 import { Stack, useRouter, type ErrorBoundaryProps } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { SafeAreaProvider } from "react-native-safe-area-context";
+import { NetworkBanner } from "../components/NetworkBanner";
 import { PhoneFrame } from "../components/PhoneFrame";
-import { checkParentSessionAlive } from "../services/api";
+import { API_URL, checkParentSessionAlive } from "../services/api";
+import { probeApiReachable } from "../services/network";
 import { clearSession, ensureClientFreshStart } from "../services/secure";
 import { setUnauthorizedHandler } from "../services/session";
 import { colors } from "../theme";
@@ -68,13 +70,14 @@ export default function RootLayout() {
       ) {
         void (async () => {
           try {
+            await probeApiReachable(`${API_URL}/health`);
             const status = await checkParentSessionAlive();
             if (status === "revoked") {
               await clearSession();
               router.replace("/login");
             }
           } catch {
-            /* ignore transient network errors on resume */
+            /* ignore transient network errors on resume — do not invent offline sync */
           }
         })();
       }
@@ -91,6 +94,7 @@ export default function RootLayout() {
   return (
     <SafeAreaProvider>
       <StatusBar style="dark" />
+      <NetworkBanner />
       <PhoneFrame>
         <Stack
           screenOptions={{

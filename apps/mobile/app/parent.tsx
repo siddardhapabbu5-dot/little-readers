@@ -11,6 +11,7 @@ import {
   Title,
 } from "../components/ui";
 import { AuthGate } from "../components/AuthGate";
+import { RequireParentGate } from "../components/RequireParentGate";
 import { apiRequest, ApiError } from "../services/api";
 import { ROLE_SETS } from "../services/auth-errors";
 import { getActiveChild, saveActiveChild } from "../services/secure";
@@ -186,6 +187,7 @@ export default function ParentScreen() {
 
   return (
     <AuthGate roles={ROLE_SETS.parentFamily}>
+      <RequireParentGate>
       <SafeAreaView style={styles.safe}>
         <ScrollView contentContainerStyle={styles.content}>
           <SoftButton
@@ -201,6 +203,10 @@ export default function ParentScreen() {
           />
           <Title>Parent dashboard</Title>
           <Text style={styles.sub}>Children, progress, devices & subscription</Text>
+          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+            <SoftButton label="Devices" onPress={() => router.push("/devices")} />
+            <SoftButton label="Subscription" onPress={() => router.push("/subscription")} />
+          </View>
           <ErrorText>{error}</ErrorText>
           {info ? <Text style={styles.info}>{info}</Text> : null}
 
@@ -258,8 +264,18 @@ export default function ParentScreen() {
                   {child.grade ? ` · ${child.grade.label}` : ""} · Birthday {birthday}
                 </Text>
                 <Text style={styles.meta}>
-                  Words {summary?.wordsLearned ?? 0} · Stars {summary?.stars ?? 0} · Points{" "}
-                  {summary?.points ?? 0}
+                  Words correct {summary?.wordsCorrect ?? summary?.wordsLearned ?? 0} · Tried{" "}
+                  {summary?.wordsAttempted ?? "—"} · Accuracy {summary?.accuracy ?? 0}%
+                </Text>
+                <Text style={styles.meta}>
+                  Today {summary?.daily?.wordsLearnedToday ?? 0}/
+                  {summary?.daily?.target ?? 5} · Week {summary?.weekly?.wordsLearned ?? 0} ·
+                  Stars {summary?.stars ?? 0} · Points {summary?.points ?? 0}
+                </Text>
+                <Text style={styles.meta}>
+                  Activities {summary?.activitiesCompleted ?? 0} · Need practice{" "}
+                  {summary?.wordsNeedingPractice ?? 0} · Categories{" "}
+                  {summary?.categoriesCompleted ?? 0}
                 </Text>
                 {!seated ? (
                   <Text style={styles.warn}>
@@ -270,6 +286,10 @@ export default function ParentScreen() {
                   <SoftButton
                     label="View / edit"
                     onPress={() => router.push(`/child/${child.id}`)}
+                  />
+                  <SoftButton
+                    label="Progress report"
+                    onPress={() => router.push(`/child/${child.id}?tab=progress`)}
                   />
                   <SoftButton
                     label={isActive ? "Active ✓" : "Set active"}
@@ -344,6 +364,7 @@ export default function ParentScreen() {
           />
         </ScrollView>
       </SafeAreaView>
+      </RequireParentGate>
     </AuthGate>
   );
 }

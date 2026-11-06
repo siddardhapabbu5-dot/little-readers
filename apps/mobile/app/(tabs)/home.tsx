@@ -19,6 +19,7 @@ import {
   WelcomeHero,
 } from "../../components/kids";
 import { apiRequest, ApiError } from "../../services/api";
+import { openLearningActivity } from "../../services/learning-nav";
 import { getActiveChild, getUser, saveActiveChild } from "../../services/secure";
 import { colors } from "../../theme";
 
@@ -44,6 +45,7 @@ type Group = { id: string; code: string; label: string; categories: Category[] }
 type ProgressPayload = {
   summary?: {
     wordsLearned?: number;
+    wordsCorrect?: number;
     stars?: number;
     points?: number;
     categoriesCompleted?: number;
@@ -154,7 +156,8 @@ export default function HomeTab() {
   const dailyCompleted = daily?.wordsLearnedToday ?? 0;
   const dailyTarget = daily?.target ?? 5;
   const stars = progress?.summary?.stars ?? 0;
-  const words = progress?.summary?.wordsLearned ?? 0;
+  const words =
+    progress?.summary?.wordsCorrect ?? progress?.summary?.wordsLearned ?? 0;
   const metaParts = [
     child ? ageFromChild(child) : null,
     child ? levelLabel(child.level) : null,
@@ -162,19 +165,21 @@ export default function HomeTab() {
     child && words > 0 ? `${words} words` : null,
   ].filter(Boolean);
 
-  function openCategory(cat?: Category, startRound?: "LISTEN" | "SPELL") {
+  function openCategory(
+    cat?: Category,
+    activity: "LISTEN_SPELL" | "MATCHING" | "QUIZ" | "REVISION" = "LISTEN_SPELL",
+    startRound?: "LISTEN" | "SPELL"
+  ) {
     if (!cat || !child) {
       router.push("/(tabs)/learn");
       return;
     }
-    router.push({
-      pathname: "/play",
-      params: {
-        categoryId: cat.id,
-        childId: child.id,
-        title: cat.label,
-        ...(startRound ? { startRound } : {}),
-      },
+    openLearningActivity(router, {
+      activity,
+      categoryId: cat.id,
+      childId: child.id,
+      title: cat.label,
+      startRound,
     });
   }
 
@@ -227,8 +232,8 @@ export default function HomeTab() {
               target={dailyTarget}
               message={
                 dailyCompleted >= dailyTarget
-                  ? "Amazing! Daily goal complete."
-                  : "Learn new words today with Listen & Spell."
+                  ? "Amazing! Daily word goal complete."
+                  : "Correct words today from Listen, Spell, Matching, Quiz or Revision."
               }
             />
 
@@ -241,7 +246,7 @@ export default function HomeTab() {
               <ContinueCard
                 emoji={continueCat.emoji}
                 title={continueCat.label}
-                subtitle={`${continueCat.group ?? "Level 1"} · Listen & Spell`}
+                subtitle={`${continueCat.group ?? "Level 1"} · ${continueCat.progress?.wordsLearned ?? 0}/${continueCat.wordCount} words`}
                 progressPct={Math.round(
                   ((continueCat.progress?.wordsLearned ?? 0) /
                     Math.max(continueCat.wordCount, 1)) *
@@ -253,6 +258,57 @@ export default function HomeTab() {
               <Text style={styles.hint}>
                 Vocabulary is loading or not published yet. Check Learn for updates.
               </Text>
+            )}
+
+            <SectionRow
+              title="Activities"
+              action="Games"
+              onAction={() => router.push("/(tabs)/games")}
+            />
+            {continueCat ? (
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={{ gap: 12 }}
+              >
+                <RecommendCard
+                  emoji="🎧"
+                  title={continueCat.label}
+                  tag="Listen"
+                  tint={colors.skySoft}
+                  onPress={() => openCategory(continueCat, "LISTEN_SPELL", "LISTEN")}
+                />
+                <RecommendCard
+                  emoji="✍️"
+                  title={continueCat.label}
+                  tag="Spell"
+                  tint={colors.yellowSoft}
+                  onPress={() => openCategory(continueCat, "LISTEN_SPELL", "SPELL")}
+                />
+                <RecommendCard
+                  emoji="🧩"
+                  title={continueCat.label}
+                  tag="Matching"
+                  tint={colors.mintSoft}
+                  onPress={() => openCategory(continueCat, "MATCHING")}
+                />
+                <RecommendCard
+                  emoji="📝"
+                  title={continueCat.label}
+                  tag="Quiz"
+                  tint={colors.pinkSoft}
+                  onPress={() => openCategory(continueCat, "QUIZ")}
+                />
+                <RecommendCard
+                  emoji="🔁"
+                  title={continueCat.label}
+                  tag="Revision"
+                  tint={colors.primarySoft}
+                  onPress={() => openCategory(continueCat, "REVISION")}
+                />
+              </ScrollView>
+            ) : (
+              <Text style={styles.hint}>Activities unlock when a category is available.</Text>
             )}
 
             <SectionRow title="Recommended for You" />
@@ -272,7 +328,9 @@ export default function HomeTab() {
                       title={cat.label}
                       tag={startRound === "LISTEN" ? "Listen" : "Spell"}
                       tint={startRound === "LISTEN" ? colors.skySoft : colors.yellowSoft}
-                      onPress={() => openCategory(cat, startRound)}
+                      onPress={() =>
+                        openCategory(cat, "LISTEN_SPELL", startRound)
+                      }
                     />
                   );
                 })}

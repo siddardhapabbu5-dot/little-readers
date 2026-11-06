@@ -202,13 +202,22 @@ export const updateChildSchema = z
     }
   });
 
+export const learningActivityModeSchema = z.enum([
+  "LISTEN_SPELL",
+  "MATCHING",
+  "QUIZ",
+  "REVISION",
+]);
+
 export const startLearningSessionSchema = z
   .object({
     childId: z.string().min(1),
     categoryId: z.string().min(1).optional(),
     lessonId: z.string().min(1).optional(),
-    questionCount: z.coerce.number().int().min(5).max(20).optional(),
+    questionCount: z.coerce.number().int().min(4).max(20).optional(),
     resume: z.boolean().optional(),
+    /** Activity mode for this session (defaults to Listen & Spell). */
+    activityMode: learningActivityModeSchema.optional(),
   })
   .superRefine((val, ctx) => {
     if (!val.categoryId && !val.lessonId) {
@@ -222,7 +231,14 @@ export const startLearningSessionSchema = z
 
 export const submitQuestionAttemptSchema = z.object({
   wordId: z.string().min(1),
-  round: z.enum(["LISTEN", "SPELL", "LETTER"]),
+  round: z.enum([
+    "LISTEN",
+    "SPELL",
+    "LETTER",
+    "MATCHING",
+    "QUIZ",
+    "REVISION",
+  ]),
   isCorrect: z.boolean(),
   answerGiven: z.string().max(100).optional(),
   usedClue: z.boolean().optional(),

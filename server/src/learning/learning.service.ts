@@ -11,6 +11,10 @@ import {
   assertChildHasLearningSeat,
   assertParentSubscriptionEligible,
 } from "../subscriptions/subscription.service.js";
+import {
+  awardMilestoneAchievements,
+  getChildProgressDashboard,
+} from "./progress-rewards.js";
 
 function liveEmoji(word: string, emoji: string | null | undefined) {
   return resolveAlphabetEmoji({
@@ -60,6 +64,16 @@ async function assertChildOwnedByParent(
     return elevated;
   }
 
+  if (role === "TEACHER" || role === "SCHOOL_ADMIN") {
+    const { assertTeacherCanViewChild } = await import(
+      "../schools/school.access.js"
+    );
+    return assertTeacherCanViewChild(
+      { id: parentId, role: role as "TEACHER" | "SCHOOL_ADMIN" },
+      childId
+    );
+  }
+
   const child = await prisma.child.findFirst({
     where: { id: childId, parentId, isActive: true },
     select: { id: true, displayName: true },
@@ -75,6 +89,22 @@ function shuffle<T>(items: T[]): T[] {
     [copy[i], copy[j]] = [copy[j], copy[i]];
   }
   return copy;
+}
+
+type ActivityMode = "LISTEN_SPELL" | "MATCHING" | "QUIZ" | "REVISION";
+
+function normalizeActivityMode(
+  value: StartLearningSessionInput["activityMode"]
+): ActivityMode {
+  if (
+    value === "MATCHING" ||
+    value === "QUIZ" ||
+    value === "REVISION" ||
+    value === "LISTEN_SPELL"
+  ) {
+    return value;
+  }
+  return "LISTEN_SPELL";
 }
 
 export async function getLevel1Curriculum(parentId: string, childId: string) {
@@ -208,6 +238,41 @@ type SessionWord = {
   difficulty: number;
 };
 
+/** Prefer words with prior incorrect attempts, then previously correct, then new. */
+async function orderPoolForRevision(
+  childId: string,
+  categoryId: string,
+  pool: SessionWord[]
+) {
+  const attempts = await prisma.questionAttempt.findMany({
+    where: {
+      session: { childId, categoryId },
+      wordId: { in: pool.map((w) => w.id) },
+    },
+    select: { wordId: true, isCorrect: true },
+    orderBy: { createdAt: "desc" },
+  });
+
+  const hadIncorrect = new Set<string>();
+  const hadCorrect = new Set<string>();
+  for (const a of attempts) {
+    if (!a.isCorrect) hadIncorrect.add(a.wordId);
+    else hadCorrect.add(a.wordId);
+  }
+
+  const weak = shuffle(pool.filter((w) => hadIncorrect.has(w.id)));
+  const known = shuffle(
+    pool.filter((w) => hadCorrect.has(w.id) && !hadIncorrect.has(w.id))
+  );
+  const fresh = shuffle(
+    pool.filter((w) => !hadIncorrect.has(w.id) && !hadCorrect.has(w.id))
+  );
+  return {
+    ordered: [...weak, ...known, ...fresh],
+    hasHistory: weak.length + known.length > 0,
+  };
+}
+
 function buildQuestions(selected: SessionWord[], pool: SessionWord[]) {
   return selected.map((word, index) => {
     const distractors = shuffle(pool.filter((w) => w.id !== word.id)).slice(0, 3);
@@ -288,6 +353,7 @@ async function rebuildSessionPayload(
   return {
     sessionId: session.id,
     resumed,
+    activityMode: "LISTEN_SPELL" as ActivityMode,
     lesson: lessonMeta,
     category: categoryMeta,
     questionsTotal: session.questionsTotal || questions.length,
@@ -340,6 +406,8 @@ export async function startLearningSession(
     }
     await assertStudentDeviceAllowed(input.childId, mobile.installationId);
   }
+
+  const activityMode = normalizeActivityMode(input.activityMode);
 
   // --- Lesson-backed session (Listen/Spell reuse) ---
   if (input.lessonId) {
@@ -445,6 +513,7 @@ export async function startLearningSession(
     return {
       sessionId: session.id,
       resumed: false,
+      activityMode,
       lesson: lessonMeta,
       category: categoryMeta,
       questionsTotal: selected.length,
@@ -458,12 +527,12 @@ export async function startLearningSession(
     };
   }
 
-  // --- Category-backed session (existing Listen/Spell) ---
+  // --- Category-backed session (Listen/Spell + Matching/Quiz/Revision) ---
   if (!input.categoryId) {
     throw new AppError("categoryId or lessonId is required", 400);
   }
 
-  if (input.resume) {
+  if (input.resume && activityMode === "LISTEN_SPELL") {
     const open = await prisma.learningSession.findFirst({
       where: {
         childId: input.childId,
@@ -538,16 +607,38 @@ export async function startLearningSession(
     difficulty: w.difficulty,
   }));
 
-  // Prefer words not yet learned so progress can reach 26/26 (not stuck on same 8).
-  const learnedIds = await learnedWordIdSet(input.childId, category.id);
-  const unlearned = shuffle(pool.filter((w) => !learnedIds.has(w.id)));
-  const already = shuffle(pool.filter((w) => learnedIds.has(w.id)));
-  const orderedPool = [...unlearned, ...already];
+  let orderedPool: SessionWord[] = pool;
+  let revisionNote: string | null = null;
+  let resolvedDefault = Math.min(10, pool.length);
 
-  const defaultCount =
-    unlearned.length > 0 ? unlearned.length : Math.min(10, pool.length);
+  if (activityMode === "REVISION") {
+    const revision = await orderPoolForRevision(
+      input.childId,
+      category.id,
+      pool
+    );
+    orderedPool = revision.ordered;
+    revisionNote = revision.hasHistory
+      ? "Reviewing words you have practiced before, starting with ones that need more help."
+      : "No prior attempts yet — practicing this category’s words to start your revision history.";
+    resolvedDefault = Math.min(8, orderedPool.length);
+  } else if (activityMode === "MATCHING") {
+    orderedPool = shuffle(pool);
+    resolvedDefault = Math.min(6, orderedPool.length);
+  } else if (activityMode === "QUIZ") {
+    orderedPool = shuffle(pool);
+    resolvedDefault = Math.min(8, orderedPool.length);
+  } else {
+    const learnedIds = await learnedWordIdSet(input.childId, category.id);
+    const unlearned = shuffle(pool.filter((w) => !learnedIds.has(w.id)));
+    const already = shuffle(pool.filter((w) => learnedIds.has(w.id)));
+    orderedPool = [...unlearned, ...already];
+    resolvedDefault =
+      unlearned.length > 0 ? unlearned.length : Math.min(10, pool.length);
+  }
+
   const count = Math.min(
-    input.questionCount ?? defaultCount,
+    input.questionCount ?? resolvedDefault,
     orderedPool.length
   );
   const selected = orderedPool.slice(0, count);
@@ -564,6 +655,8 @@ export async function startLearningSession(
   return {
     sessionId: session.id,
     resumed: false as boolean,
+    activityMode,
+    revisionNote,
     lesson: null as null,
     category: {
       id: category.id,
@@ -646,7 +739,11 @@ export async function submitQuestionAttempt(
           ? 10
           : input.round === "LETTER"
             ? 6
-            : 8
+            : input.round === "MATCHING" ||
+                input.round === "QUIZ" ||
+                input.round === "REVISION"
+              ? 8
+              : 8
       : 0);
 
   const attempt = await prisma.questionAttempt.create({
@@ -756,6 +853,8 @@ export async function completeLearningSession(
 
   // Idempotent complete: never double-apply category progress / achievements.
   if (session.status === "COMPLETED") {
+    // Still refresh milestone achievements (upsert) for older completed sessions.
+    await awardMilestoneAchievements(session.childId);
     const nextCategory = await prisma.learningCategory.findFirst({
       where: {
         isPublished: true,
@@ -951,6 +1050,9 @@ export async function completeLearningSession(
     select: { id: true, label: true, emoji: true, code: true },
   });
 
+  // Milestone achievements + global wordsLearned / weak-word snapshot (idempotent).
+  await awardMilestoneAchievements(session.childId);
+
   return buildResult(durationSec, nextCategory, updated.nextWords);
 }
 
@@ -972,115 +1074,7 @@ export async function getChildLearningOverview(
   childId: string,
   role?: string
 ) {
-  await assertChildOwnedByParent(parentId, childId, role);
-
-  const day = kolkataDayBounds();
-
-  const [progressRows, sessions, achievements, learningProgress, dailyWordGroups] =
-    await Promise.all([
-    prisma.childCategoryProgress.findMany({
-      where: { childId },
-      include: {
-        category: {
-          select: {
-            id: true,
-            label: true,
-            emoji: true,
-            code: true,
-            group: { select: { label: true, code: true } },
-          },
-        },
-      },
-      orderBy: { lastPlayedAt: "desc" },
-    }),
-    prisma.learningSession.findMany({
-      where: { childId, status: "COMPLETED" },
-      include: {
-        category: { select: { label: true, emoji: true, code: true } },
-      },
-      orderBy: { completedAt: "desc" },
-      take: 20,
-    }),
-    prisma.achievement.findMany({
-      where: { childId },
-      orderBy: { earnedAt: "desc" },
-    }),
-    prisma.learningProgress.findUnique({ where: { childId } }),
-    // Distinct words with a correct LISTEN or SPELL attempt today (IST).
-    prisma.questionAttempt.groupBy({
-      by: ["wordId"],
-      where: {
-        isCorrect: true,
-        round: { in: ["LISTEN", "SPELL"] },
-        createdAt: { gte: day.start, lte: day.end },
-        session: { childId },
-      },
-    }),
-  ]);
-
-  const dailyTarget = 5;
-  const wordsLearnedToday = dailyWordGroups.length;
-
-  return {
-    summary: {
-      categoriesCompleted: progressRows.filter((p) => p.completed).length,
-      wordsLearned: progressRows.reduce((s, p) => s + p.wordsLearned, 0),
-      points: progressRows.reduce((s, p) => s + p.points, 0),
-      stars: progressRows.reduce((s, p) => s + p.stars, 0),
-      minutesLearned:
-        progressRows.reduce((s, p) => s + p.minutesLearned, 0) ||
-        learningProgress?.minutesLearned ||
-        0,
-      listenAccuracy: (() => {
-        const attempts = progressRows.reduce((s, p) => s + p.listenAttempts, 0);
-        const correct = progressRows.reduce((s, p) => s + p.listenCorrect, 0);
-        return attempts ? Math.round((correct / attempts) * 100) : 0;
-      })(),
-      spellAccuracy: (() => {
-        const attempts = progressRows.reduce((s, p) => s + p.spellAttempts, 0);
-        const correct = progressRows.reduce((s, p) => s + p.spellCorrect, 0);
-        return attempts ? Math.round((correct / attempts) * 100) : 0;
-      })(),
-      daily: {
-        wordsLearnedToday,
-        target: dailyTarget,
-        date: day.date,
-        timezone: day.timezone,
-        completed: wordsLearnedToday >= dailyTarget,
-      },
-    },
-    categories: progressRows.map((p) => ({
-      categoryId: p.category.id,
-      label: p.category.label,
-      emoji: p.category.emoji,
-      group: p.category.group.label,
-      wordsLearned: p.wordsLearned,
-      points: p.points,
-      stars: p.stars,
-      completed: p.completed,
-      listenCorrect: p.listenCorrect,
-      listenAttempts: p.listenAttempts,
-      spellCorrect: p.spellCorrect,
-      spellAttempts: p.spellAttempts,
-      minutesLearned: p.minutesLearned,
-      lastPlayedAt: p.lastPlayedAt,
-    })),
-    history: sessions.map((s) => ({
-      sessionId: s.id,
-      category: s.category.label,
-      emoji: s.category.emoji,
-      points: s.points,
-      stars: s.stars,
-      wordsLearned: s.wordsLearned,
-      accuracy:
-        s.questionsTotal > 0
-          ? Math.round(((s.listenCorrect + s.spellCorrect) / Math.max(s.questionsTotal, 1)) * 50)
-          : 0,
-      completedAt: s.completedAt,
-      durationSec: s.durationSec,
-    })),
-    achievements,
-  };
+  return getChildProgressDashboard(parentId, childId, role);
 }
 
 type WordWithRelations = {

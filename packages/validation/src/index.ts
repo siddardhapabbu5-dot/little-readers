@@ -54,6 +54,8 @@ export const registerSchema = z.object({
       message: "Parental consent confirmation is required",
     }),
   }),
+  /** Must match the currently published privacy policy version when provided. */
+  privacyPolicyVersion: z.string().trim().min(1).max(40).optional(),
 });
 
 export const loginSchema = z.object({

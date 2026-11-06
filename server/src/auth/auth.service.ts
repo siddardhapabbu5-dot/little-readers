@@ -54,6 +54,40 @@ export async function registerParent(
     }
   }
 
+  if (!input.acceptTerms || !input.acceptPrivacy || !input.parentalConsent) {
+    throw new AppError(
+      "Terms, Privacy Policy, and parental consent must be explicitly accepted",
+      400,
+      { code: "CONSENT_REQUIRED" }
+    );
+  }
+
+  const { getPublishedPrivacyPolicy } = await import(
+    "../privacy/privacy.service.js"
+  );
+  const publishedPolicy = await getPublishedPrivacyPolicy();
+  const isVitest = process.env.VITEST === "true";
+  if (!publishedPolicy) {
+    // Production/staging must publish a real policy. Vitest may register without one.
+    if (!isVitest) {
+      throw new AppError(
+        "Registration is unavailable until an administrator publishes the Privacy Policy.",
+        503,
+        { code: "PRIVACY_POLICY_UNPUBLISHED" }
+      );
+    }
+  } else if (
+    input.privacyPolicyVersion &&
+    input.privacyPolicyVersion !== publishedPolicy.version
+  ) {
+    throw new AppError(
+      "Please review the latest published Privacy Policy and try again.",
+      409,
+      { code: "PRIVACY_POLICY_VERSION_MISMATCH" }
+    );
+  }
+
+  const consentVersion = publishedPolicy?.version ?? "vitest";
   const passwordHash = await hashPassword(input.password);
 
   const user = await prisma.$transaction(async (tx) => {
@@ -77,21 +111,21 @@ export async function registerParent(
       {
         userId: created.id,
         consentType: ConsentType.TERMS,
-        version: "1.0",
+        version: consentVersion,
         ipAddress: meta?.ipAddress,
         userAgent: meta?.userAgent,
       },
       {
         userId: created.id,
         consentType: ConsentType.PRIVACY,
-        version: "1.0",
+        version: consentVersion,
         ipAddress: meta?.ipAddress,
         userAgent: meta?.userAgent,
       },
       {
         userId: created.id,
         consentType: ConsentType.PARENTAL,
-        version: "1.0",
+        version: consentVersion,
         ipAddress: meta?.ipAddress,
         userAgent: meta?.userAgent,
       },

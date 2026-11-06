@@ -12,10 +12,17 @@ export function errorHandler(
   res: Response,
   _next: NextFunction
 ) {
-  if (err instanceof ZodError) {
+  // Duck-type ZodError: duplicate zod copies break `instanceof` under Vitest/ESM.
+  if (
+    err instanceof ZodError ||
+    (err &&
+      typeof err === "object" &&
+      (err as { name?: string }).name === "ZodError")
+  ) {
+    const zodErr = err as ZodError;
     return res.status(400).json({
       error: "Validation failed",
-      details: err.flatten(),
+      details: typeof zodErr.flatten === "function" ? zodErr.flatten() : zodErr,
     });
   }
 

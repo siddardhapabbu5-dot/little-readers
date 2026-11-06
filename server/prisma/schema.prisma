@@ -157,6 +157,10 @@ model User {
   adminAlerts         AdminAlert[]
   parentOtpVerifications ParentOtpVerification[]
   parentDeviceSessions   ParentDeviceSession[]
+  privacyPoliciesCreated   PrivacyPolicy[]      @relation("PrivacyPolicyCreatedBy")
+  privacyPoliciesUpdated   PrivacyPolicy[]      @relation("PrivacyPolicyUpdatedBy")
+  privacyPoliciesPublished PrivacyPolicy[]      @relation("PrivacyPolicyPublishedBy")
+  privacyDataRequests      PrivacyDataRequest[]
 
   @@index([role])
   @@index([mobileE164])
@@ -1410,4 +1414,80 @@ model AdminAlert {
 
   @@index([isRead, createdAt])
   @@index([type, createdAt])
+}
+
+enum PrivacyPolicyStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+enum PrivacyRequestStatus {
+  SUBMITTED
+  UNDER_REVIEW
+  RESOLVED
+  CLOSED
+}
+
+enum PrivacyRequestType {
+  ACCOUNT_DELETION
+  DATA_ACCESS
+  OTHER
+}
+
+/// Admin-managed privacy policy versions. Only PUBLISHED is public.
+model PrivacyPolicy {
+  id                         String              @id @default(cuid())
+  status                     PrivacyPolicyStatus @default(DRAFT)
+  version                    String              @default("0.0.0-draft")
+  title                      String              @default("")
+  content                    String              @default("") @db.Text
+  effectiveDate              DateTime?
+  publicUrl                  String?
+  legalBusinessName          String?
+  businessAddress            String?             @db.Text
+  country                    String?
+  supportEmail               String?
+  supportPhone               String?
+  dataRetentionInfo          String?             @db.Text
+  deletionRequestContact     String?
+  parentalConsentExplanation String?             @db.Text
+  childDataDisclosure        String?             @db.Text
+  learningDataDisclosure     String?             @db.Text
+  deviceDataDisclosure       String?             @db.Text
+  thirdPartyDisclosure       String?             @db.Text
+  publishedAt                DateTime?
+  publishedByUserId          String?
+  createdByUserId            String?
+  updatedByUserId            String?
+  createdAt                  DateTime            @default(now())
+  updatedAt                  DateTime            @updatedAt
+
+  createdBy   User? @relation("PrivacyPolicyCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  updatedBy   User? @relation("PrivacyPolicyUpdatedBy", fields: [updatedByUserId], references: [id], onDelete: SetNull)
+  publishedBy User? @relation("PrivacyPolicyPublishedBy", fields: [publishedByUserId], references: [id], onDelete: SetNull)
+
+  @@index([status, updatedAt])
+  @@index([version])
+}
+
+/// Parent/guardian privacy or deletion requests — no automatic data deletion.
+model PrivacyDataRequest {
+  id             String               @id @default(cuid())
+  userId         String?
+  requesterEmail String
+  requesterName  String?
+  requestType    PrivacyRequestType   @default(ACCOUNT_DELETION)
+  message        String               @db.Text
+  status         PrivacyRequestStatus @default(SUBMITTED)
+  adminNotes     String?              @db.Text
+  createdAt      DateTime             @default(now())
+  updatedAt      DateTime             @updatedAt
+  resolvedAt     DateTime?
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([status, createdAt])
+  @@index([requesterEmail])
+  @@index([userId])
 }

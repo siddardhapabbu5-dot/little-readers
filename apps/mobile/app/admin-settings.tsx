@@ -53,6 +53,18 @@ const OPERATIONS: Array<{
   { label: "Super Admin", href: "/super-admin", icon: "shield-checkmark-outline" },
 ];
 
+const COMPLIANCE: Array<{
+  label: string;
+  href: string;
+  icon: keyof typeof Ionicons.glyphMap;
+}> = [
+  {
+    label: "Privacy & Compliance",
+    href: "/admin-privacy",
+    icon: "document-text-outline",
+  },
+];
+
 export default function AdminSettingsScreen() {
   const router = useRouter();
   const [user, setUser] = useState<AuthUser | null>(null);
@@ -73,6 +85,13 @@ export default function AdminSettingsScreen() {
   ) {
     return links.map((link) => {
       if (link.href === "/super-admin" && user?.role !== "SUPER_ADMIN") {
+        return null;
+      }
+      if (
+        link.href === "/admin-privacy" &&
+        user?.role !== "ADMIN" &&
+        user?.role !== "SUPER_ADMIN"
+      ) {
         return null;
       }
       return (
@@ -123,6 +142,9 @@ export default function AdminSettingsScreen() {
 
           <Text style={styles.section}>Operations</Text>
           {renderLinks(OPERATIONS)}
+
+          <Text style={styles.section}>Settings</Text>
+          {renderLinks(COMPLIANCE)}
 
           <PrimaryButton label="Log out" color="#EF4444" onPress={() => void logout()} />
           <Text style={styles.note}>

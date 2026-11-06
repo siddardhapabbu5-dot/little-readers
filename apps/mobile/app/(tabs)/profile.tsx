@@ -18,7 +18,7 @@ import { colors } from "../../theme";
 
 type AuthUser = { id: string; name: string; email: string; role: string };
 
-type GateTarget = "/parent" | "/subscription" | "/devices";
+type GateTarget = "/parent" | "/subscription" | "/devices" | "/privacy-request";
 
 export default function ProfileTab() {
   const router = useRouter();
@@ -84,6 +84,10 @@ export default function ProfileTab() {
               <MenuRow
                 label="Device management"
                 onPress={() => openAdult("/devices")}
+              />
+              <MenuRow
+                label="Privacy & data requests"
+                onPress={() => openAdult("/privacy-request")}
               />
             </>
           ) : null}

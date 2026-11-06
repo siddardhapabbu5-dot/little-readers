@@ -206,6 +206,10 @@ export default function ParentScreen() {
           <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
             <SoftButton label="Devices" onPress={() => router.push("/devices")} />
             <SoftButton label="Subscription" onPress={() => router.push("/subscription")} />
+            <SoftButton
+              label="Privacy requests"
+              onPress={() => router.push("/privacy-request")}
+            />
           </View>
           <ErrorText>{error}</ErrorText>
           {info ? <Text style={styles.info}>{info}</Text> : null}

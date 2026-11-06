@@ -1,7 +1,8 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Image,
   KeyboardAvoidingView,
+  Linking,
   Platform,
   Pressable,
   ScrollView,
@@ -26,6 +27,16 @@ import {
   sanitizeNationalInput,
   validateNationalPhone,
 } from "../utils/phone";
+
+const WEB_BASE =
+  process.env.EXPO_PUBLIC_WEB_APP_URL?.replace(/\/$/, "") ||
+  "https://siwiapp.shop";
+
+type PublicPrivacy = {
+  published: boolean;
+  message: string | null;
+  policy: { version: string; title: string; publicUrl?: string | null } | null;
+};
 
 const BG_BOTTOM = require("../assets/login-bottom-scene.jpg");
 
@@ -57,8 +68,25 @@ export default function RegisterScreen() {
   const [fieldHint, setFieldHint] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [acceptTerms, setAcceptTerms] = useState(false);
+  const [acceptPrivacy, setAcceptPrivacy] = useState(false);
+  const [parentalConsent, setParentalConsent] = useState(false);
+  const [privacyMeta, setPrivacyMeta] = useState<PublicPrivacy | null>(null);
 
   const bottomArtH = Math.max(100, Math.round(winH * 0.16));
+
+  useEffect(() => {
+    void apiRequest<PublicPrivacy>("/privacy/policy")
+      .then(setPrivacyMeta)
+      .catch(() =>
+        setPrivacyMeta({
+          published: false,
+          message:
+            "Could not load privacy policy status. Registration requires a published policy.",
+          policy: null,
+        })
+      );
+  }, []);
 
   function scrollFieldIntoView(y: number) {
     requestAnimationFrame(() => {
@@ -95,6 +123,19 @@ export default function RegisterScreen() {
       setFieldHint("Enter student birthday as DD/MM/YYYY.");
       return;
     }
+    if (!privacyMeta?.published || !privacyMeta.policy?.version) {
+      setFieldHint(
+        privacyMeta?.message ??
+          "Registration is unavailable until the Privacy Policy is published."
+      );
+      return;
+    }
+    if (!acceptTerms || !acceptPrivacy || !parentalConsent) {
+      setFieldHint(
+        "Please review and accept Terms, Privacy Policy, and parental confirmation."
+      );
+      return;
+    }
 
     setLoading(true);
     try {
@@ -112,9 +153,10 @@ export default function RegisterScreen() {
           password,
           mobile: mobile,
           countryCode: country.callingCode,
-          acceptTerms: true,
-          acceptPrivacy: true,
-          parentalConsent: true,
+          acceptTerms,
+          acceptPrivacy,
+          parentalConsent,
+          privacyPolicyVersion: privacyMeta.policy.version,
         }),
       });
       await saveToken(data.tokens.accessToken);
@@ -306,6 +348,49 @@ export default function RegisterScreen() {
               />
             </View>
 
+            <View style={styles.consentBox}>
+              {!privacyMeta?.published ? (
+                <Text style={styles.consentWarn}>
+                  {privacyMeta?.message ??
+                    "Privacy Policy not published yet. Registration is disabled until an administrator publishes an approved policy."}
+                </Text>
+              ) : (
+                <Text style={styles.consentMeta}>
+                  Privacy Policy {privacyMeta.policy?.version}
+                  {privacyMeta.policy?.title
+                    ? ` · ${privacyMeta.policy.title}`
+                    : ""}
+                </Text>
+              )}
+
+              <ConsentRow
+                checked={acceptTerms}
+                onToggle={() => setAcceptTerms((v) => !v)}
+                disabled={loading || !privacyMeta?.published}
+                label="I accept the Terms of Service (draft wording for legal review)."
+                linkLabel="View Terms"
+                onLink={() => void Linking.openURL(`${WEB_BASE}/terms`)}
+              />
+              <ConsentRow
+                checked={acceptPrivacy}
+                onToggle={() => setAcceptPrivacy((v) => !v)}
+                disabled={loading || !privacyMeta?.published}
+                label="I accept the Privacy Policy (draft wording for legal review)."
+                linkLabel="View Privacy Policy"
+                onLink={() =>
+                  void Linking.openURL(
+                    privacyMeta?.policy?.publicUrl || `${WEB_BASE}/privacy`
+                  )
+                }
+              />
+              <ConsentRow
+                checked={parentalConsent}
+                onToggle={() => setParentalConsent((v) => !v)}
+                disabled={loading || !privacyMeta?.published}
+                label="I confirm I am the parent/guardian and consent to create a learning profile for my child (draft wording for legal review)."
+              />
+            </View>
+
             {(fieldHint || error || info) && (
               <View
                 style={styles.messageBox}
@@ -323,11 +408,13 @@ export default function RegisterScreen() {
             <Pressable
               accessibilityRole="button"
               accessibilityLabel="Create Student Account"
-              disabled={loading}
+              disabled={loading || !privacyMeta?.published}
               onPress={() => void onRegister()}
               style={({ pressed }) => [
                 styles.primaryBtn,
-                (pressed || loading) && { opacity: 0.85 },
+                (pressed || loading || !privacyMeta?.published) && {
+                  opacity: 0.85,
+                },
               ]}
             >
               <Text style={styles.primaryBtnText}>
@@ -346,6 +433,46 @@ export default function RegisterScreen() {
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
+    </View>
+  );
+}
+
+function ConsentRow({
+  checked,
+  onToggle,
+  disabled,
+  label,
+  linkLabel,
+  onLink,
+}: {
+  checked: boolean;
+  onToggle: () => void;
+  disabled?: boolean;
+  label: string;
+  linkLabel?: string;
+  onLink?: () => void;
+}) {
+  return (
+    <View style={styles.consentRow}>
+      <Pressable
+        accessibilityRole="checkbox"
+        accessibilityState={{ checked, disabled: !!disabled }}
+        disabled={disabled}
+        onPress={onToggle}
+        style={styles.checkHit}
+      >
+        <View style={[styles.checkbox, checked && styles.checkboxOn]}>
+          {checked ? <Text style={styles.checkMark}>✓</Text> : null}
+        </View>
+      </Pressable>
+      <View style={{ flex: 1, gap: 4 }}>
+        <Text style={styles.consentLabel}>{label}</Text>
+        {linkLabel && onLink ? (
+          <Pressable onPress={onLink} disabled={disabled}>
+            <Text style={styles.consentLink}>{linkLabel}</Text>
+          </Pressable>
+        ) : null}
+      </View>
     </View>
   );
 }
@@ -453,4 +580,36 @@ const styles = StyleSheet.create({
     minHeight: 40,
   },
   softBtnText: { color: colors.primary, fontWeight: "700", fontSize: 14 },
+  consentBox: {
+    marginTop: 8,
+    gap: 10,
+    backgroundColor: "rgba(255,255,255,0.72)",
+    borderRadius: radii.md,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: "#D8CFF5",
+  },
+  consentWarn: { color: colors.danger, fontWeight: "700", fontSize: 12, lineHeight: 17 },
+  consentMeta: { color: colors.primaryDark, fontWeight: "700", fontSize: 12 },
+  consentRow: { flexDirection: "row", gap: 10, alignItems: "flex-start" },
+  checkHit: { paddingTop: 2 },
+  checkbox: {
+    width: 22,
+    height: 22,
+    borderRadius: 6,
+    borderWidth: 2,
+    borderColor: colors.primary,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#fff",
+  },
+  checkboxOn: { backgroundColor: colors.primary },
+  checkMark: { color: "#fff", fontWeight: "900", fontSize: 12, lineHeight: 14 },
+  consentLabel: { color: colors.text, fontSize: 12, lineHeight: 17, fontWeight: "600" },
+  consentLink: {
+    color: colors.primary,
+    fontWeight: "800",
+    fontSize: 12,
+    textDecorationLine: "underline",
+  },
 });

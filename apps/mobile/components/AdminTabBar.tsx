@@ -59,6 +59,7 @@ function activeKey(pathname: string | null): TabKey {
   if (path.includes("admin-lessons")) return "lessons";
   if (
     path.includes("admin-settings") ||
+    path.includes("admin-privacy") ||
     path.includes("admin-schools") ||
     path.includes("admin-payments") ||
     path.includes("admin-reports") ||

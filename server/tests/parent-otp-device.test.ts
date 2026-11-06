@@ -73,16 +73,13 @@ describe.skipIf(!hasDb)("Parent OTP + single active device (Phase 9)", () => {
   });
 
   async function sendAndGetOtp() {
-    // Bypass OTP_RESEND_SECONDS between sequential tests.
-    await prisma.parentOtpVerification.updateMany({
-      where: { mobileE164 },
-      data: { createdAt: new Date(Date.now() - 120_000) },
-    });
+    // Clear prior sends so hourly limit / cooldown from earlier suites do not 429.
+    await prisma.parentOtpVerification.deleteMany({ where: { mobileE164 } });
     const send = await request(app)
       .post("/api/parent/auth/send-otp")
       .send({ mobile: mobileLocal, countryCode: "+91" });
     expect(send.status).toBe(200);
-    const otp = send.body.data.devOtp as string;
+    const otp = send.body.data?.devOtp as string | undefined;
     expect(otp).toMatch(/^\d{6}$/);
     return otp;
   }

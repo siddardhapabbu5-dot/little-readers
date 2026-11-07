@@ -88,6 +88,20 @@ paymentsRouter.get(
   }
 );
 
+paymentsRouter.get(
+  "/:id/receipt",
+  requireAuth,
+  requireRoles("PARENT", "ADMIN", "SUPER_ADMIN"),
+  async (req: AuthenticatedRequest, res, next) => {
+    try {
+      const data = await paymentService.getPaymentReceipt(req.user!.id, String(req.params.id));
+      res.json({ data });
+    } catch (e) {
+      next(e);
+    }
+  }
+);
+
 paymentsRouter.post(
   "/cancel",
   requireAuth,

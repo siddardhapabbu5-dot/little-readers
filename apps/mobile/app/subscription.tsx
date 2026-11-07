@@ -1,7 +1,6 @@
 import { useCallback, useState } from "react";
 import {
   Alert,
-  Linking,
   Platform,
   Pressable,
   ScrollView,
@@ -9,10 +8,11 @@ import {
   Text,
   View,
 } from "react-native";
-import { useFocusEffect, useRouter } from "expo-router";
+import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Card, ErrorText, PrimaryButton, SoftButton, Title } from "../components/ui";
 import { AuthGate } from "../components/AuthGate";
+import { RegistrationSteps } from "../components/RegistrationSteps";
 import { apiRequest, ApiError } from "../services/api";
 import { ROLE_SETS } from "../services/auth-errors";
 import { getUser } from "../services/secure";
@@ -101,12 +101,14 @@ type Pay = {
   paidAt: string | null;
 };
 
-const WEB_CHECKOUT =
-  process.env.EXPO_PUBLIC_WEB_APP_URL?.replace(/\/$/, "") ||
-  "https://siwiapp.shop";
+function planKey(p: Plan) {
+  return p.planId ?? p.id ?? null;
+}
 
 export default function SubscriptionScreen() {
   const router = useRouter();
+  const { setup } = useLocalSearchParams<{ setup?: string }>();
+  const [selectedPlanId, setSelectedPlanId] = useState<string | null>(null);
   const [data, setData] = useState<any>(null);
   const [catalog, setCatalog] = useState<Catalog | null>(null);
   const [levels, setLevels] = useState<PublishedLevel[]>([]);
@@ -137,7 +139,12 @@ export default function SubscriptionScreen() {
           const plans = await apiRequest<Catalog>(
             `/payments/plans${levelId ? `?levelId=${levelId}` : ""}`
           ).catch(() => null);
-          if (plans) setCatalog(plans);
+          if (plans) {
+            setCatalog(plans);
+            setSelectedPlanId((cur) =>
+              plans.plans.some((p) => planKey(p) === cur) ? cur : null
+            );
+          }
           setPayments(history);
           const user = await getUser<{ role: string }>();
           if (user?.role === "ADMIN" || user?.role === "SUPER_ADMIN") {
@@ -155,16 +162,26 @@ export default function SubscriptionScreen() {
 
   const sub = data?.subscription;
 
-  async function openWebCheckout() {
-    const url = `${WEB_CHECKOUT}/parent/checkout`;
-    await Linking.openURL(url);
+  const selectedPlan = catalog?.plans?.find((p) => planKey(p) === selectedPlanId) ?? null;
+
+  function continueToAgreements() {
+    if (!selectedPlanId) {
+      setError("Choose a subscription plan first.");
+      return;
+    }
+    setError(null);
+    router.push(`/agreements?planId=${encodeURIComponent(selectedPlanId)}`);
   }
 
   return (
     <AuthGate roles={ROLE_SETS.parentFamily}>
       <SafeAreaView style={styles.safe}>
         <ScrollView contentContainerStyle={styles.content}>
-          <SoftButton label="← Back" onPress={() => router.back()} />
+          <SoftButton
+            label="← Back"
+            onPress={() => (router.canGoBack() ? router.back() : router.replace("/parent"))}
+          />
+          {setup ? <RegistrationSteps step={4} /> : null}
           <Title>Subscription</Title>
           <ErrorText>{error}</ErrorText>
 
@@ -326,7 +343,9 @@ export default function SubscriptionScreen() {
                       (a.durationMonths ?? 999) - (b.durationMonths ?? 999)
                   )
                   .map((p) => {
-                  const key = p.planId ?? p.id ?? p.code ?? p.purpose;
+                  const id = planKey(p);
+                  const key = id ?? p.code ?? p.purpose;
+                  const on = id != null && id === selectedPlanId;
                   const title = planTitle(p);
                   const duration = durationLabel(p.durationMonths);
                   const desc =
@@ -335,7 +354,14 @@ export default function SubscriptionScreen() {
                       ? p.description.trim()
                       : null;
                   return (
-                    <View key={key} style={[styles.planCard, shadow.soft]}>
+                    <Pressable
+                      key={key}
+                      onPress={() => id && setSelectedPlanId(id)}
+                      disabled={!id}
+                      accessibilityRole="radio"
+                      accessibilityState={{ checked: on }}
+                      style={[styles.planCard, shadow.soft, on && styles.planCardOn]}
+                    >
                       <View style={styles.planTop}>
                         <View style={{ flex: 1, gap: 4 }}>
                           <View style={styles.badge}>
@@ -361,7 +387,8 @@ export default function SubscriptionScreen() {
                           )}
                         </View>
                       </View>
-                    </View>
+                      {on ? <Text style={styles.selected}>✓ Selected</Text> : null}
+                    </Pressable>
                   );
                 })}
               </View>
@@ -373,14 +400,18 @@ export default function SubscriptionScreen() {
             )}
 
             <Text style={styles.checkoutHint}>
-              {Platform.OS === "web"
-                ? "Pay securely on the website checkout."
-                : "Checkout opens in your browser. Prices come from the server."}
+              {selectedPlan
+                ? `${planTitle(selectedPlan)} · ${formatInr(selectedPlan.totalPaise)}. Next: review agreements, then pay securely with Razorpay.`
+                : "Tap a plan to select it."}
             </Text>
             <PrimaryButton
-              label="Continue to checkout"
-              onPress={() => void openWebCheckout()}
+              label="Continue"
+              onPress={continueToAgreements}
+              disabled={!selectedPlanId || catalog?.enabled === false}
             />
+            {catalog?.enabled === false ? (
+              <Text style={styles.checkoutHint}>Online payments are not open yet.</Text>
+            ) : null}
           </Card>
 
           <Card style={{ gap: 8 }}>
@@ -389,10 +420,16 @@ export default function SubscriptionScreen() {
               <Text style={styles.note}>No payments yet.</Text>
             ) : (
               payments.slice(0, 20).map((p) => (
-                <Text key={p.id} style={{ fontWeight: "700" }}>
-                  {p.purpose} · {p.status} · {p.currency} {(p.amountCents / 100).toFixed(2)}
-                  {p.seatsPurchased ? ` · +${p.seatsPurchased} seats` : ""}
-                </Text>
+                <View key={p.id} style={styles.payRow}>
+                  <Text style={{ fontWeight: "700", flex: 1 }}>
+                    {new Date(p.paidAt ?? p.createdAt).toLocaleDateString()} · {p.status} ·{" "}
+                    {formatInr(p.amountCents)}
+                    {p.seatsPurchased ? ` · +${p.seatsPurchased} seats` : ""}
+                  </Text>
+                  {p.status === "SUCCEEDED" ? (
+                    <SoftButton label="Receipt" onPress={() => router.push(`/receipt/${p.id}`)} />
+                  ) : null}
+                </View>
               ))
             )}
           </Card>
@@ -470,6 +507,9 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     padding: 14,
   },
+  planCardOn: { borderColor: colors.primary, borderWidth: 2, backgroundColor: colors.primarySoft },
+  selected: { color: colors.primaryDark, fontWeight: "800", marginTop: 8 },
+  payRow: { flexDirection: "row", alignItems: "center", gap: 8 },
   planTop: {
     flexDirection: "row",
     alignItems: "flex-start",

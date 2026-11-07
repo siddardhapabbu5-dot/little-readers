@@ -15,6 +15,7 @@ import {
   listPublishedPlans,
   purposeForDuration,
 } from "../academic/subscription-plan.service.js";
+import { assertAgreementsAccepted } from "../agreements/agreements.service.js";
 import {
   getRazorpayClient,
   liveKeyBlocked,
@@ -138,6 +139,7 @@ export async function createCheckoutOrder(
   userId: string,
   input: { purpose?: PlanPurpose; seats?: number; planId?: string }
 ) {
+  await assertAgreementsAccepted(userId);
   const gatewayOk =
     process.env.PAYMENT_ENABLED === "true" ||
     process.env.PAYMENT_ENABLED === "1" ||
@@ -417,6 +419,7 @@ async function activateVerifiedPayment(
         status: "SUCCEEDED",
         paidAt: now,
         razorpayPaymentId,
+        receiptNumber: payment.receiptNumber ?? receiptNumberFor(payment.id, now),
         subscriptionId: subscription?.id ?? payment.subscriptionId,
         rawEventId: opts?.eventId ?? payment.rawEventId,
       },
@@ -608,6 +611,57 @@ export async function cancelPendingPayment(
     status: updated.status,
     alreadySucceeded: false,
     message: "Pending payment marked cancelled",
+  };
+}
+
+function receiptNumberFor(paymentId: string, paidAt: Date) {
+  const ymd = paidAt.toISOString().slice(0, 10).replace(/-/g, "");
+  return `LW-${ymd}-${paymentId.slice(-8).toUpperCase()}`;
+}
+
+/** Receipts exist only for payments the server has verified. */
+export async function getPaymentReceipt(userId: string, paymentId: string) {
+  const payment = await prisma.payment.findFirst({
+    where: { id: paymentId, userId },
+    include: {
+      user: { select: { name: true, email: true } },
+      subscription: { select: { plan: true, expiresAt: true } },
+    },
+  });
+  if (!payment) throw new AppError("Payment not found", 404);
+  if (payment.status !== "SUCCEEDED" || !payment.receiptNumber || !payment.paidAt) {
+    throw new AppError("A receipt is available only after the payment is verified", 409, {
+      code: "RECEIPT_NOT_AVAILABLE",
+    });
+  }
+  let meta: {
+    planName?: string;
+    durationMonths?: number;
+    amountPaise?: number;
+    taxPaise?: number;
+  } = {};
+  try {
+    meta = payment.metadataJson ? JSON.parse(payment.metadataJson) : {};
+  } catch {
+    meta = {};
+  }
+  const total = payment.amountCents;
+  const tax = Number(meta.taxPaise) || 0;
+  return {
+    receiptNumber: payment.receiptNumber,
+    paidAt: payment.paidAt,
+    parentName: payment.user.name,
+    parentEmail: payment.user.email,
+    planName: meta.planName ?? payment.planCode ?? payment.purpose,
+    durationMonths: meta.durationMonths ?? null,
+    seatsPurchased: payment.seatsPurchased,
+    amountPaise: Number(meta.amountPaise) || total - tax,
+    taxPaise: tax,
+    totalPaise: total,
+    currency: payment.currency,
+    razorpayOrderId: payment.razorpayOrderId,
+    razorpayPaymentId: payment.razorpayPaymentId,
+    validUntil: payment.subscription?.expiresAt ?? null,
   };
 }
 

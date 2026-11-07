@@ -20,9 +20,13 @@ import {
 import {
   MAX_POLICY_PDF_BYTES,
   createPolicyDocumentLinkToken,
+  createPolicyVersionLinkToken,
   deletePolicyDocumentFile,
   getPolicyDocumentFile,
+  getPolicyVersionFile,
   listPolicyDocuments,
+  listPolicyVersions,
+  publishPolicyDocument,
   resolveDocument,
   updatePolicyDocumentDetails,
   uploadPolicyDocumentFile,
@@ -64,11 +68,25 @@ async function sendPolicyPdf(res: Response, slug: string, download: boolean) {
   res.end(file.data);
 }
 
+export async function sendVersionPdf(res: Response, versionId: string) {
+  const file = await getPolicyVersionFile(versionId);
+  res.setHeader("Content-Type", "application/pdf");
+  res.setHeader("Content-Length", String(file.data.length));
+  res.setHeader("Content-Disposition", `inline; filename="${file.downloadName}"`);
+  res.setHeader("Cache-Control", "private, no-store");
+  res.setHeader("X-Content-Type-Options", "nosniff");
+  res.end(file.data);
+}
+
 /** Opened by the phone's PDF viewer with a 5-minute signed token from the admin link endpoint. */
 privacyPublicRouter.get("/documents/file", async (req, res, next) => {
   try {
     const token = typeof req.query.token === "string" ? req.query.token : "";
     const { slug, download } = verifyPolicyDocumentLinkToken(token);
+    if (slug.startsWith("v-")) {
+      await sendVersionPdf(res, slug.slice(2));
+      return;
+    }
     await sendPolicyPdf(res, slug, download);
   } catch (e) {
     next(e);
@@ -290,6 +308,56 @@ privacyAdminRouter.post("/documents/:slug/link", async (req, res, next) => {
         path: `/privacy/documents/file?token=${encodeURIComponent(token)}`,
         expiresInSec,
       },
+    });
+  } catch (e) {
+    next(e);
+  }
+});
+
+privacyAdminRouter.post(
+  "/documents/:slug/publish",
+  validateBody(
+    z.object({
+      version: z.string().trim().min(1).max(40),
+      effectiveDate: z.string().min(8).max(40),
+      requiresReacceptance: z.boolean(),
+      notes: z.string().trim().max(1000).optional(),
+    })
+  ),
+  async (req: AuthenticatedRequest, res, next) => {
+    try {
+      const effectiveDate = new Date(req.body.effectiveDate);
+      if (Number.isNaN(effectiveDate.getTime())) {
+        throw new AppError("Effective date is not valid", 400);
+      }
+      const data = await publishPolicyDocument(String(req.params.slug), req.user!.id, {
+        version: req.body.version,
+        effectiveDate,
+        requiresReacceptance: req.body.requiresReacceptance,
+        notes: req.body.notes,
+      });
+      res.status(201).json({ data });
+    } catch (e) {
+      next(e);
+    }
+  }
+);
+
+privacyAdminRouter.get("/documents/:slug/versions", async (req, res, next) => {
+  try {
+    res.json({ data: await listPolicyVersions(String(req.params.slug)) });
+  } catch (e) {
+    next(e);
+  }
+});
+
+privacyAdminRouter.post("/documents/versions/:id/link", async (req, res, next) => {
+  try {
+    const id = String(req.params.id);
+    await getPolicyVersionFile(id);
+    const { token, expiresInSec } = createPolicyVersionLinkToken(id);
+    res.json({
+      data: { path: `/privacy/documents/file?token=${encodeURIComponent(token)}`, expiresInSec },
     });
   } catch (e) {
     next(e);

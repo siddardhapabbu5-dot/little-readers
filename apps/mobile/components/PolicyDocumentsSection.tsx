@@ -5,6 +5,7 @@ import {
   Modal,
   Platform,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -30,6 +31,19 @@ type PolicyDoc = {
   uploadedAt: string | null;
   updatedAt: string;
   downloadName: string;
+};
+
+type PolicyVersion = {
+  id: string;
+  version: string;
+  title: string;
+  effectiveDate: string;
+  requiresReacceptance: boolean;
+  notes: string | null;
+  fileName: string;
+  fileSize: number;
+  publishedAt: string;
+  acceptances: number;
 };
 
 type PickedPdf = { name: string; size?: number; blob?: Blob; uri?: string };
@@ -138,6 +152,17 @@ async function openOnPhone(slug: string, download: boolean) {
   await Linking.openURL(`${API_URL}${link.path}`);
 }
 
+function todayIso() {
+  const d = new Date();
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+
+function suggestNextVersion(current: string) {
+  const m = /^(\d+)\.(\d+)$/.exec(current.trim());
+  return m ? `${m[1]}.${Number(m[2]) + 1}` : current.trim() ? `${current.trim()}.1` : "1.0";
+}
+
 function ActionButton({
   icon,
   label,
@@ -214,6 +239,15 @@ export function PolicyDocumentsSection() {
   const [savingEdit, setSavingEdit] = useState(false);
   const [deleting, setDeleting] = useState<PolicyDoc | null>(null);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [publishing, setPublishing] = useState<PolicyDoc | null>(null);
+  const [publishForm, setPublishForm] = useState({
+    version: "",
+    effectiveDate: "",
+    requiresReacceptance: true,
+    notes: "",
+  });
+  const [savingPublish, setSavingPublish] = useState(false);
+  const [history, setHistory] = useState<{ doc: PolicyDoc; rows: PolicyVersion[] } | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -345,6 +379,80 @@ export function PolicyDocumentsSection() {
       fail(e, "Could not save details");
     } finally {
       setSavingEdit(false);
+    }
+  }
+
+  function onPublish(doc: PolicyDoc) {
+    setPublishForm({
+      version: suggestNextVersion(doc.version),
+      effectiveDate: todayIso(),
+      requiresReacceptance: true,
+      notes: "",
+    });
+    setPublishing(doc);
+  }
+
+  async function savePublish() {
+    if (!publishing) return;
+    if (!publishForm.version.trim()) {
+      setNotice({ kind: "error", text: "Version is required." });
+      return;
+    }
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(publishForm.effectiveDate.trim())) {
+      setNotice({ kind: "error", text: "Effective date must look like 2026-11-08." });
+      return;
+    }
+    setSavingPublish(true);
+    try {
+      await apiRequest(`/admin/privacy/documents/${publishing.slug}/publish`, {
+        method: "POST",
+        body: JSON.stringify({
+          version: publishForm.version.trim(),
+          effectiveDate: publishForm.effectiveDate.trim(),
+          requiresReacceptance: publishForm.requiresReacceptance,
+          notes: publishForm.notes.trim() || undefined,
+        }),
+      });
+      setNotice({
+        kind: "success",
+        text: `Published ${publishing.title} v${publishForm.version.trim()}${
+          publishForm.requiresReacceptance ? " — parents will be asked to accept again." : "."
+        }`,
+      });
+      setPublishing(null);
+      await load();
+    } catch (e) {
+      fail(e, "Could not publish");
+    } finally {
+      setSavingPublish(false);
+    }
+  }
+
+  async function onHistory(doc: PolicyDoc) {
+    setBusySlug(doc.slug);
+    try {
+      const rows = await apiRequest<PolicyVersion[]>(
+        `/admin/privacy/documents/${doc.slug}/versions`
+      );
+      setHistory({ doc, rows });
+    } catch (e) {
+      fail(e, "Could not load version history");
+    } finally {
+      setBusySlug(null);
+    }
+  }
+
+  async function viewVersion(v: PolicyVersion) {
+    try {
+      const link = await apiRequest<{ path: string }>(
+        `/admin/privacy/documents/versions/${v.id}/link`,
+        { method: "POST" }
+      );
+      const url = `${API_URL}${link.path}`;
+      if (isWeb) window.open(url, "_blank", "noopener");
+      else await Linking.openURL(url);
+    } catch (e) {
+      fail(e, "Could not open this version");
     }
   }
 
@@ -497,6 +605,20 @@ export function PolicyDocumentsSection() {
                   disabled={!doc.uploaded || busy}
                 />
                 <ActionButton
+                  icon="megaphone-outline"
+                  label="Publish"
+                  hint={`Publish the uploaded PDF as a new version of ${doc.title}`}
+                  onPress={() => onPublish(doc)}
+                  disabled={!doc.uploaded || busy}
+                />
+                <ActionButton
+                  icon="time-outline"
+                  label="History"
+                  hint={`Version history of ${doc.title}`}
+                  onPress={() => void onHistory(doc)}
+                  disabled={busy}
+                />
+                <ActionButton
                   icon="trash-outline"
                   label="Delete"
                   hint={`Delete the PDF for ${doc.title}`}
@@ -597,6 +719,143 @@ export function PolicyDocumentsSection() {
                 {savingEdit ? <ActivityIndicator color="#fff" /> : <Text style={styles.btnPrimaryText}>Save</Text>}
               </Pressable>
             </View>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal visible={!!publishing} animationType="fade" transparent onRequestClose={() => setPublishing(null)}>
+        <View style={styles.backdrop}>
+          <View style={styles.modal}>
+            <View style={styles.modalHeader}>
+              <Ionicons name="megaphone-outline" size={20} color={colors.primary} />
+              <Text style={styles.modalTitle} numberOfLines={2}>
+                Publish {publishing?.title}
+              </Text>
+            </View>
+            <Text style={styles.confirmText}>
+              The uploaded PDF{publishing?.fileName ? ` (${publishing.fileName})` : ""} becomes the
+              official version parents see. Published versions can't be changed.
+            </Text>
+            <Text style={styles.fieldLabel}>Version</Text>
+            <TextInput
+              style={styles.input}
+              value={publishForm.version}
+              onChangeText={(version) => setPublishForm((f) => ({ ...f, version }))}
+              placeholder="e.g. 1.1"
+              placeholderTextColor={colors.tabInactive}
+              accessibilityLabel="Version number"
+              maxLength={40}
+            />
+            <Text style={styles.fieldLabel}>Effective date (YYYY-MM-DD)</Text>
+            <TextInput
+              style={styles.input}
+              value={publishForm.effectiveDate}
+              onChangeText={(effectiveDate) => setPublishForm((f) => ({ ...f, effectiveDate }))}
+              placeholder="2026-11-08"
+              placeholderTextColor={colors.tabInactive}
+              accessibilityLabel="Effective date"
+              maxLength={10}
+            />
+            <Pressable
+              style={styles.toggleRow}
+              onPress={() =>
+                setPublishForm((f) => ({ ...f, requiresReacceptance: !f.requiresReacceptance }))
+              }
+              accessibilityRole="checkbox"
+              accessibilityState={{ checked: publishForm.requiresReacceptance }}
+            >
+              <Ionicons
+                name={publishForm.requiresReacceptance ? "checkbox" : "square-outline"}
+                size={22}
+                color={colors.primary}
+              />
+              <View style={{ flex: 1 }}>
+                <Text style={styles.fieldLabel}>Material change — parents must accept again</Text>
+                <Text style={styles.muted}>
+                  Untick only for small fixes (typos, formatting) that don't change parents' rights.
+                </Text>
+              </View>
+            </Pressable>
+            <Text style={styles.fieldLabel}>What changed (optional)</Text>
+            <TextInput
+              style={[styles.input, { minHeight: 64 }]}
+              value={publishForm.notes}
+              onChangeText={(notes) => setPublishForm((f) => ({ ...f, notes }))}
+              accessibilityLabel="Change notes"
+              multiline
+              textAlignVertical="top"
+              maxLength={1000}
+            />
+            <View style={styles.modalActions}>
+              <Pressable style={styles.btnGhost} onPress={() => setPublishing(null)} accessibilityRole="button">
+                <Text style={styles.btnGhostText}>Cancel</Text>
+              </Pressable>
+              <Pressable
+                style={styles.btnPrimary}
+                onPress={() => void savePublish()}
+                disabled={savingPublish}
+                accessibilityRole="button"
+              >
+                {savingPublish ? (
+                  <ActivityIndicator color="#fff" />
+                ) : (
+                  <Text style={styles.btnPrimaryText}>Publish</Text>
+                )}
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal visible={!!history} animationType="none" transparent onRequestClose={() => setHistory(null)}>
+        <View style={styles.backdrop}>
+          <View style={[styles.modal, { maxHeight: "85%" }]}>
+            <View style={styles.modalHeader}>
+              <Ionicons name="time-outline" size={20} color={colors.primary} />
+              <Text style={styles.modalTitle} numberOfLines={2}>
+                {history?.doc.title} — versions
+              </Text>
+              <Pressable
+                onPress={() => setHistory(null)}
+                accessibilityRole="button"
+                accessibilityLabel="Close version history"
+                style={styles.iconBtn}
+              >
+                <Ionicons name="close" size={22} color={colors.text} />
+              </Pressable>
+            </View>
+            <ScrollView contentContainerStyle={{ gap: 10 }}>
+              {!history?.rows.length ? (
+                <Text style={styles.muted}>
+                  Nothing published yet. Upload the PDF, then press Publish.
+                </Text>
+              ) : null}
+              {history?.rows.map((v, i) => (
+                <View key={v.id} style={styles.versionRow}>
+                  <View style={{ flex: 1, gap: 2 }}>
+                    <Text style={styles.cardTitle}>
+                      v{v.version}
+                      {i === 0 ? "  · Current" : ""}
+                    </Text>
+                    <Text style={styles.muted}>
+                      Effective {new Date(v.effectiveDate).toLocaleDateString()} · Published{" "}
+                      {formatDate(v.publishedAt)}
+                    </Text>
+                    <Text style={styles.muted}>
+                      {v.requiresReacceptance ? "Material change (re-accept)" : "Minor update"} ·{" "}
+                      {v.acceptances} parent acceptance{v.acceptances === 1 ? "" : "s"}
+                    </Text>
+                    {v.notes ? <Text style={styles.cardDesc}>{v.notes}</Text> : null}
+                  </View>
+                  <ActionButton
+                    icon="eye-outline"
+                    label="View"
+                    hint={`Open version ${v.version}`}
+                    onPress={() => void viewVersion(v)}
+                  />
+                </View>
+              ))}
+            </ScrollView>
           </View>
         </View>
       </Modal>
@@ -799,6 +1058,16 @@ const styles = StyleSheet.create({
     fontSize: 15,
   },
   confirmText: { color: colors.text, lineHeight: 21 },
+  toggleRow: { flexDirection: "row", gap: 10, alignItems: "flex-start", paddingVertical: 4 },
+  versionRow: {
+    flexDirection: "row",
+    gap: 10,
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radii.sm,
+    padding: 10,
+  },
   modalActions: { flexDirection: "row", justifyContent: "flex-end", gap: 10, marginTop: 8 },
   btnGhost: {
     paddingHorizontal: 16,

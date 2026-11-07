@@ -25,6 +25,7 @@ import {
   paymentsRouter,
   paymentsWebhookHandler,
 } from "../payments/payment.routes.js";
+import { agreementsRouter } from "../agreements/agreements.routes.js";
 import { getChildLearningOverview } from "../learning/learning.service.js";
 import {
   requireAuth,
@@ -73,6 +74,7 @@ apiRouter.use("/admin/privacy", privacyAdminRouter);
 apiRouter.use("/teacher", teacherRouter);
 apiRouter.use("/devices", deviceRouter);
 apiRouter.use("/subscriptions", subscriptionRouter);
+apiRouter.use("/agreements", agreementsRouter);
 apiRouter.use("/payments", paymentsRouter);
 apiRouter.post("/payments/webhook", paymentsWebhookHandler);
 

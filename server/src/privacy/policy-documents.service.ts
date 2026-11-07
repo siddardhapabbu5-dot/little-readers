@@ -37,7 +37,18 @@ const DEFAULTS: DocDefault[] = [
     description: "Parent/guardian consent for a child's use of LEARN WISE.",
     downloadName: "LEARN_WISE_Parental_Consent.pdf",
   },
+  {
+    type: "SUBSCRIPTION_REFUND",
+    slug: "subscription-refund-policy",
+    title: "LEARN WISE Subscription & Refund Policy",
+    description: "Subscription duration, price, renewal, cancellation and refund conditions.",
+    downloadName: "LEARN_WISE_Subscription_Refund_Policy.pdf",
+  },
 ];
+
+export function documentDefaults() {
+  return DEFAULTS;
+}
 
 const metaSelect = {
   id: true,
@@ -200,6 +211,93 @@ export async function getPolicyDocumentFile(slug: string) {
   });
   if (!row?.fileData) throw new AppError("No PDF uploaded for this document", 404);
   return { data: Buffer.from(row.fileData), sha256: row.fileSha256, downloadName: def.downloadName };
+}
+
+const versionSelect = {
+  id: true,
+  type: true,
+  version: true,
+  title: true,
+  effectiveDate: true,
+  requiresReacceptance: true,
+  notes: true,
+  fileName: true,
+  fileSize: true,
+  publishedAt: true,
+} as const;
+
+/** Freezes the currently uploaded PDF as a new, immutable published version. */
+export async function publishPolicyDocument(
+  slug: string,
+  userId: string,
+  input: { version: string; effectiveDate: Date; requiresReacceptance: boolean; notes?: string }
+) {
+  const def = resolveDocument(slug);
+  await ensureDefaults();
+  const version = input.version.trim();
+  if (!version) throw new AppError("Version is required", 400);
+  const doc = await prisma.policyDocument.findUnique({ where: { type: def.type } });
+  if (!doc?.fileData || !doc.fileSha256 || doc.fileSize == null) {
+    throw new AppError("Upload the PDF before publishing", 400);
+  }
+  const dup = await prisma.policyDocumentVersion.findUnique({
+    where: { type_version: { type: def.type, version } },
+  });
+  if (dup) throw new AppError(`Version ${version} is already published. Use a new version number.`, 409);
+
+  const [created] = await prisma.$transaction([
+    prisma.policyDocumentVersion.create({
+      data: {
+        type: def.type,
+        version,
+        title: doc.title,
+        effectiveDate: input.effectiveDate,
+        requiresReacceptance: input.requiresReacceptance,
+        notes: input.notes?.trim() || null,
+        fileName: doc.fileName ?? def.downloadName,
+        fileSize: doc.fileSize,
+        fileSha256: doc.fileSha256,
+        fileData: doc.fileData,
+        publishedByUserId: userId,
+      },
+      select: versionSelect,
+    }),
+    prisma.policyDocument.update({
+      where: { type: def.type },
+      data: { version, updatedByUserId: userId },
+    }),
+  ]);
+  console.info(`[policy-documents] ${def.type} v${version} published by ${userId}`);
+  return created;
+}
+
+export async function listPolicyVersions(slug: string) {
+  const def = resolveDocument(slug);
+  const rows = await prisma.policyDocumentVersion.findMany({
+    where: { type: def.type },
+    orderBy: { publishedAt: "desc" },
+    select: { ...versionSelect, _count: { select: { consents: true } } },
+  });
+  return rows.map(({ _count, ...r }) => ({ ...r, acceptances: _count.consents }));
+}
+
+export async function getPolicyVersionFile(versionId: string) {
+  const row = await prisma.policyDocumentVersion.findUnique({
+    where: { id: versionId },
+    select: { type: true, version: true, fileData: true },
+  });
+  if (!row) throw new AppError("Document version not found", 404);
+  const def = DEFAULTS.find((d) => d.type === row.type)!;
+  return {
+    data: Buffer.from(row.fileData),
+    downloadName: def.downloadName.replace(/\.pdf$/, `_v${row.version}.pdf`),
+  };
+}
+
+export function createPolicyVersionLinkToken(versionId: string) {
+  const exp = Math.floor(Date.now() / 1000) + LINK_TTL_SECONDS;
+  const payload = `v-${versionId}.0.${exp}`;
+  return { token: `${payload}.${sign(payload)}`, expiresInSec: LINK_TTL_SECONDS };
 }
 
 function sign(payload: string) {

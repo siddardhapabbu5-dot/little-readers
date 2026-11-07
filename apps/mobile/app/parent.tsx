@@ -12,6 +12,7 @@ import {
 } from "../components/ui";
 import { AuthGate } from "../components/AuthGate";
 import { RequireParentGate } from "../components/RequireParentGate";
+import { RegistrationSteps } from "../components/RegistrationSteps";
 import { apiRequest, ApiError } from "../services/api";
 import { ROLE_SETS } from "../services/auth-errors";
 import { getActiveChild, saveActiveChild } from "../services/secure";
@@ -30,12 +31,6 @@ type ChildRow = {
 };
 
 type CatalogLevel = { id: string; code: string; label: string };
-type CatalogGrade = {
-  id: string;
-  label: string;
-  gradeNumber: number | null;
-  assignedLevelId: string | null;
-};
 
 type SeatInfo = {
   included: number;
@@ -64,23 +59,28 @@ export default function ParentScreen() {
   const [busy, setBusy] = useState(false);
   const [seats, setSeats] = useState<SeatInfo | null>(null);
   const [catalogLevels, setCatalogLevels] = useState<CatalogLevel[]>([]);
-  const [catalogGrades, setCatalogGrades] = useState<CatalogGrade[]>([]);
-  const [newLevelId, setNewLevelId] = useState<string | null>(null);
-  const [newGradeId, setNewGradeId] = useState<string | null>(null);
+  const [agreementsOutdated, setAgreementsOutdated] = useState(false);
 
   const load = useCallback(async () => {
     try {
-      const [kids, sub, levels, grades] = await Promise.all([
+      const [kids, sub, levels, agreements] = await Promise.all([
         apiRequest<ChildRow[]>("/children"),
         apiRequest<{ seats?: SeatInfo }>("/subscriptions/me").catch(() => null),
         apiRequest<CatalogLevel[]>("/parent/catalog/levels").catch(() => []),
-        apiRequest<CatalogGrade[]>("/parent/catalog/grades").catch(() => []),
+        apiRequest<{ allPublished: boolean; allAccepted: boolean; documents: { acceptedAt: string | null }[] }>(
+          "/agreements"
+        ).catch(() => null),
       ]);
       setChildren(kids);
       setSeats(sub?.seats ?? null);
       setCatalogLevels(levels);
-      setCatalogGrades(grades);
-      setNewLevelId((cur) => cur ?? levels[0]?.id ?? null);
+      setAgreementsOutdated(
+        Boolean(
+          agreements?.allPublished &&
+            !agreements.allAccepted &&
+            agreements.documents.some((d) => d.acceptedAt)
+        )
+      );
       const active = await getActiveChild<{ id: string }>();
       setActiveId(active?.id ?? kids[0]?.id ?? null);
       if (!active && kids[0]) {
@@ -127,21 +127,14 @@ export default function ParentScreen() {
         body: JSON.stringify({
           displayName: name.trim(),
           birthDate: birthDate.trim(),
-          ...(newLevelId ? { levelId: newLevelId } : {}),
-          ...(newGradeId ? { gradeId: newGradeId } : {}),
+          ...(catalogLevels[0] ? { levelId: catalogLevels[0].id } : {}),
         }),
       });
       setName("");
       setBirthDate("");
-      setNewGradeId(null);
       await saveActiveChild(created);
       setActiveId(created.id);
-      setInfo(
-        created.hasLearningSeat
-          ? `${created.displayName} saved with a learning seat.`
-          : `${created.displayName} saved. Activate an extra child seat to unlock Kids Zone.`
-      );
-      await load();
+      router.push(`/child-setup/${created.id}`);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Could not add child");
     } finally {
@@ -213,6 +206,17 @@ export default function ParentScreen() {
           </View>
           <ErrorText>{error}</ErrorText>
           {info ? <Text style={styles.info}>{info}</Text> : null}
+
+          {agreementsOutdated ? (
+            <Card style={{ gap: 8, borderColor: colors.danger, borderWidth: 1 }}>
+              <Text style={styles.section}>Updated agreements</Text>
+              <Text style={styles.meta}>
+                LEARN WISE updated its terms. Please review and accept them to keep using
+                subscriptions and payments.
+              </Text>
+              <PrimaryButton label="Review agreements" onPress={() => router.push("/agreements")} />
+            </Card>
+          ) : null}
 
           {seats ? (
             <Card style={{ gap: 6 }}>
@@ -314,6 +318,7 @@ export default function ParentScreen() {
           })}
 
           <Card style={{ gap: 10 }}>
+            <RegistrationSteps step={1} />
             <Text style={styles.section}>Add Child</Text>
             <Field label="Display name" value={name} onChangeText={setName} />
             <Field
@@ -324,37 +329,9 @@ export default function ParentScreen() {
               onChangeText={(v) => setBirthDate(formatBirthdayInput(v))}
               maxLength={10}
             />
-            {catalogLevels.length ? (
-              <>
-                <Text style={styles.meta}>Level (from Admin catalog)</Text>
-                <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
-                  {catalogLevels.map((l) => (
-                    <SoftButton
-                      key={l.id}
-                      label={l.label}
-                      active={newLevelId === l.id}
-                      onPress={() => {
-                        setNewLevelId(l.id);
-                        setNewGradeId(null);
-                      }}
-                    />
-                  ))}
-                </View>
-                <Text style={styles.meta}>Grade (optional)</Text>
-                <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
-                  {catalogGrades
-                    .filter((g) => !newLevelId || g.assignedLevelId === newLevelId)
-                    .map((g) => (
-                      <SoftButton
-                        key={g.id}
-                        label={g.label}
-                        active={newGradeId === g.id}
-                        onPress={() => setNewGradeId(g.id)}
-                      />
-                    ))}
-                </View>
-              </>
-            ) : null}
+            <Text style={styles.meta}>
+              Next you'll choose the level, the learning phone and a subscription.
+            </Text>
             <PrimaryButton label="Save child" onPress={() => void addChild()} loading={busy} />
           </Card>
 

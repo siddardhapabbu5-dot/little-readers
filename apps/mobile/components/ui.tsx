@@ -69,7 +69,7 @@ export function PrimaryButton({
       disabled={disabled || loading}
       style={({ pressed }) => [
         styles.primaryBtn,
-        { backgroundColor: color, opacity: pressed || disabled ? 0.75 : 1 },
+        { backgroundColor: color, opacity: disabled ? 0.45 : pressed ? 0.75 : 1 },
       ]}
     >
       {loading ? (

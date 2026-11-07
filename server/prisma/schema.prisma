@@ -37,6 +37,8 @@ enum ConsentType {
   PARENTAL
   MICROPHONE
   DATA_PROCESSING
+  SUBSCRIPTION_TERMS
+  MARKETING
 }
 
 enum MediaType {
@@ -312,10 +314,16 @@ model ParentalConsent {
   acceptedAt  DateTime    @default(now())
   ipAddress   String?
   userAgent   String?
+  /// Exact published document version accepted (null for legacy signup consents).
+  policyVersionId String?
+  /// Where the consent was given, e.g. SIGNUP or PARENT_AGREEMENTS.
+  source      String?
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user          User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  policyVersion PolicyDocumentVersion? @relation(fields: [policyVersionId], references: [id], onDelete: Restrict)
 
   @@index([userId, consentType])
+  @@index([policyVersionId])
 }
 
 model AgeGroup {
@@ -1112,6 +1120,8 @@ model Payment {
   razorpayPaymentId String?
   /// Webhook event id for idempotency (optional).
   rawEventId       String?        @unique
+  /// Issued only after server-side verification succeeds.
+  receiptNumber    String?        @unique
   metadataJson     String?
   createdAt      DateTime      @default(now())
 
@@ -1499,6 +1509,30 @@ enum PolicyDocumentType {
   PRIVACY_POLICY
   TERMS_OF_SERVICE
   PARENTAL_CONSENT
+  SUBSCRIPTION_REFUND
+}
+
+/// Immutable published snapshot of a policy PDF. Parents accept a specific version.
+model PolicyDocumentVersion {
+  id                   String             @id @default(cuid())
+  type                 PolicyDocumentType
+  version              String
+  title                String
+  effectiveDate        DateTime
+  /// Material change: parents must accept this version again before continuing.
+  requiresReacceptance Boolean            @default(true)
+  notes                String?
+  fileName             String
+  fileSize             Int
+  fileSha256           String
+  fileData             Bytes
+  publishedAt          DateTime           @default(now())
+  publishedByUserId    String?
+
+  consents ParentalConsent[]
+
+  @@unique([type, version])
+  @@index([type, publishedAt])
 }
 
 /// Admin-uploaded official legal PDFs (one row per document type). PDF bytes stay in the DB — never a public path.

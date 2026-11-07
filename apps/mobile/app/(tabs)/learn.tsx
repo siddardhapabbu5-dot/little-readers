@@ -23,6 +23,7 @@ import { apiRequest, ApiError } from "../../services/api";
 import {
   getActiveChild,
   getOrCreateInstallationId,
+  phoneLabel,
   saveActiveChild,
 } from "../../services/secure";
 import { colors, radii } from "../../theme";
@@ -130,7 +131,7 @@ export default function LearnTab() {
                 childId: active.id,
                 installationId,
                 platform: Platform.OS,
-                deviceLabel: `${Platform.OS} phone`,
+                deviceLabel: phoneLabel(),
                 appVersion: Constants.expoConfig?.version ?? "0.1.0",
               }),
             }).catch(() => null);

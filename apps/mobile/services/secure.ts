@@ -1,7 +1,13 @@
 import * as Application from "expo-application";
+import Constants from "expo-constants";
 import * as Crypto from "expo-crypto";
 import * as SecureStore from "expo-secure-store";
 import { Platform } from "react-native";
+
+/** Human-readable phone name (e.g. "Galaxy A14") for device-lock records. */
+export function phoneLabel() {
+  return Constants.deviceName?.trim() || `${Platform.OS} phone`;
+}
 
 const TOKEN_KEY = "lr_access_token";
 const REFRESH_KEY = "lr_refresh_token";

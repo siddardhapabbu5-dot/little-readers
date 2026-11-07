@@ -1,15 +1,17 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
+  Animated,
   Modal,
   Pressable,
   StyleSheet,
   Text,
-  TextInput,
   View,
 } from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
+import { Ionicons } from "@expo/vector-icons";
 import { apiRequest, ApiError } from "../services/api";
-import { colors, radii } from "../theme";
+import { colors, radii, shadow } from "../theme";
 
 type Props = {
   visible: boolean;
@@ -17,128 +19,247 @@ type Props = {
   onUnlocked: () => void;
 };
 
+type Step = "loading" | "unlock" | "create" | "confirm";
+
+const MIN_PIN = 4;
+const MAX_PIN = 6;
+const KEYS = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "", "0", "back"] as const;
+
 export function ParentGateModal({ visible, onClose, onUnlocked }: Props) {
-  const [pinSet, setPinSet] = useState<boolean | null>(null);
+  const [step, setStep] = useState<Step>("loading");
   const [pin, setPin] = useState("");
-  const [confirm, setConfirm] = useState("");
+  const [firstPin, setFirstPin] = useState("");
+  const [reveal, setReveal] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const shake = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     if (!visible) return;
     setPin("");
-    setConfirm("");
+    setFirstPin("");
+    setReveal(false);
     setError(null);
-    setPinSet(null);
+    setStep("loading");
     void (async () => {
       try {
         const data = await apiRequest<{ pinSet: boolean }>("/parent/auth/gate/status");
-        setPinSet(data.pinSet);
+        setStep(data.pinSet ? "unlock" : "create");
       } catch (err) {
         setError(err instanceof ApiError ? err.message : "Could not load PIN status");
-        setPinSet(false);
+        setStep("create");
       }
     })();
   }, [visible]);
 
-  async function submit() {
-    if (loading) return;
+  function runShake() {
+    shake.setValue(0);
+    Animated.sequence(
+      [10, -10, 7, -7, 3, 0].map((toValue) =>
+        Animated.timing(shake, { toValue, duration: 55, useNativeDriver: true })
+      )
+    ).start();
+  }
+
+  function fail(message: string) {
+    setError(message);
+    setPin("");
+    runShake();
+  }
+
+  function press(key: (typeof KEYS)[number]) {
+    if (loading || step === "loading" || !key) return;
     setError(null);
-    if (!/^\d{4,6}$/.test(pin)) {
-      setError("Enter a 4–6 digit PIN.");
+    if (key === "back") {
+      setPin((p) => p.slice(0, -1));
       return;
     }
-    if (pinSet === false && pin !== confirm) {
-      setError("PINs do not match.");
+    setPin((p) => (p.length >= MAX_PIN ? p : p + key));
+  }
+
+  async function submit() {
+    if (loading || pin.length < MIN_PIN) return;
+    setError(null);
+
+    if (step === "create") {
+      setFirstPin(pin);
+      setPin("");
+      setStep("confirm");
       return;
     }
+    if (step === "confirm" && pin !== firstPin) {
+      setFirstPin("");
+      setStep("create");
+      fail("PINs didn't match. Please create your PIN again.");
+      return;
+    }
+
     setLoading(true);
     try {
-      if (pinSet === false) {
+      if (step === "confirm") {
         await apiRequest("/parent/auth/gate/set-pin", {
           method: "POST",
           body: JSON.stringify({ pin }),
         });
         parentGateUnlockUntil = Date.now() + 600 * 1000;
       } else {
-        const data = await apiRequest<{ unlockSeconds: number }>(
-          "/parent/auth/gate/verify-pin",
-          {
-            method: "POST",
-            body: JSON.stringify({ pin }),
-          }
-        );
-        parentGateUnlockUntil =
-          Date.now() + (data.unlockSeconds ?? 600) * 1000;
+        const data = await apiRequest<{ unlockSeconds: number }>("/parent/auth/gate/verify-pin", {
+          method: "POST",
+          body: JSON.stringify({ pin }),
+        });
+        parentGateUnlockUntil = Date.now() + (data.unlockSeconds ?? 600) * 1000;
       }
       onUnlocked();
       onClose();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "PIN failed");
+      fail(err instanceof ApiError ? err.message : "That PIN didn't work. Try again.");
     } finally {
       setLoading(false);
     }
   }
 
+  const copy = {
+    loading: { title: "Parent PIN", body: "Checking your PIN settings…", action: "" },
+    unlock: { title: "Enter Parent PIN", body: "Grown-ups only. Enter your PIN to open parent tools.", action: "Unlock" },
+    create: { title: "Create a Parent PIN", body: "Choose a 4–6 digit PIN to protect subscription, devices and parent tools.", action: "Continue" },
+    confirm: { title: "Confirm your PIN", body: "Enter the same PIN again to confirm.", action: "Save PIN" },
+  }[step];
+
+  const slots = Math.max(MIN_PIN, Math.min(MAX_PIN, pin.length + (pin.length < MAX_PIN ? 1 : 0)));
+  const ready = pin.length >= MIN_PIN;
+
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <View style={styles.backdrop}>
         <View style={styles.card}>
-          <Text style={styles.title}>
-            {pinSet === false ? "Create Parent PIN" : "Parent PIN required"}
-          </Text>
-          <Text style={styles.body}>
-            {pinSet === false
-              ? "Set a 4–6 digit PIN before opening subscription, devices, or parent tools."
-              : "Enter your parent PIN to continue."}
-          </Text>
-          {pinSet === null ? (
-            <ActivityIndicator color={colors.primary} />
-          ) : (
-            <>
-              <TextInput
-                style={styles.input}
-                value={pin}
-                onChangeText={(v) => setPin(v.replace(/\D/g, "").slice(0, 6))}
-                placeholder="PIN"
-                placeholderTextColor="#9B8EC4"
-                keyboardType="number-pad"
-                secureTextEntry
-                maxLength={6}
-                accessibilityLabel="Parent PIN"
+          <LinearGradient
+            colors={[colors.primary, colors.primaryGradientEnd]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.header}
+          >
+            <Pressable onPress={onClose} style={styles.close} accessibilityLabel="Close" hitSlop={10}>
+              <Ionicons name="close" size={20} color="#fff" />
+            </Pressable>
+            <View style={styles.badge}>
+              <Ionicons
+                name={step === "unlock" ? "lock-closed" : "shield-checkmark"}
+                size={30}
+                color={colors.primary}
               />
-              {pinSet === false ? (
-                <TextInput
-                  style={styles.input}
-                  value={confirm}
-                  onChangeText={(v) => setConfirm(v.replace(/\D/g, "").slice(0, 6))}
-                  placeholder="Confirm PIN"
-                  placeholderTextColor="#9B8EC4"
-                  keyboardType="number-pad"
-                  secureTextEntry
-                  maxLength={6}
-                  accessibilityLabel="Confirm parent PIN"
-                />
-              ) : null}
-              {error ? <Text style={styles.error}>{error}</Text> : null}
-              <Pressable
-                style={[styles.btn, loading && { opacity: 0.7 }]}
-                disabled={loading}
-                onPress={() => void submit()}
-              >
-                {loading ? (
-                  <ActivityIndicator color="#fff" />
-                ) : (
-                  <Text style={styles.btnText}>
-                    {pinSet === false ? "Save PIN" : "Unlock"}
+            </View>
+            <Text style={styles.title}>{copy.title}</Text>
+            <Text style={styles.body}>{copy.body}</Text>
+            {step === "create" || step === "confirm" ? (
+              <View style={styles.steps}>
+                <View style={[styles.stepDot, styles.stepDotOn]} />
+                <View style={[styles.stepDot, step === "confirm" && styles.stepDotOn]} />
+              </View>
+            ) : null}
+          </LinearGradient>
+
+          <View style={styles.content}>
+            {step === "loading" ? (
+              <ActivityIndicator color={colors.primary} style={{ marginVertical: 40 }} />
+            ) : (
+              <>
+                <Animated.View style={[styles.slotsRow, { transform: [{ translateX: shake }] }]}>
+                  {Array.from({ length: slots }).map((_, i) => {
+                    const filled = i < pin.length;
+                    const active = i === pin.length;
+                    return (
+                      <View
+                        key={i}
+                        style={[styles.slot, filled && styles.slotFilled, active && styles.slotActive, error && styles.slotError]}
+                      >
+                        {filled ? (
+                          reveal ? (
+                            <Text style={styles.slotDigit}>{pin[i]}</Text>
+                          ) : (
+                            <View style={styles.slotDot} />
+                          )
+                        ) : null}
+                      </View>
+                    );
+                  })}
+                </Animated.View>
+
+                <View style={styles.metaRow}>
+                  <Text style={[styles.hint, error && styles.errorText]} numberOfLines={2}>
+                    {error ?? (ready ? "Looks good!" : `${MIN_PIN}–${MAX_PIN} digits`)}
                   </Text>
+                  <Pressable
+                    onPress={() => setReveal((v) => !v)}
+                    style={styles.revealBtn}
+                    accessibilityLabel={reveal ? "Hide PIN" : "Show PIN"}
+                    hitSlop={8}
+                  >
+                    <Ionicons name={reveal ? "eye-off-outline" : "eye-outline"} size={18} color={colors.primaryDark} />
+                    <Text style={styles.revealText}>{reveal ? "Hide" : "Show"}</Text>
+                  </Pressable>
+                </View>
+
+                <View style={styles.keypad}>
+                  {KEYS.map((k, i) =>
+                    k === "" ? (
+                      <View key={i} style={styles.keySpacer} />
+                    ) : (
+                      <Pressable
+                        key={i}
+                        onPress={() => press(k)}
+                        onLongPress={k === "back" ? () => setPin("") : undefined}
+                        accessibilityLabel={k === "back" ? "Delete digit" : `Digit ${k}`}
+                        style={({ pressed }) => [styles.key, k === "back" && styles.keyBack, pressed && styles.keyPressed]}
+                      >
+                        {k === "back" ? (
+                          <Ionicons name="backspace-outline" size={24} color={colors.primaryDark} />
+                        ) : (
+                          <Text style={styles.keyText}>{k}</Text>
+                        )}
+                      </Pressable>
+                    )
+                  )}
+                </View>
+
+                <Pressable
+                  disabled={!ready || loading}
+                  onPress={() => void submit()}
+                  style={({ pressed }) => [styles.btnWrap, (!ready || loading) && { opacity: 0.45 }, pressed && { transform: [{ scale: 0.98 }] }]}
+                >
+                  <LinearGradient
+                    colors={[colors.primary, colors.primaryDark]}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
+                    style={styles.btn}
+                  >
+                    {loading ? (
+                      <ActivityIndicator color="#fff" />
+                    ) : (
+                      <Text style={styles.btnText}>{copy.action}</Text>
+                    )}
+                  </LinearGradient>
+                </Pressable>
+
+                {step === "confirm" ? (
+                  <Pressable
+                    onPress={() => {
+                      setStep("create");
+                      setPin("");
+                      setFirstPin("");
+                      setError(null);
+                    }}
+                    style={styles.linkBtn}
+                  >
+                    <Text style={styles.linkText}>← Start over</Text>
+                  </Pressable>
+                ) : (
+                  <Pressable onPress={onClose} style={styles.linkBtn}>
+                    <Text style={styles.linkText}>Cancel</Text>
+                  </Pressable>
                 )}
-              </Pressable>
-              <Pressable onPress={onClose} style={styles.cancel}>
-                <Text style={styles.cancelText}>Cancel</Text>
-              </Pressable>
-            </>
-          )}
+              </>
+            )}
+          </View>
         </View>
       </View>
     </Modal>
@@ -151,57 +272,127 @@ export function isParentGateUnlocked() {
   return parentGateUnlockUntil > Date.now();
 }
 
+const KEY_SIZE = 64;
+
 const styles = StyleSheet.create({
   backdrop: {
     flex: 1,
-    backgroundColor: "rgba(31,22,53,0.55)",
+    backgroundColor: "rgba(31,22,53,0.6)",
     justifyContent: "center",
-    padding: 24,
+    padding: 18,
   },
   card: {
-    backgroundColor: "#fff",
-    borderRadius: 20,
-    padding: 18,
-    gap: 10,
+    backgroundColor: colors.card,
+    borderRadius: radii.xl,
     width: "100%",
     maxWidth: 380,
     alignSelf: "center",
+    overflow: "hidden",
+    ...shadow.card,
   },
-  title: {
-    fontSize: 18,
-    fontWeight: "800",
-    color: colors.primaryDark,
-    textAlign: "center",
+  header: {
+    alignItems: "center",
+    paddingTop: 26,
+    paddingBottom: 22,
+    paddingHorizontal: 22,
+    gap: 6,
   },
-  body: {
-    color: colors.textMuted,
-    fontWeight: "600",
-    textAlign: "center",
-    fontSize: 13,
-    lineHeight: 18,
-  },
-  input: {
-    borderWidth: 1.5,
-    borderColor: "#D8D0F5",
-    backgroundColor: "#F7F4FF",
-    borderRadius: radii.md,
-    minHeight: 46,
-    paddingHorizontal: 12,
-    fontSize: 18,
-    fontWeight: "700",
-    letterSpacing: 4,
-    textAlign: "center",
-    color: colors.text,
-  },
-  error: { color: colors.danger, fontWeight: "700", textAlign: "center" },
-  btn: {
-    backgroundColor: colors.primary,
-    borderRadius: radii.pill,
-    minHeight: 44,
+  close: {
+    position: "absolute",
+    top: 12,
+    right: 12,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: "rgba(255,255,255,0.22)",
     alignItems: "center",
     justifyContent: "center",
   },
-  btnText: { color: "#fff", fontWeight: "800", fontSize: 15 },
-  cancel: { alignItems: "center", paddingVertical: 8 },
-  cancelText: { color: colors.primary, fontWeight: "700" },
+  badge: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: "#fff",
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 6,
+    ...shadow.soft,
+  },
+  title: { color: "#fff", fontSize: 21, fontWeight: "800", textAlign: "center" },
+  body: {
+    color: "rgba(255,255,255,0.9)",
+    fontSize: 13,
+    lineHeight: 19,
+    fontWeight: "600",
+    textAlign: "center",
+  },
+  steps: { flexDirection: "row", gap: 6, marginTop: 8 },
+  stepDot: { width: 22, height: 5, borderRadius: 3, backgroundColor: "rgba(255,255,255,0.35)" },
+  stepDotOn: { backgroundColor: "#fff" },
+  content: { paddingHorizontal: 22, paddingTop: 20, paddingBottom: 14, alignItems: "center" },
+  slotsRow: { flexDirection: "row", gap: 10, justifyContent: "center" },
+  slot: {
+    width: 44,
+    height: 52,
+    borderRadius: 14,
+    borderWidth: 2,
+    borderColor: colors.border,
+    backgroundColor: colors.bg,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  slotFilled: { borderColor: colors.primaryGradientEnd, backgroundColor: colors.primarySoft },
+  slotActive: { borderColor: colors.primary, backgroundColor: "#fff" },
+  slotError: { borderColor: colors.danger },
+  slotDot: { width: 13, height: 13, borderRadius: 7, backgroundColor: colors.primaryDark },
+  slotDigit: { fontSize: 22, fontWeight: "800", color: colors.primaryDark },
+  metaRow: {
+    width: "100%",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginTop: 12,
+    marginBottom: 6,
+    gap: 8,
+  },
+  hint: { flex: 1, color: colors.textMuted, fontSize: 12.5, fontWeight: "700" },
+  errorText: { color: colors.danger },
+  revealBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: radii.pill,
+    backgroundColor: colors.primarySoft,
+  },
+  revealText: { color: colors.primaryDark, fontWeight: "800", fontSize: 12 },
+  keypad: {
+    width: KEY_SIZE * 3 + 18 * 2,
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "space-between",
+    rowGap: 10,
+    marginTop: 8,
+    marginBottom: 16,
+  },
+  key: {
+    width: KEY_SIZE,
+    height: KEY_SIZE,
+    borderRadius: KEY_SIZE / 2,
+    backgroundColor: colors.bg,
+    borderWidth: 1,
+    borderColor: colors.border,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  keyBack: { backgroundColor: "transparent", borderColor: "transparent" },
+  keyPressed: { backgroundColor: colors.primarySoft, borderColor: colors.primaryGradientEnd, transform: [{ scale: 0.94 }] },
+  keySpacer: { width: KEY_SIZE, height: KEY_SIZE },
+  keyText: { fontSize: 24, fontWeight: "700", color: colors.text },
+  btnWrap: { width: "100%", borderRadius: radii.pill, overflow: "hidden" },
+  btn: { minHeight: 50, alignItems: "center", justifyContent: "center", borderRadius: radii.pill },
+  btnText: { color: "#fff", fontWeight: "800", fontSize: 16, letterSpacing: 0.3 },
+  linkBtn: { alignItems: "center", paddingVertical: 10, marginTop: 2 },
+  linkText: { color: colors.primary, fontWeight: "800", fontSize: 14 },
 });

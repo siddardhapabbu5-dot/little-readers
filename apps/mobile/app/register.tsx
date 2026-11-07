@@ -2,7 +2,6 @@ import { useEffect, useRef, useState } from "react";
 import {
   Image,
   KeyboardAvoidingView,
-  Linking,
   Platform,
   Pressable,
   ScrollView,
@@ -34,10 +33,6 @@ import {
   sanitizeNationalInput,
   validateNationalPhone,
 } from "../utils/phone";
-
-const WEB_BASE =
-  process.env.EXPO_PUBLIC_WEB_APP_URL?.replace(/\/$/, "") ||
-  "https://siwiapp.shop";
 
 type PublicPrivacy = {
   published: boolean;
@@ -408,7 +403,7 @@ export default function RegisterScreen() {
                 disabled={loading || !privacyMeta?.published}
                 label="I accept the Terms of Service."
                 linkLabel="View Terms"
-                onLink={() => void Linking.openURL(`${WEB_BASE}/terms`)}
+                onLink={() => router.push({ pathname: "/legal", params: { doc: "terms" } })}
               />
               <ConsentRow
                 checked={acceptPrivacy}
@@ -418,11 +413,7 @@ export default function RegisterScreen() {
                   privacyMeta?.policy?.version ? ` (version ${privacyMeta.policy.version})` : ""
                 }.`}
                 linkLabel="View Privacy Policy"
-                onLink={() =>
-                  void Linking.openURL(
-                    privacyMeta?.policy?.publicUrl || `${WEB_BASE}/privacy`
-                  )
-                }
+                onLink={() => router.push({ pathname: "/legal", params: { doc: "privacy" } })}
               />
               <ConsentRow
                 checked={parentalConsent}

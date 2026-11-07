@@ -125,7 +125,7 @@ export function ParentGateModal({ visible, onClose, onUnlocked }: Props) {
     confirm: { title: "Confirm your PIN", body: "Enter the same PIN again to confirm.", action: "Save PIN" },
   }[step];
 
-  const slots = Math.max(MIN_PIN, Math.min(MAX_PIN, pin.length + (pin.length < MAX_PIN ? 1 : 0)));
+  const slots = Math.max(MIN_PIN, pin.length);
   const ready = pin.length >= MIN_PIN;
 
   return (

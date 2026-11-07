@@ -408,6 +408,107 @@ export async function grantExtraSeats(input: {
   });
 }
 
+/**
+ * Admin grant of a free family subscription (no payment provider). Creates or extends the
+ * parent's latest subscription and seats any unseated children up to capacity.
+ */
+export async function grantManualSubscription(input: {
+  parentEmail: string;
+  months: number;
+  grantedByUserId: string;
+}) {
+  const months = Math.floor(input.months);
+  if (!Number.isFinite(months) || months < 1 || months > 24) {
+    throw new AppError("months must be between 1 and 24", 400);
+  }
+  const email = input.parentEmail.trim().toLowerCase();
+  const parent = await prisma.user.findFirst({
+    where: { email: { equals: email, mode: "insensitive" } },
+    select: { id: true, role: true, email: true, name: true },
+  });
+  if (!parent) throw new AppError("No account found with that email", 404);
+  if (parent.role !== "PARENT") {
+    throw new AppError("Subscriptions can only be granted to parent accounts", 400);
+  }
+
+  return prisma.$transaction(async (tx) => {
+    await tx.$executeRaw`SELECT id FROM "User" WHERE id = ${parent.id} FOR UPDATE`;
+    const now = new Date();
+    const existing = await latestSubscription(parent.id, tx);
+    const base =
+      existing && isSubscriptionRecordEligible(existing, now) && existing.expiresAt > now
+        ? existing.expiresAt
+        : now;
+    const expiresAt = new Date(base);
+    expiresAt.setMonth(expiresAt.getMonth() + months);
+    const plan = months >= 12 ? "YEARLY" : months === 1 ? "MONTHLY" : `${months}_MONTH`;
+    const providerRef = `manual_sub_${input.grantedByUserId}_${Date.now()}`;
+
+    const subscription = existing
+      ? await tx.subscription.update({
+          where: { id: existing.id },
+          data: {
+            plan,
+            status: "ACTIVE",
+            expiresAt,
+            graceEndsAt: null,
+            cancelledAt: null,
+            provider: "manual_admin",
+            providerRef,
+          },
+        })
+      : await tx.subscription.create({
+          data: {
+            userId: parent.id,
+            plan,
+            status: "ACTIVE",
+            startedAt: now,
+            expiresAt,
+            provider: "manual_admin",
+            providerRef,
+            includedSeats: BASE_INCLUDED_SEATS,
+            extraSeats: 0,
+          },
+        });
+
+    await tx.payment.create({
+      data: {
+        userId: parent.id,
+        subscriptionId: subscription.id,
+        amountCents: 0,
+        status: "SUCCEEDED",
+        provider: "manual_admin",
+        purpose: "MANUAL_ADMIN",
+        planCode: `MANUAL_ADMIN_SUBSCRIPTION_${months}M`,
+        providerRef: `${providerRef}_payment`,
+        paidAt: now,
+      },
+    });
+
+    const waiting = await tx.child.findMany({
+      where: { parentId: parent.id, isActive: true, hasLearningSeat: false },
+      orderBy: { createdAt: "asc" },
+      select: { id: true },
+    });
+    let seated = 0;
+    for (const child of waiting) {
+      if (await tryAssignLearningSeat(parent.id, child.id, tx)) seated += 1;
+    }
+
+    return {
+      parent: { id: parent.id, email: parent.email, name: parent.name },
+      subscription: {
+        id: subscription.id,
+        plan: subscription.plan,
+        status: subscription.status,
+        expiresAt: subscription.expiresAt,
+        capacity: seatCapacity(subscription),
+      },
+      childrenSeated: seated,
+    };
+  });
+}
+
 export async function listSubscriptionsForAdmin(take = 50) {
   const rows = await prisma.subscription.findMany({
     orderBy: { createdAt: "desc" },

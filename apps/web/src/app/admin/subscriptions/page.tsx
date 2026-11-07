@@ -33,6 +33,8 @@ export default function AdminSubscriptionsPage() {
   const [message, setMessage] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [grantCount, setGrantCount] = useState<Record<string, string>>({});
+  const [subEmail, setSubEmail] = useState("");
+  const [subMonths, setSubMonths] = useState("12");
   const [payments, setPayments] = useState<
     Array<{
       id: string;
@@ -96,6 +98,42 @@ export default function AdminSubscriptionsPage() {
     }
   }
 
+  async function grantSubscription() {
+    if (!token) return;
+    const email = subEmail.trim();
+    const months = Number(subMonths);
+    if (!email) {
+      setError("Enter the parent's email");
+      return;
+    }
+    if (!window.confirm(`Grant a free ${months}-month subscription to ${email}?`)) return;
+    setBusy(true);
+    setError(null);
+    setMessage(null);
+    try {
+      const data = await apiRequest<{
+        parent: { email: string };
+        subscription: { plan: string; expiresAt: string; capacity: number };
+        childrenSeated: number;
+      }>("/subscriptions/admin/grant", {
+        method: "POST",
+        token,
+        body: JSON.stringify({ parentEmail: email, months }),
+      });
+      setMessage(
+        `Subscription active for ${data.parent.email} until ${new Date(
+          data.subscription.expiresAt
+        ).toLocaleDateString()} · ${data.subscription.capacity} seats · ${data.childrenSeated} child(ren) seated now.`
+      );
+      setSubEmail("");
+      await load();
+    } catch (e) {
+      setError(e instanceof ApiClientError ? e.message : "Grant failed");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function revoke(parentUserId: string) {
     if (!token) return;
     const n = Number(grantCount[parentUserId] ?? "1");
@@ -140,6 +178,31 @@ export default function AdminSubscriptionsPage() {
         <code>manual_admin</code> vs <code>razorpay</code>). Revoke is blocked while seats
         are occupied beyond remaining capacity. Frontend “success” never grants seats.
       </p>
+      <h2 style={{ color: "#e2e8f0", fontSize: 18 }}>Grant free subscription</h2>
+      <div
+        className="panel"
+        style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center", marginBottom: 16 }}
+      >
+        <input
+          type="email"
+          placeholder="Parent email"
+          value={subEmail}
+          onChange={(e) => setSubEmail(e.target.value)}
+          style={{ minWidth: 240 }}
+        />
+        <select value={subMonths} onChange={(e) => setSubMonths(e.target.value)}>
+          <option value="1">1 month</option>
+          <option value="3">3 months</option>
+          <option value="6">6 months</option>
+          <option value="12">12 months</option>
+        </select>
+        <Button disabled={busy} onClick={() => void grantSubscription()}>
+          Grant subscription
+        </Button>
+        <span style={{ color: "#94a3b8", fontSize: 13 }}>
+          Starts or extends the plan (2 seats included) and seats waiting children.
+        </span>
+      </div>
       <h2 style={{ color: "#e2e8f0", fontSize: 18 }}>Payment history</h2>
       <div className="panel" style={{ marginBottom: 16, overflowX: "auto" }}>
         <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>

@@ -17,6 +17,7 @@ import {
   cancelParentSubscription,
   getParentSubscription,
   grantExtraSeats,
+  grantManualSubscription,
   listSubscriptionsForAdmin,
   revokeExtraSeats,
   unassignLearningSeat,
@@ -171,6 +172,28 @@ subscriptionRouter.post(
   async (req: AuthenticatedRequest, res, next) => {
     try {
       const data = await grantExtraSeats({
+        ...req.body,
+        grantedByUserId: req.user!.id,
+      });
+      res.status(200).json({ data });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+const grantSubscriptionSchema = z.object({
+  parentEmail: z.string().email().max(254),
+  months: z.number().int().min(1).max(24),
+});
+
+subscriptionRouter.post(
+  "/admin/grant",
+  requireRoles("ADMIN", "SUPER_ADMIN"),
+  validateBody(grantSubscriptionSchema),
+  async (req: AuthenticatedRequest, res, next) => {
+    try {
+      const data = await grantManualSubscription({
         ...req.body,
         grantedByUserId: req.user!.id,
       });

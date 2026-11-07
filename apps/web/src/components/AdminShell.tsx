@@ -19,6 +19,7 @@ const NAV = [
   { href: "/admin/vocabulary/levels", label: "Levels" },
   { href: "/admin/vocabulary/groups", label: "Groups" },
   { href: "/admin/subscriptions", label: "Subscriptions & Seats" },
+  { href: "/admin/devices", label: "Devices" },
   { href: "/admin/vocabulary/upload", label: "Upload Vocabulary" },
   { href: "/admin/vocabulary/imports", label: "Import History" },
 ];

@@ -1,3 +1,5 @@
+import * as Application from "expo-application";
+import * as Crypto from "expo-crypto";
 import * as SecureStore from "expo-secure-store";
 import { Platform } from "react-native";
 
@@ -80,8 +82,32 @@ function randomId() {
   return out;
 }
 
+const ANDROID_ID_PREFIX = "lr_android_aid_";
+
+/** Hashed Android ID: stable across app reinstalls on the same phone; changes on factory reset. */
+async function androidDeviceId(): Promise<string | null> {
+  if (Platform.OS !== "android") return null;
+  try {
+    const androidId = Application.getAndroidId();
+    if (!androidId) return null;
+    const digest = await Crypto.digestStringAsync(
+      Crypto.CryptoDigestAlgorithm.SHA256,
+      `learnwise:${androidId}`
+    );
+    return `${ANDROID_ID_PREFIX}${digest.slice(0, 40)}`;
+  } catch {
+    return null;
+  }
+}
+
 export async function getOrCreateInstallationId(): Promise<string> {
   const existing = await getItem(INSTALL_KEY);
+  if (existing?.startsWith(ANDROID_ID_PREFIX)) return existing;
+  const deviceId = await androidDeviceId();
+  if (deviceId) {
+    await setItem(INSTALL_KEY, deviceId);
+    return deviceId;
+  }
   if (existing && existing.length >= 16) return existing;
   const created = randomId();
   await setItem(INSTALL_KEY, created);

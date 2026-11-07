@@ -17,9 +17,16 @@ import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import type { CountryCode } from "libphonenumber-js";
 import { CountryCodePicker } from "../components/CountryCodePicker";
+import { EmailOtpVerify } from "../components/EmailOtpVerify";
 import { apiRequest, ApiError } from "../services/api";
 import { isValidEmail, routeForRole } from "../services/auth-errors";
-import { saveActiveChild, saveToken, saveUser } from "../services/secure";
+import {
+  getOrCreateInstallationId,
+  saveActiveChild,
+  saveRefreshToken,
+  saveToken,
+  saveUser,
+} from "../services/secure";
 import { colors, radii } from "../theme";
 import {
   DEFAULT_COUNTRY_ISO,
@@ -72,6 +79,10 @@ export default function RegisterScreen() {
   const [acceptPrivacy, setAcceptPrivacy] = useState(false);
   const [parentalConsent, setParentalConsent] = useState(false);
   const [privacyMeta, setPrivacyMeta] = useState<PublicPrivacy | null>(null);
+  const [emailToken, setEmailToken] = useState<string | null>(null);
+  const [verifiedEmail, setVerifiedEmail] = useState<string | null>(null);
+  const emailVerified =
+    Boolean(emailToken) && verifiedEmail === guardianEmail.trim().toLowerCase();
 
   const bottomArtH = Math.max(100, Math.round(winH * 0.16));
 
@@ -110,14 +121,20 @@ export default function RegisterScreen() {
       setFieldHint("Enter a valid parent/guardian email.");
       return;
     }
+    if (!emailVerified) {
+      setFieldHint("Verify your email with the 6-digit code before creating the account.");
+      return;
+    }
     if (!password || password.length < 8) {
       setFieldHint("Password must be at least 8 characters.");
       return;
     }
-    const phone = validateNationalPhone(mobile, countryIso);
-    if (!phone.ok) {
-      setFieldHint(phone.error);
-      return;
+    if (mobile.trim()) {
+      const phone = validateNationalPhone(mobile, countryIso);
+      if (!phone.ok) {
+        setFieldHint(phone.error);
+        return;
+      }
     }
     if (!/^\d{2}\/\d{2}\/\d{4}$/.test(birthDate.trim())) {
       setFieldHint("Enter student birthday as DD/MM/YYYY.");
@@ -140,9 +157,10 @@ export default function RegisterScreen() {
     setLoading(true);
     try {
       const country = findCountry(countryIso);
+      const deviceId = await getOrCreateInstallationId();
       const data = await apiRequest<{
         user: { id: string; name: string; email: string; role: string };
-        tokens: { accessToken: string };
+        tokens: { accessToken: string; refreshToken?: string };
       }>("/auth/register", {
         method: "POST",
         mobile: false,
@@ -151,8 +169,13 @@ export default function RegisterScreen() {
           name,
           email,
           password,
-          mobile: mobile,
-          countryCode: country.callingCode,
+          ...(mobile.trim()
+            ? { mobile: mobile, countryCode: country.callingCode }
+            : {}),
+          emailVerificationToken: emailToken,
+          deviceId,
+          platform: Platform.OS,
+          deviceName: `${Platform.OS} device`,
           acceptTerms,
           acceptPrivacy,
           parentalConsent,
@@ -160,6 +183,9 @@ export default function RegisterScreen() {
         }),
       });
       await saveToken(data.tokens.accessToken);
+      if (data.tokens.refreshToken) {
+        await saveRefreshToken(data.tokens.refreshToken);
+      }
       await saveUser(data.user);
 
       try {
@@ -275,6 +301,19 @@ export default function RegisterScreen() {
                 accessibilityLabel="Parent or guardian email"
               />
             </View>
+            {emailVerified ? (
+              <Text style={styles.verified}>✓ Email verified</Text>
+            ) : (
+              <EmailOtpVerify
+                email={guardianEmail}
+                purpose="REGISTER"
+                disabled={loading}
+                onVerified={(token) => {
+                  setEmailToken(token);
+                  setVerifiedEmail(guardianEmail.trim().toLowerCase());
+                }}
+              />
+            )}
 
             <Text style={styles.label}>Password</Text>
             <View style={styles.inputRow}>
@@ -306,7 +345,7 @@ export default function RegisterScreen() {
               </Pressable>
             </View>
 
-            <Text style={styles.label}>Mobile (Student OTP login)</Text>
+            <Text style={styles.label}>Mobile (optional, for contact only)</Text>
             <View style={styles.inputRow}>
               <CountryCodePicker
                 value={countryIso}
@@ -326,7 +365,7 @@ export default function RegisterScreen() {
                 onFocus={() => scrollFieldIntoView(280)}
                 onSubmitEditing={() => birthRef.current?.focus()}
                 editable={!loading}
-                accessibilityLabel="Mobile number for Student OTP"
+                accessibilityLabel="Mobile number (optional)"
               />
             </View>
 
@@ -367,7 +406,7 @@ export default function RegisterScreen() {
                 checked={acceptTerms}
                 onToggle={() => setAcceptTerms((v) => !v)}
                 disabled={loading || !privacyMeta?.published}
-                label="I accept the Terms of Service (draft wording for legal review)."
+                label="I accept the Terms of Service."
                 linkLabel="View Terms"
                 onLink={() => void Linking.openURL(`${WEB_BASE}/terms`)}
               />
@@ -375,7 +414,9 @@ export default function RegisterScreen() {
                 checked={acceptPrivacy}
                 onToggle={() => setAcceptPrivacy((v) => !v)}
                 disabled={loading || !privacyMeta?.published}
-                label="I accept the Privacy Policy (draft wording for legal review)."
+                label={`I accept the Privacy Policy${
+                  privacyMeta?.policy?.version ? ` (version ${privacyMeta.policy.version})` : ""
+                }.`}
                 linkLabel="View Privacy Policy"
                 onLink={() =>
                   void Linking.openURL(
@@ -387,7 +428,7 @@ export default function RegisterScreen() {
                 checked={parentalConsent}
                 onToggle={() => setParentalConsent((v) => !v)}
                 disabled={loading || !privacyMeta?.published}
-                label="I confirm I am the parent/guardian and consent to create a learning profile for my child (draft wording for legal review)."
+                label="I confirm I am the parent/guardian and consent to create a learning profile for my child."
               />
             </View>
 
@@ -408,12 +449,12 @@ export default function RegisterScreen() {
             <Pressable
               accessibilityRole="button"
               accessibilityLabel="Create Student Account"
-              disabled={loading || !privacyMeta?.published}
+              disabled={loading || !privacyMeta?.published || !emailVerified}
               onPress={() => void onRegister()}
               style={({ pressed }) => [
                 styles.primaryBtn,
-                (pressed || loading || !privacyMeta?.published) && {
-                  opacity: 0.85,
+                (pressed || loading || !privacyMeta?.published || !emailVerified) && {
+                  opacity: 0.6,
                 },
               ]}
             >
@@ -562,6 +603,7 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   hint: { color: colors.accent, fontWeight: "700", fontSize: 12 },
+  verified: { color: colors.success, fontWeight: "800", fontSize: 13 },
   error: { color: colors.danger, fontWeight: "700", fontSize: 12 },
   info: { color: colors.primaryDark, fontWeight: "600", fontSize: 12 },
   primaryBtn: {

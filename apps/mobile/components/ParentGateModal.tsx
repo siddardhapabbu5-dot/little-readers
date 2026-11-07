@@ -163,6 +163,9 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     padding: 18,
     gap: 10,
+    width: "100%",
+    maxWidth: 380,
+    alignSelf: "center",
   },
   title: {
     fontSize: 18,

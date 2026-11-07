@@ -81,7 +81,7 @@ const csv = [
 ].join("\n");
 writeFileSync(join(dir, "little-readers-kids-dictionary-template.csv"), `${csv}\n`, "utf8");
 
-const readme = `# Little Readers — Kids Dictionary Upload Template
+const readme = `# LEARN WISE — Kids Dictionary Upload Template
 
 Use this file in **Admin → Vocabulary → Dictionary → Grades**.
 
@@ -100,8 +100,8 @@ Use this file in **Admin → Vocabulary → Dictionary → Grades**.
 ## Upload steps
 1. Open website Admin (\`http://localhost:3100\`)
 2. Go to **Dictionary → Grades**
-3. Source name: \`Little Readers Kids Starter\`
-4. Licence: \`Project-owned sample template for Little Readers\`
+3. Source name: \`LEARN WISE Kids Starter\`
+4. Licence: \`Project-owned sample template for LEARN WISE\`
 5. Upload the xlsx or csv
 6. Click **Classify**
 7. Review **Pending suggestions**

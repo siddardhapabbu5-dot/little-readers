@@ -210,7 +210,12 @@ function assertPublishable(draft: PrivacyPolicy) {
     missing.push("version (use a release version, not draft)");
   }
   if (!trimOrNull(draft.legalBusinessName)) missing.push("legal business name");
+  if (!trimOrNull(draft.businessAddress)) missing.push("business address");
   if (!trimOrNull(draft.supportEmail)) missing.push("support email");
+  if (!trimOrNull(draft.supportPhone)) missing.push("support phone");
+  if (!trimOrNull(draft.dataRetentionInfo)) {
+    missing.push("data retention information");
+  }
   if (!trimOrNull(draft.parentalConsentExplanation)) {
     missing.push("parental consent explanation");
   }
@@ -232,6 +237,23 @@ function assertPublishable(draft: PrivacyPolicy) {
 export async function publishDraftPrivacyPolicy(actorUserId: string) {
   const draft = await ensureDraftPolicy(actorUserId);
   assertPublishable(draft);
+
+  // Consent records store only the version string, so each published version must be unique.
+  const versionUsed = await prisma.privacyPolicy.findFirst({
+    where: {
+      id: { not: draft.id },
+      version: draft.version.trim(),
+      status: { in: ["PUBLISHED", "ARCHIVED"] },
+    },
+    select: { id: true },
+  });
+  if (versionUsed) {
+    throw new AppError(
+      `Version ${draft.version.trim()} was already published. Use a new version number.`,
+      409,
+      { code: "PRIVACY_POLICY_VERSION_EXISTS" }
+    );
+  }
 
   return prisma.$transaction(async (tx) => {
     await tx.privacyPolicy.updateMany({

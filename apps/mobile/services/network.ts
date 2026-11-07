@@ -1,5 +1,5 @@
 /**
- * Lightweight online/offline signalling for Little Readers.
+ * Lightweight online/offline signalling for LEARN WISE.
  *
  * Offline learning / background sync is NOT supported.
  * When offline, learning attempts must not be queued locally —

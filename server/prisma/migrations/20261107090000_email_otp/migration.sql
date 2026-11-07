@@ -1,0 +1,27 @@
+-- CreateEnum
+CREATE TYPE "EmailOtpPurpose" AS ENUM ('REGISTER', 'RESET_PASSWORD');
+
+-- CreateTable
+CREATE TABLE "EmailOtp" (
+    "id" TEXT NOT NULL,
+    "email" TEXT NOT NULL,
+    "purpose" "EmailOtpPurpose" NOT NULL,
+    "userId" TEXT,
+    "otpHash" TEXT NOT NULL,
+    "attempts" INTEGER NOT NULL DEFAULT 0,
+    "expiresAt" TIMESTAMP(3) NOT NULL,
+    "verifiedAt" TIMESTAMP(3),
+    "verificationTokenHash" TEXT,
+    "tokenExpiresAt" TIMESTAMP(3),
+    "consumedAt" TIMESTAMP(3),
+    "invalidatedAt" TIMESTAMP(3),
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "EmailOtp_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateIndex
+CREATE UNIQUE INDEX "EmailOtp_verificationTokenHash_key" ON "EmailOtp"("verificationTokenHash");
+
+-- CreateIndex
+CREATE INDEX "EmailOtp_email_purpose_createdAt_idx" ON "EmailOtp"("email", "purpose", "createdAt");

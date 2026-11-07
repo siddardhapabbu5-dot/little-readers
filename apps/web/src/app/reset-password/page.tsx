@@ -103,7 +103,7 @@ const btnStyle = {
 export default function ResetPasswordPage() {
   return (
     <MarketingPage title="Reset password">
-      <p>Choose a new password for your Little Readers account.</p>
+      <p>Choose a new password for your LEARN WISE account.</p>
       <Suspense fallback={<p>Loading…</p>}>
         <ResetPasswordForm />
       </Suspense>

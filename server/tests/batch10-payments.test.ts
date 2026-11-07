@@ -223,4 +223,130 @@ describe.skipIf(!hasDb)("Batch 10 — Razorpay checkout + activation", () => {
     expect(adminPay.status).toBe(200);
     expect(Array.isArray(adminPay.body.data)).toBe(true);
   });
+
+  it("activates once when /verify and the webhook arrive together", async () => {
+    const order = await request(app)
+      .post("/api/payments/orders")
+      .set("Authorization", `Bearer ${parentToken}`)
+      .send({ purpose: "FAMILY_YEARLY" });
+    expect(order.status).toBe(201);
+    const orderId = order.body.data.orderId as string;
+    const paid = stubMarkOrderPaid(orderId, `pay_race_${stamp}`);
+    const before = await prisma.subscription.findFirst({
+      where: { userId: parentId },
+      orderBy: { createdAt: "desc" },
+    });
+    const body = JSON.stringify({
+      id: `evt_race_${stamp}`,
+      event: "payment.captured",
+      payload: {
+        payment: {
+          entity: {
+            id: paid.id,
+            order_id: orderId,
+            status: "captured",
+            amount: order.body.data.amountPaise,
+          },
+        },
+      },
+    });
+
+    const [verify, hook] = await Promise.all([
+      request(app)
+        .post("/api/payments/verify")
+        .set("Authorization", `Bearer ${parentToken}`)
+        .send({ orderId, paymentId: paid.id, signature: signCheckout(orderId, paid.id) }),
+      request(app)
+        .post("/api/payments/webhook")
+        .set("Content-Type", "application/json")
+        .set("X-Razorpay-Signature", signWebhook(body))
+        .send(body),
+    ]);
+    expect(verify.status).toBe(200);
+    expect(hook.status).toBe(200);
+    expect(
+      [verify.body.data.alreadyProcessed, hook.body.data.alreadyProcessed].filter(Boolean)
+    ).toHaveLength(1);
+
+    const after = await prisma.subscription.findFirst({
+      where: { userId: parentId },
+      orderBy: { createdAt: "desc" },
+    });
+    const days =
+      (after!.expiresAt!.getTime() - before!.expiresAt!.getTime()) / 86_400_000;
+    expect(days).toBeGreaterThanOrEqual(365);
+    expect(days).toBeLessThanOrEqual(366);
+    const row = await prisma.payment.findFirst({ where: { razorpayOrderId: orderId } });
+    expect(row?.status).toBe("SUCCEEDED");
+    expect(row?.razorpayPaymentId).toBe(paid.id);
+  });
+
+  it("records cancelled and failed payments without activating anything", async () => {
+    const before = await prisma.subscription.findFirst({
+      where: { userId: parentId },
+      orderBy: { createdAt: "desc" },
+    });
+
+    const cancelled = await request(app)
+      .post("/api/payments/orders")
+      .set("Authorization", `Bearer ${parentToken}`)
+      .send({ purpose: "FAMILY_YEARLY" });
+    const cancelledId = cancelled.body.data.orderId as string;
+    const cancel = await request(app)
+      .post("/api/payments/cancel")
+      .set("Authorization", `Bearer ${parentToken}`)
+      .send({ orderId: cancelledId });
+    expect(cancel.status).toBe(200);
+    expect(cancel.body.data.status).toBe("FAILED");
+
+    const failed = await request(app)
+      .post("/api/payments/orders")
+      .set("Authorization", `Bearer ${parentToken}`)
+      .send({ purpose: "FAMILY_YEARLY" });
+    const failedId = failed.body.data.orderId as string;
+    const body = JSON.stringify({
+      id: `evt_fail_${stamp}`,
+      event: "payment.failed",
+      payload: {
+        payment: { entity: { id: `pay_fail_${stamp}`, order_id: failedId, status: "failed" } },
+      },
+    });
+    const hook = await request(app)
+      .post("/api/payments/webhook")
+      .set("Content-Type", "application/json")
+      .set("X-Razorpay-Signature", signWebhook(body))
+      .send(body);
+    expect(hook.status).toBe(200);
+
+    const rows = await prisma.payment.findMany({
+      where: { razorpayOrderId: { in: [cancelledId, failedId] } },
+    });
+    expect(rows.map((r) => r.status)).toEqual(["FAILED", "FAILED"]);
+    const after = await prisma.subscription.findFirst({
+      where: { userId: parentId },
+      orderBy: { createdAt: "desc" },
+    });
+    expect(after?.expiresAt?.getTime()).toBe(before?.expiresAt?.getTime());
+  });
+
+  it("refuses live Razorpay keys unless explicitly allowed", async () => {
+    const prev = process.env.RAZORPAY_KEY_ID;
+    process.env.RAZORPAY_KEY_ID = "rzp_live_notreal";
+    try {
+      const plans = await request(app)
+        .get("/api/payments/plans")
+        .set("Authorization", `Bearer ${parentToken}`);
+      expect(plans.body.data.enabled).toBe(false);
+      expect(plans.body.data.keyId).toBeNull();
+
+      const order = await request(app)
+        .post("/api/payments/orders")
+        .set("Authorization", `Bearer ${parentToken}`)
+        .send({ purpose: "FAMILY_YEARLY" });
+      expect(order.status).toBe(503);
+      expect(order.body.code ?? order.body.details?.code).toBe("LIVE_KEYS_BLOCKED");
+    } finally {
+      process.env.RAZORPAY_KEY_ID = prev;
+    }
+  });
 });

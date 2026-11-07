@@ -447,7 +447,7 @@ export async function exportAdminWordsCsv(
     csv: withUtf8Bom(`${lines.join("\n")}\n`),
     count: rows.length,
     format: "grade_level" as const,
-    filename: `little-readers-words-${rows.length}.csv`,
+    filename: `learn-wise-words-${rows.length}.csv`,
   };
 }
 

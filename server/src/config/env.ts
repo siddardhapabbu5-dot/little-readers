@@ -68,6 +68,17 @@ const envSchema = z.object({
     .transform((v) => v === "true" || v === "1"),
   RESEND_API_KEY: z.string().optional(),
   RESEND_FROM_EMAIL: z.string().email().optional(),
+  /** Email OTP delivery (Hostinger domain mailbox). */
+  SMTP_HOST: z.string().optional(),
+  SMTP_PORT: z.coerce.number().int().positive().default(465),
+  SMTP_SECURE: z
+    .string()
+    .optional()
+    .transform((v) => v === undefined || v === "" ? undefined : v === "true" || v === "1"),
+  SMTP_USER: z.string().optional(),
+  SMTP_PASSWORD: z.string().optional(),
+  SMTP_FROM_EMAIL: z.string().email().optional(),
+  SMTP_FROM_NAME: z.string().default("LEARN WISE"),
   /** Razorpay (Batch 10) — sandbox keys in development; never commit live secrets. */
   RAZORPAY_KEY_ID: z.string().optional(),
   RAZORPAY_KEY_SECRET: z.string().optional(),
@@ -120,6 +131,13 @@ export const env =
         PASSWORD_RESET_LOG_ONLY: true,
         RESEND_API_KEY: undefined,
         RESEND_FROM_EMAIL: undefined,
+        SMTP_HOST: undefined,
+        SMTP_PORT: 465,
+        SMTP_SECURE: undefined,
+        SMTP_USER: undefined,
+        SMTP_PASSWORD: undefined,
+        SMTP_FROM_EMAIL: undefined,
+        SMTP_FROM_NAME: "LEARN WISE",
         RAZORPAY_KEY_ID: undefined,
         RAZORPAY_KEY_SECRET: undefined,
         RAZORPAY_WEBHOOK_SECRET: undefined,

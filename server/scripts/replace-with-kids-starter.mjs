@@ -41,8 +41,8 @@ async function main() {
     originalFilename: "little-readers-kids-dictionary-template.csv",
     mimeType: "text/csv",
     buffer,
-    sourceName: "Little Readers Kids Starter",
-    licence: "Project-owned sample template for Little Readers",
+    sourceName: "LEARN WISE Kids Starter",
+    licence: "Project-owned sample template for LEARN WISE",
   });
   console.log("Uploaded batch:", {
     id: batch.id,

@@ -62,6 +62,22 @@ function webhookSecret() {
   return process.env.RAZORPAY_WEBHOOK_SECRET || env.RAZORPAY_WEBHOOK_SECRET;
 }
 
+/** Live keys stay blocked until the owner explicitly sets RAZORPAY_ALLOW_LIVE=true. */
+export function liveKeyBlocked() {
+  const id = keyId() ?? "";
+  return id.startsWith("rzp_live_") && process.env.RAZORPAY_ALLOW_LIVE !== "true";
+}
+
+function assertKeyModeAllowed() {
+  if (liveKeyBlocked()) {
+    throw new AppError(
+      "Live Razorpay keys are not allowed yet — use rzp_test_ keys",
+      503,
+      { code: "LIVE_KEYS_BLOCKED" }
+    );
+  }
+}
+
 function authHeader() {
   const id = keyId();
   const secret = keySecret();
@@ -139,6 +155,7 @@ export function setRazorpayClientForTests(client: RazorpayClient | null) {
 
 export function getRazorpayClient(): RazorpayClient {
   if (override) return override;
+  assertKeyModeAllowed();
   if (keyId() === "rzp_test_stub" || process.env.RAZORPAY_USE_STUB === "1") {
     return stubClient;
   }

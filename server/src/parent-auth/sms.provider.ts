@@ -89,7 +89,7 @@ export async function sendOtpSms(input: {
       body: JSON.stringify({
         to: input.mobileE164,
         sender: env.SMS_SENDER_ID,
-        message: `Your Little Readers login code is ${input.otp}. Valid for ${Math.floor(env.OTP_EXPIRY_SECONDS / 60)} minutes.`,
+        message: `Your LEARN WISE login code is ${input.otp}. Valid for ${Math.floor(env.OTP_EXPIRY_SECONDS / 60)} minutes.`,
       }),
     });
     if (!res.ok) {

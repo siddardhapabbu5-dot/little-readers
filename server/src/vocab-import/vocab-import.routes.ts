@@ -175,7 +175,7 @@ vocabImportRouter.get("/words/export.csv", async (req, res, next) => {
     res.setHeader("Content-Type", "text/csv; charset=utf-8");
     res.setHeader(
       "Content-Disposition",
-      `attachment; filename="${filename || `little-readers-words-${count}.csv`}"`
+      `attachment; filename="${filename || `learn-wise-words-${count}.csv`}"`
     );
     res.status(200).send(csv);
   } catch (error) {

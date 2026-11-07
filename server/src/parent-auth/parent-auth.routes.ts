@@ -32,7 +32,7 @@ parentAuthRouter.get("/support-contact", (_req, res) => {
     data: {
       email: env.SUPPORT_EMAIL,
       message:
-        "If you forgot the mobile number registered on your parent account, contact Little Readers support. Your registered number cannot be changed using only an OTP sent to a new unverified phone.",
+        "If you forgot the mobile number registered on your parent account, contact LEARN WISE support. Your registered number cannot be changed using only an OTP sent to a new unverified phone.",
     },
   });
 });

@@ -30,7 +30,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
           </header>
           <main>{children}</main>
           <footer className="footer">
-            Little Readers · Multi-school SaaS · Phase 1 architecture foundation
+            {APP_NAME} · Multi-school SaaS · Phase 1 architecture foundation
           </footer>
         </div>
       </body>

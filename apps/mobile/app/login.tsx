@@ -3,7 +3,6 @@ import {
   ActivityIndicator,
   Image,
   KeyboardAvoidingView,
-  Linking,
   Platform,
   Pressable,
   ScrollView,
@@ -16,8 +15,6 @@ import {
 } from "react-native";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import type { CountryCode } from "libphonenumber-js";
-import { CountryCodePicker } from "../components/CountryCodePicker";
 import { apiRequest, ApiError } from "../services/api";
 import {
   friendlyAuthError,
@@ -32,20 +29,11 @@ import {
   saveUser,
 } from "../services/secure";
 import { colors, radii } from "../theme";
-import {
-  DEFAULT_COUNTRY_ISO,
-  findCountry,
-  sanitizeNationalInput,
-  validateNationalPhone,
-} from "../utils/phone";
 
 const BG_BOTTOM = require("../assets/login-bottom-scene.jpg");
 const LOGO_BOOKS = require("../assets/login-books-logo.jpg");
 const BOY = require("../assets/login-boy.jpg");
 const GIRL = require("../assets/login-girl.jpg");
-
-/** Staff/admin email login is hidden from the main student OTP UI. */
-type VisibleMode = "student_otp" | "staff_email";
 
 export default function LoginScreen() {
   const router = useRouter();
@@ -53,19 +41,12 @@ export default function LoginScreen() {
   const { height: winH } = useWindowDimensions();
   const scrollRef = useRef<ScrollView>(null);
   const passwordRef = useRef<TextInputType>(null);
-  const otpRef = useRef<TextInputType>(null);
   const emailFieldY = useRef(0);
   const passwordFieldY = useRef(0);
 
-  const [mode, setMode] = useState<VisibleMode>("student_otp");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [countryIso, setCountryIso] = useState<CountryCode>(DEFAULT_COUNTRY_ISO);
-  const [mobile, setMobile] = useState("");
-  const [otp, setOtp] = useState("");
-  const [otpSent, setOtpSent] = useState(false);
-  const [resendIn, setResendIn] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [fieldHint, setFieldHint] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
@@ -78,12 +59,6 @@ export default function LoginScreen() {
       if (msg) setInfo(msg);
     });
   }, []);
-
-  useEffect(() => {
-    if (resendIn <= 0) return;
-    const t = setTimeout(() => setResendIn((s) => Math.max(0, s - 1)), 1000);
-    return () => clearTimeout(t);
-  }, [resendIn]);
 
   function clearMessages() {
     setError(null);
@@ -99,103 +74,6 @@ export default function LoginScreen() {
         animated: true,
       });
     });
-  }
-
-  async function onSendOtp() {
-    if (loading) return;
-    clearMessages();
-    const checked = validateNationalPhone(mobile, countryIso);
-    if (!checked.ok) {
-      setFieldHint(checked.error);
-      return;
-    }
-    setLoading(true);
-    try {
-      const country = findCountry(countryIso);
-      const data = await apiRequest<{
-        mobileE164: string;
-        expiresInSec: number;
-        resendInSec: number;
-        message: string;
-        devOtp?: string;
-      }>("/parent/auth/send-otp", {
-        method: "POST",
-        mobile: false,
-        body: JSON.stringify({
-          mobile: mobile,
-          countryCode: country.callingCode,
-        }),
-      });
-      setOtpSent(true);
-      setResendIn(data.resendInSec ?? 60);
-      setInfo("Student OTP sent. Check your SMS.");
-      if (data.devOtp) {
-        setOtp(data.devOtp);
-        setInfo(`Dev Student OTP: ${data.devOtp}`);
-      }
-      otpRef.current?.focus();
-    } catch (err) {
-      if (
-        err instanceof ApiError &&
-        err.details &&
-        typeof err.details === "object" &&
-        "code" in err.details &&
-        (err.details as { code?: string }).code === "SMS_FAILED"
-      ) {
-        setError(
-          "Could not send OTP. SMS is not configured or the provider failed. Ask an admin to check SMS settings — login is not skipped."
-        );
-      } else {
-        setError(friendlyAuthError(err));
-      }
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  async function onVerifyOtp() {
-    if (loading) return;
-    clearMessages();
-    const checked = validateNationalPhone(mobile, countryIso);
-    if (!checked.ok) {
-      setFieldHint(checked.error);
-      return;
-    }
-    const code = otp.replace(/\D/g, "");
-    if (code.length !== 6) {
-      setFieldHint("Enter the 6-digit Student OTP.");
-      return;
-    }
-    setLoading(true);
-    try {
-      const country = findCountry(countryIso);
-      const deviceId = await getOrCreateInstallationId();
-      const data = await apiRequest<{
-        user: { id: string; name: string; email: string; role: string };
-        tokens: { accessToken: string; refreshToken?: string };
-      }>("/parent/auth/verify-otp", {
-        method: "POST",
-        mobile: true,
-        body: JSON.stringify({
-          mobile: mobile,
-          countryCode: country.callingCode,
-          otp: code,
-          deviceId,
-          platform: Platform.OS,
-          deviceName: `${Platform.OS} device`,
-        }),
-      });
-      await saveToken(data.tokens.accessToken);
-      if (data.tokens.refreshToken) {
-        await saveRefreshToken(data.tokens.refreshToken);
-      }
-      await saveUser(data.user);
-      router.replace(routeForRole(data.user.role) as never);
-    } catch (err) {
-      setError(friendlyAuthError(err));
-    } finally {
-      setLoading(false);
-    }
   }
 
   async function onEmailLogin() {
@@ -214,15 +92,25 @@ export default function LoginScreen() {
 
     setLoading(true);
     try {
+      const deviceId = await getOrCreateInstallationId();
       const data = await apiRequest<{
         user: { id: string; name: string; email: string; role: string };
-        tokens: { accessToken: string };
+        tokens: { accessToken: string; refreshToken?: string };
       }>("/auth/login", {
         method: "POST",
         mobile: false,
-        body: JSON.stringify({ email: trimmed, password }),
+        body: JSON.stringify({
+          email: trimmed,
+          password,
+          deviceId,
+          platform: Platform.OS,
+          deviceName: `${Platform.OS} device`,
+        }),
       });
       await saveToken(data.tokens.accessToken);
+      if (data.tokens.refreshToken) {
+        await saveRefreshToken(data.tokens.refreshToken);
+      }
       await saveUser(data.user);
       router.replace(routeForRole(data.user.role) as never);
     } catch (err) {
@@ -268,28 +156,35 @@ export default function LoginScreen() {
           <View
             style={styles.header}
             accessibilityRole="header"
-            accessibilityLabel="Little Readers. Learn, Listen, Spell."
+            accessibilityLabel="LEARN WISE. Read, Spell, Learn, Succeed."
           >
             <View style={styles.heroRow}>
               <Image
                 source={BOY}
                 style={styles.mascot}
                 resizeMode="contain"
-                accessibilityLabel="Little Readers boy character"
+                accessibilityLabel="LEARN WISE boy character"
               />
               <View style={styles.brandCenter}>
                 <Image
                   source={LOGO_BOOKS}
                   style={styles.booksLogo}
                   resizeMode="contain"
-                  accessibilityLabel="Little Readers books logo"
+                  accessibilityLabel="LEARN WISE books logo"
                 />
-                <Text style={styles.brand}>Little Readers</Text>
+                <Text style={styles.brand}>LEARN WISE</Text>
                 <View style={styles.pill}>
-                  <Text style={styles.pillText}>Learn • Listen • Spell</Text>
+                  <Text
+                    style={styles.pillText}
+                    numberOfLines={1}
+                    adjustsFontSizeToFit
+                    minimumFontScale={0.8}
+                  >
+                    Read • Spell • Learn • Succeed
+                  </Text>
                 </View>
                 <Text style={styles.tagline}>
-                  A little learning, a big adventure!
+                  Learn today, Lead tomorrow
                 </Text>
                 <View style={styles.taglineUnderline} />
               </View>
@@ -297,7 +192,7 @@ export default function LoginScreen() {
                 source={GIRL}
                 style={styles.mascot}
                 resizeMode="contain"
-                accessibilityLabel="Little Readers girl character"
+                accessibilityLabel="LEARN WISE girl character"
               />
             </View>
           </View>
@@ -305,9 +200,7 @@ export default function LoginScreen() {
           <View style={styles.card}>
             <Text style={styles.welcome}>Welcome Back!</Text>
             <Text style={styles.welcomeSub}>
-              {mode === "student_otp"
-                ? "Sign in with Student OTP on your registered mobile."
-                : "Staff sign-in (Admin / Super Admin)."}
+              Sign in with your email address and password.
             </Text>
             <View style={styles.starRule}>
               <View style={styles.ruleLine} />
@@ -315,12 +208,22 @@ export default function LoginScreen() {
               <View style={styles.ruleLine} />
             </View>
 
-            {__DEV__ &&
-            process.env.EXPO_PUBLIC_ENABLE_DEMO !== "0" &&
-            mode === "staff_email" ? (
+            {__DEV__ && process.env.EXPO_PUBLIC_ENABLE_DEMO !== "0" ? (
               <View style={styles.devRow} accessibilityLabel="Demo quick login">
                 <Text style={styles.devLabel}>Demo (tap to fill)</Text>
                 <View style={styles.devBtns}>
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel="Fill parent demo login"
+                    onPress={() => {
+                      setEmail("parent@littlereaders.test");
+                      setPassword("ParentDemo1");
+                      clearMessages();
+                    }}
+                    style={styles.devBtn}
+                  >
+                    <Text style={styles.devBtnText}>Parent</Text>
+                  </Pressable>
                   <Pressable
                     accessibilityRole="button"
                     accessibilityLabel="Fill admin demo login"
@@ -349,69 +252,7 @@ export default function LoginScreen() {
               </View>
             ) : null}
 
-            {mode === "student_otp" ? (
-              <>
-                <View style={styles.inputRow}>
-                  <CountryCodePicker
-                    value={countryIso}
-                    disabled={loading}
-                    onChange={(iso) => {
-                      setCountryIso(iso);
-                      setFieldHint(null);
-                      setError(null);
-                      if (otpSent) {
-                        setOtpSent(false);
-                        setOtp("");
-                      }
-                    }}
-                  />
-                  <TextInput
-                    style={styles.input}
-                    value={mobile}
-                    onChangeText={(v) => {
-                      setMobile(sanitizeNationalInput(v));
-                      setFieldHint(null);
-                      setError(null);
-                      if (otpSent) {
-                        setOtpSent(false);
-                        setOtp("");
-                      }
-                    }}
-                    placeholder="Mobile number"
-                    placeholderTextColor="#9B8EC4"
-                    keyboardType="phone-pad"
-                    textContentType="telephoneNumber"
-                    editable={!loading}
-                    accessibilityLabel="Mobile number"
-                  />
-                </View>
-
-                {otpSent ? (
-                  <View style={styles.inputRow}>
-                    <Text style={styles.inputIcon} accessibilityElementsHidden>
-                      #
-                    </Text>
-                    <TextInput
-                      ref={otpRef}
-                      style={styles.input}
-                      value={otp}
-                      onChangeText={(v) => {
-                        setOtp(v.replace(/\D/g, "").slice(0, 6));
-                        setFieldHint(null);
-                        setError(null);
-                      }}
-                      placeholder="6-digit Student OTP"
-                      placeholderTextColor="#9B8EC4"
-                      keyboardType="number-pad"
-                      editable={!loading}
-                      accessibilityLabel="Student OTP code"
-                      onSubmitEditing={() => void onVerifyOtp()}
-                    />
-                  </View>
-                ) : null}
-              </>
-            ) : (
-              <>
+            <>
                 <View
                   style={styles.inputRow}
                   onLayout={(e) => {
@@ -488,8 +329,7 @@ export default function LoginScreen() {
                     </Text>
                   </Pressable>
                 </View>
-              </>
-            )}
+            </>
 
             {(fieldHint || error || info || loading) && (
               <View
@@ -504,94 +344,7 @@ export default function LoginScreen() {
               </View>
             )}
 
-            {mode === "student_otp" ? (
-              <>
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel={
-                    otpSent ? "Verify Student OTP" : "Send Student OTP"
-                  }
-                  disabled={loading}
-                  onPress={() =>
-                    void (otpSent ? onVerifyOtp() : onSendOtp())
-                  }
-                  style={({ pressed }) => [
-                    styles.loginBtn,
-                    (pressed || loading) && { opacity: 0.85 },
-                  ]}
-                >
-                  {loading ? (
-                    <ActivityIndicator color="#fff" />
-                  ) : (
-                    <>
-                      <Text style={styles.loginBtnText}>
-                        {otpSent ? "Verify Student OTP" : "Send Student OTP"}
-                      </Text>
-                      <View style={styles.loginArrow}>
-                        <Text style={styles.loginArrowText}>→</Text>
-                      </View>
-                    </>
-                  )}
-                </Pressable>
-                {otpSent ? (
-                  <View style={styles.otpActions}>
-                    <Pressable
-                      disabled={loading || resendIn > 0}
-                      onPress={() => void onSendOtp()}
-                      style={styles.forgotBtn}
-                    >
-                      <Text style={styles.forgotText}>
-                        {resendIn > 0
-                          ? `Resend Student OTP in ${resendIn}s`
-                          : "Resend Student OTP"}
-                      </Text>
-                    </Pressable>
-                    <Pressable
-                      onPress={() => {
-                        setOtpSent(false);
-                        setOtp("");
-                        setInfo(null);
-                      }}
-                      style={styles.forgotBtn}
-                    >
-                      <Text style={styles.forgotText}>Change number</Text>
-                    </Pressable>
-                  </View>
-                ) : null}
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel="Forgot mobile number, contact support"
-                  onPress={() => {
-                    void (async () => {
-                      try {
-                        const data = await apiRequest<{
-                          email: string;
-                          message: string;
-                        }>("/parent/auth/support-contact", {
-                          method: "GET",
-                          mobile: false,
-                        });
-                        setInfo(data.message);
-                        const mailto = `mailto:${data.email}?subject=${encodeURIComponent(
-                          "Little Readers – forgot registered mobile"
-                        )}`;
-                        await Linking.openURL(mailto);
-                      } catch {
-                        setInfo(
-                          "Contact support@littlereaders.example if you forgot your registered mobile. We will not change it using only an OTP to a new number."
-                        );
-                      }
-                    })();
-                  }}
-                  style={styles.forgotBtn}
-                >
-                  <Text style={styles.forgotText}>
-                    Forgot mobile? Contact support
-                  </Text>
-                </Pressable>
-              </>
-            ) : (
-              <>
+            <>
                 <Pressable
                   accessibilityRole="button"
                   accessibilityLabel="Log In"
@@ -630,23 +383,11 @@ export default function LoginScreen() {
                 >
                   <Text style={styles.forgotText}>Forgot password?</Text>
                 </Pressable>
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel="Back to Student OTP"
-                  onPress={() => {
-                    setMode("student_otp");
-                    clearMessages();
-                  }}
-                  style={styles.forgotBtn}
-                >
-                  <Text style={styles.forgotText}>← Back to Student OTP</Text>
-                </Pressable>
-              </>
-            )}
+            </>
           </View>
 
           <View style={styles.footer}>
-            <Text style={styles.newUser}>New to Little Readers?</Text>
+            <Text style={styles.newUser}>New to LEARN WISE?</Text>
             <Pressable
               accessibilityRole="button"
               accessibilityLabel="Create Student Account"
@@ -659,19 +400,6 @@ export default function LoginScreen() {
               <Text style={styles.createIcon}>👤+</Text>
               <Text style={styles.createText}>Create Student Account</Text>
             </Pressable>
-            {mode === "student_otp" ? (
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel="Staff sign-in for Admin or Super Admin"
-                onPress={() => {
-                  setMode("staff_email");
-                  clearMessages();
-                }}
-                style={styles.staffLink}
-              >
-                <Text style={styles.staffLinkText}>Staff sign-in</Text>
-              </Pressable>
-            ) : null}
           </View>
         </ScrollView>
       </KeyboardAvoidingView>

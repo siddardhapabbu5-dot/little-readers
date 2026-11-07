@@ -551,7 +551,7 @@ export default function ManageVocabularyWordsPage() {
                   a.href = url;
                   const cd = res.headers.get("Content-Disposition") || "";
                   const match = /filename="([^"]+)"/.exec(cd);
-                  a.download = match?.[1] || "little-readers-words.csv";
+                  a.download = match?.[1] || "learn-wise-words.csv";
                   a.click();
                   URL.revokeObjectURL(url);
                   setMessage(

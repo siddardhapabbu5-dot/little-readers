@@ -16,56 +16,41 @@ import {
   SoftButton,
   Title,
 } from "../components/ui";
+import { EmailOtpVerify } from "../components/EmailOtpVerify";
 import { apiRequest, ApiError } from "../services/api";
-import { isValidEmail } from "../services/auth-errors";
 import { colors } from "../theme";
-
-type ForgotResult = {
-  accepted: boolean;
-  message: string;
-  deliveryChannel?: string;
-  devResetToken?: string;
-};
 
 export default function ForgotPasswordScreen() {
   const router = useRouter();
   const [email, setEmail] = useState("");
+  const [token, setToken] = useState<string | null>(null);
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
-  const [devToken, setDevToken] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
-  async function onSubmit() {
+  async function onReset() {
     setError(null);
-    setSuccess(null);
-    setDevToken(null);
-    const trimmed = email.trim();
-    if (!trimmed) {
-      setError("Email address is required.");
+    if (password !== confirmPassword) {
+      setError("Passwords do not match.");
       return;
     }
-    if (!isValidEmail(trimmed)) {
-      setError("Enter a valid email address.");
-      return;
-    }
-
     setLoading(true);
     try {
-      const data = await apiRequest<ForgotResult>("/auth/forgot-password", {
+      const data = await apiRequest<{ message: string }>("/auth/reset-password-otp", {
         method: "POST",
         mobile: false,
-        body: JSON.stringify({ email: trimmed, client: "mobile" }),
+        body: JSON.stringify({
+          email: email.trim().toLowerCase(),
+          verificationToken: token,
+          password,
+          confirmPassword,
+        }),
       });
-      if (!data.accepted) {
-        setError(data.message);
-        return;
-      }
       setSuccess(data.message);
-      if (data.devResetToken) setDevToken(data.devResetToken);
     } catch (err) {
-      setError(
-        err instanceof ApiError ? err.message : "Could not start password reset. Please try again."
-      );
+      setError(err instanceof ApiError ? err.message : "Could not reset password.");
     } finally {
       setLoading(false);
     }
@@ -81,36 +66,51 @@ export default function ForgotPasswordScreen() {
           <SoftButton label="← Back to login" onPress={() => router.replace("/login")} />
           <Title>Forgot password</Title>
           <Text style={styles.sub}>
-            Enter your account email. We only confirm success after the reset email is
-            actually delivered (or logged in local test mode).
+            {token
+              ? "Email verified. Choose a new password (at least 8 characters, with a letter and a number)."
+              : "Enter your account email. We'll send a 6-digit verification code to it."}
           </Text>
           <Card style={{ gap: 12, marginTop: 8 }}>
-            <Field
-              label="Email"
-              autoCapitalize="none"
-              keyboardType="email-address"
-              value={email}
-              onChangeText={setEmail}
-              editable={!loading}
-            />
-            <ErrorText>{error}</ErrorText>
-            {success ? <Text style={styles.ok}>{success}</Text> : null}
-            {devToken ? (
-              <PrimaryButton
-                label="Open reset screen (test token)"
-                onPress={() =>
-                  router.push({
-                    pathname: "/reset-password",
-                    params: { token: devToken },
-                  })
-                }
-              />
-            ) : null}
-            <PrimaryButton
-              label="Send reset link"
-              loading={loading}
-              onPress={() => void onSubmit()}
-            />
+            {!token ? (
+              <>
+                <Field
+                  label="Email"
+                  autoCapitalize="none"
+                  keyboardType="email-address"
+                  value={email}
+                  onChangeText={setEmail}
+                />
+                <EmailOtpVerify email={email} purpose="RESET_PASSWORD" onVerified={setToken} />
+              </>
+            ) : success ? (
+              <>
+                <Text style={styles.ok}>{success}</Text>
+                <PrimaryButton label="Go to login" onPress={() => router.replace("/login")} />
+              </>
+            ) : (
+              <>
+                <Field
+                  label="New password"
+                  secureTextEntry
+                  value={password}
+                  onChangeText={setPassword}
+                  editable={!loading}
+                />
+                <Field
+                  label="Confirm password"
+                  secureTextEntry
+                  value={confirmPassword}
+                  onChangeText={setConfirmPassword}
+                  editable={!loading}
+                />
+                <ErrorText>{error}</ErrorText>
+                <PrimaryButton
+                  label="Update password"
+                  loading={loading}
+                  onPress={() => void onReset()}
+                />
+              </>
+            )}
           </Card>
         </ScrollView>
       </KeyboardAvoidingView>

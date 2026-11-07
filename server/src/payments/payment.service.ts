@@ -17,6 +17,7 @@ import {
 } from "../academic/subscription-plan.service.js";
 import {
   getRazorpayClient,
+  liveKeyBlocked,
   verifyCheckoutSignature,
   verifyWebhookSignature,
 } from "./razorpay.js";
@@ -109,20 +110,23 @@ export async function getPlansCatalog(levelId?: string) {
   mapped.push(...envPlans);
 
   const enabled = paymentsEnabled() || mapped.some((p) => p.purpose !== "EXTRA_SEATS");
+  const liveBlocked = liveKeyBlocked();
   return {
     enabled: Boolean(
       (process.env.PAYMENT_ENABLED === "true" ||
         process.env.PAYMENT_ENABLED === "1" ||
         paymentsEnabled()) &&
         (process.env.RAZORPAY_KEY_ID || publicKeyId()) &&
-        mapped.length > 0
+        mapped.length > 0 &&
+        !liveBlocked
     ),
     currency: mapped[0]?.currency ?? "INR",
-    keyId: publicKeyId(),
+    keyId: liveBlocked ? null : publicKeyId(),
     plans: mapped,
     dbCatalog: dbPlans.length > 0,
-    note:
-      mapped.length > 0
+    note: liveBlocked
+      ? "Checkout is paused: live Razorpay keys are not approved yet."
+      : mapped.length > 0
         ? null
         : "No published subscription plans yet. Ask Admin to publish plans, or configure env plan amounts.",
     // keep flag for callers that still check paymentsEnabled alone
@@ -287,6 +291,8 @@ async function activateVerifiedPayment(
   opts?: { eventId?: string }
 ) {
   return prisma.$transaction(async (tx) => {
+    // Serialises /verify and webhook deliveries for the same order.
+    await tx.$executeRaw`SELECT id FROM "Payment" WHERE id = ${paymentRowId} FOR UPDATE`;
     const payment = await tx.payment.findUnique({ where: { id: paymentRowId } });
     if (!payment) throw new AppError("Payment not found", 404);
 

@@ -1,54 +1,41 @@
 "use client";
 
 import { FormEvent, useState } from "react";
-import { Alert } from "@little-readers/ui";
+import { Alert, Button, TextField } from "@little-readers/ui";
 import { MarketingPage } from "@/components/MarketingPage";
+import { EmailOtpVerify } from "@/components/EmailOtpVerify";
 import { apiRequest, ApiClientError } from "@/lib/api";
-
-type ForgotResult = {
-  accepted: boolean;
-  message: string;
-  deliveryChannel?: string;
-  devResetToken?: string;
-};
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
+  const [token, setToken] = useState<string | null>(null);
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
-  const [info, setInfo] = useState<string | null>(null);
-  const [devToken, setDevToken] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
-  async function onSubmit(event: FormEvent) {
+  async function onReset(event: FormEvent) {
     event.preventDefault();
     setError(null);
-    setInfo(null);
-    setDevToken(null);
-
-    const trimmed = email.trim();
-    if (!trimmed) {
-      setError("Email address is required");
+    if (password !== confirmPassword) {
+      setError("Passwords do not match");
       return;
     }
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
-      setError("Enter a valid email address");
-      return;
-    }
-
     setLoading(true);
     try {
-      const data = await apiRequest<ForgotResult>("/auth/forgot-password", {
+      const data = await apiRequest<{ message: string }>("/auth/reset-password-otp", {
         method: "POST",
-        body: JSON.stringify({ email: trimmed, client: "web" }),
+        body: JSON.stringify({
+          email: email.trim().toLowerCase(),
+          verificationToken: token,
+          password,
+          confirmPassword,
+        }),
       });
-      if (!data.accepted) {
-        setError(data.message);
-        return;
-      }
-      setInfo(data.message);
-      if (data.devResetToken) setDevToken(data.devResetToken);
+      setSuccess(data.message);
     } catch (err) {
-      setError(err instanceof ApiClientError ? err.message : "Could not start password reset");
+      setError(err instanceof ApiClientError ? err.message : "Could not reset password");
     } finally {
       setLoading(false);
     }
@@ -57,56 +44,63 @@ export default function ForgotPasswordPage() {
   return (
     <MarketingPage title="Forgot password">
       <p>
-        Enter the email for your Little Readers account. Success is shown only after
-        the reset email is delivered (or logged in local non-production test mode).
+        {token
+          ? "Email verified. Choose a new password (at least 8 characters, with a letter and a number)."
+          : "Enter the email for your LEARN WISE account. We'll send a 6-digit verification code to it."}
       </p>
-      <form
-        onSubmit={onSubmit}
-        style={{ display: "grid", gap: 12, marginTop: 20, maxWidth: 420 }}
-      >
-        {error ? <Alert tone="error">{error}</Alert> : null}
-        {info ? <Alert tone="info">{info}</Alert> : null}
-        <label style={{ display: "grid", gap: 6, fontWeight: 700 }}>
-          Email address
-          <input
-            type="email"
-            value={email}
-            onChange={(event) => setEmail(event.target.value)}
-            autoComplete="email"
-            required
-            disabled={loading}
-            style={{
-              border: "2px solid #dbe7f5",
-              borderRadius: 12,
-              padding: "12px 14px",
-              fontSize: 16,
-            }}
-          />
-        </label>
-        <button
-          type="submit"
-          disabled={loading}
-          style={{
-            border: "none",
-            borderRadius: 12,
-            padding: "12px 16px",
-            background: "#1677E8",
-            color: "#fff",
-            fontWeight: 800,
-            cursor: "pointer",
-          }}
-        >
-          {loading ? "Sending…" : "Send reset link"}
-        </button>
-        {devToken ? (
-          <a href={`/reset-password?token=${encodeURIComponent(devToken)}`} style={{ fontWeight: 700 }}>
-            Open reset page (test token)
+      <div style={{ display: "grid", gap: 12, marginTop: 20, maxWidth: 420 }}>
+        {!token ? (
+          <>
+            <TextField
+              label="Email address"
+              name="email"
+              type="email"
+              autoComplete="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+            />
+            <EmailOtpVerify email={email} purpose="RESET_PASSWORD" onVerified={setToken} />
+          </>
+        ) : success ? (
+          <>
+            <Alert tone="success">{success}</Alert>
+            <a href="/login" style={{ fontWeight: 700, color: "#1677E8" }}>
+              Go to login
+            </a>
+          </>
+        ) : (
+          <form onSubmit={onReset} style={{ display: "grid", gap: 12 }}>
+            {error ? <Alert tone="error">{error}</Alert> : null}
+            <TextField
+              label="New password"
+              name="password"
+              type="password"
+              autoComplete="new-password"
+              minLength={8}
+              required
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+            />
+            <TextField
+              label="Confirm password"
+              name="confirmPassword"
+              type="password"
+              autoComplete="new-password"
+              required
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+            />
+            <Button type="submit" loading={loading}>
+              Update password
+            </Button>
+          </form>
+        )}
+        {!success ? (
+          <a href="/login" style={{ fontWeight: 700, color: "#1677E8" }}>
+            Back to login
           </a>
         ) : null}
-        <a href="/login" style={{ fontWeight: 700, color: "#1677E8" }}>
-          Back to login
-        </a>
-      </form>
+      </div>
     </MarketingPage>
   );
 }

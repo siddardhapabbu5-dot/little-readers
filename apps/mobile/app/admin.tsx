@@ -454,7 +454,7 @@ export default function AdminScreen() {
               <View style={styles.brandRow}>
                 <AdminBookLogo size={44} />
                 <View>
-                  <Text style={styles.brandName}>Little Readers</Text>
+                  <Text style={styles.brandName}>LEARN WISE</Text>
                   <Text style={styles.tagline}>Learn • Grow • Shine</Text>
                 </View>
               </View>

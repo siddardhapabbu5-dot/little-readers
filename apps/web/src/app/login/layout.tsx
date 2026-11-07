@@ -5,9 +5,9 @@ import "./login-exact.css";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Login · Little Readers",
+  title: "Login · LEARN WISE",
   description:
-    "Parent and admin login for Little Readers — track progress and manage learning.",
+    "Parent and admin login for LEARN WISE — track progress and manage learning.",
 };
 
 export default function LoginLayout({ children }: { children: ReactNode }) {

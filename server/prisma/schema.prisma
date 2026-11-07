@@ -224,6 +224,30 @@ model PasswordResetToken {
   @@index([expiresAt])
 }
 
+enum EmailOtpPurpose {
+  REGISTER
+  RESET_PASSWORD
+}
+
+/** Email verification codes (registration + forgot password). Only hashes are stored. */
+model EmailOtp {
+  id                    String          @id @default(cuid())
+  email                 String
+  purpose               EmailOtpPurpose
+  userId                String?
+  otpHash               String
+  attempts              Int             @default(0)
+  expiresAt             DateTime
+  verifiedAt            DateTime?
+  verificationTokenHash String?         @unique
+  tokenExpiresAt        DateTime?
+  consumedAt            DateTime?
+  invalidatedAt         DateTime?
+  createdAt             DateTime        @default(now())
+
+  @@index([email, purpose, createdAt])
+}
+
 /** Admin-only password reset tokens (hashed at rest). Separate from parent/general reset. */
 model AdminPasswordResetToken {
   id        String    @id @default(cuid())
@@ -1469,6 +1493,30 @@ model PrivacyPolicy {
 
   @@index([status, updatedAt])
   @@index([version])
+}
+
+enum PolicyDocumentType {
+  PRIVACY_POLICY
+  TERMS_OF_SERVICE
+  PARENTAL_CONSENT
+}
+
+/// Admin-uploaded official legal PDFs (one row per document type). PDF bytes stay in the DB — never a public path.
+model PolicyDocument {
+  id               String             @id @default(cuid())
+  type             PolicyDocumentType @unique
+  title            String
+  description      String             @default("")
+  version          String             @default("")
+  fileName         String?
+  fileSize         Int?
+  fileSha256       String?
+  fileData         Bytes?
+  uploadedAt       DateTime?
+  uploadedByUserId String?
+  updatedByUserId  String?
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
 }
 
 /// Parent/guardian privacy or deletion requests — no automatic data deletion.

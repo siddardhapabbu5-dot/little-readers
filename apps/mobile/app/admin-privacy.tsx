@@ -12,6 +12,7 @@ import {
 import { useFocusEffect, useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { AuthGate } from "../components/AuthGate";
+import { PolicyDocumentsSection } from "../components/PolicyDocumentsSection";
 import { Card, ErrorText, SoftButton, Title } from "../components/ui";
 import { apiRequest, ApiError } from "../services/api";
 import { colors, radii } from "../theme";
@@ -76,6 +77,60 @@ function Field({
   );
 }
 
+function PreviewBlock({ title, body }: { title: string; body?: string | null }) {
+  if (!body?.trim()) return null;
+  return (
+    <View style={{ gap: 4 }}>
+      <Text style={styles.section}>{title}</Text>
+      <Text style={styles.previewBody}>{body}</Text>
+    </View>
+  );
+}
+
+function PolicyPreview({ policy }: { policy: Policy }) {
+  const business = [
+    policy.legalBusinessName,
+    policy.businessAddress,
+    policy.country,
+    policy.supportEmail ? `Support: ${policy.supportEmail}` : null,
+    policy.supportPhone ? `Phone: ${policy.supportPhone}` : null,
+  ]
+    .filter((v) => v?.trim())
+    .join("\n");
+  const effective = policy.effectiveDate ? new Date(policy.effectiveDate) : null;
+  return (
+    <Card style={{ gap: 12 }}>
+      <Text style={styles.meta}>Preview — not public until published</Text>
+      <Title>{policy.title?.trim() || "Privacy Policy"}</Title>
+      <Text style={styles.meta}>
+        Version: {policy.version}
+        {effective && !Number.isNaN(effective.getTime())
+          ? ` · Effective ${effective.toLocaleDateString()}`
+          : ""}
+      </Text>
+      <PreviewBlock title="Business details" body={business} />
+      <PreviewBlock title="Policy" body={policy.content} />
+      <PreviewBlock
+        title="Parent/guardian consent"
+        body={policy.parentalConsentExplanation}
+      />
+      <PreviewBlock title="Child data collection" body={policy.childDataDisclosure} />
+      <PreviewBlock title="Learning data" body={policy.learningDataDisclosure} />
+      <PreviewBlock title="Device information" body={policy.deviceDataDisclosure} />
+      <PreviewBlock title="Third-party services" body={policy.thirdPartyDisclosure} />
+      <PreviewBlock title="Data retention" body={policy.dataRetentionInfo} />
+      <PreviewBlock
+        title="Account / data deletion requests"
+        body={
+          policy.deletionRequestContact
+            ? `Contact: ${policy.deletionRequestContact}. Requests are reviewed by an administrator; accounts and learning history are not deleted automatically.`
+            : null
+        }
+      />
+    </Card>
+  );
+}
+
 export default function AdminPrivacyScreen() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
@@ -88,6 +143,7 @@ export default function AdminPrivacyScreen() {
     Array<{ id: string; status: string; version: string; title: string }>
   >([]);
   const [requests, setRequests] = useState<RequestRow[]>([]);
+  const [previewing, setPreviewing] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -245,6 +301,8 @@ export default function AdminPrivacyScreen() {
           <ErrorText>{error}</ErrorText>
           {info ? <Text style={styles.info}>{info}</Text> : null}
 
+          <PolicyDocumentsSection />
+
           <Card style={{ gap: 6 }}>
             <Text style={styles.section}>Publication status</Text>
             <Text style={styles.meta}>
@@ -365,9 +423,15 @@ export default function AdminPrivacyScreen() {
                 label={saving ? "Saving…" : "Save draft"}
                 onPress={() => void saveDraft()}
               />
+              <SoftButton
+                label={previewing ? "Hide preview" : "Preview"}
+                onPress={() => setPreviewing((v) => !v)}
+              />
               <SoftButton label="Publish draft" onPress={publish} />
             </Card>
           ) : null}
+
+          {draft && previewing ? <PolicyPreview policy={draft} /> : null}
 
           <Card style={{ gap: 8 }}>
             <Text style={styles.section}>Privacy requests</Text>
@@ -414,6 +478,7 @@ const styles = StyleSheet.create({
   section: { fontWeight: "800", fontSize: 16, color: colors.text },
   meta: { color: colors.textMuted, lineHeight: 18 },
   label: { fontWeight: "700", color: colors.text, fontSize: 13 },
+  previewBody: { color: colors.text, lineHeight: 20 },
   input: {
     borderWidth: 1,
     borderColor: colors.border,

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Alert, Button, TextField } from "@little-readers/ui";
 import { apiRequest, ApiClientError } from "@/lib/api";
 import { saveToken } from "@/lib/auth-storage";
+import { EmailOtpVerify } from "@/components/EmailOtpVerify";
 import type { RegisterResponse } from "@little-readers/types";
 
 type PublicPrivacy = {
@@ -21,6 +22,10 @@ export default function RegisterPage() {
   const [acceptTerms, setAcceptTerms] = useState(false);
   const [acceptPrivacy, setAcceptPrivacy] = useState(false);
   const [parentalConsent, setParentalConsent] = useState(false);
+  const [email, setEmail] = useState("");
+  const [emailToken, setEmailToken] = useState<string | null>(null);
+  const [verifiedEmail, setVerifiedEmail] = useState<string | null>(null);
+  const emailVerified = Boolean(emailToken) && verifiedEmail === email.trim().toLowerCase();
 
   useEffect(() => {
     void apiRequest<PublicPrivacy>("/privacy/policy")
@@ -49,6 +54,10 @@ export default function RegisterPage() {
       );
       return;
     }
+    if (!emailVerified) {
+      setError("Verify your email with the 6-digit code before creating the account.");
+      return;
+    }
     if (!acceptTerms || !acceptPrivacy || !parentalConsent) {
       setError(
         "Please review and accept Terms, Privacy Policy, and parental confirmation."
@@ -58,10 +67,13 @@ export default function RegisterPage() {
 
     setLoading(true);
     const form = new FormData(event.currentTarget);
+    const mobile = String(form.get("mobile") ?? "").trim();
     const payload = {
       name: String(form.get("name") ?? ""),
-      email: String(form.get("email") ?? ""),
+      email: email.trim(),
       password: String(form.get("password") ?? ""),
+      ...(mobile ? { mobile } : {}),
+      emailVerificationToken: emailToken,
       acceptTerms,
       acceptPrivacy,
       parentalConsent,
@@ -112,7 +124,22 @@ export default function RegisterPage() {
         type="email"
         required
         autoComplete="email"
+        value={email}
+        onChange={(e) => setEmail(e.target.value)}
       />
+      {emailVerified ? (
+        <p style={{ margin: 0, color: "#15803d", fontWeight: 700 }}>✓ Email verified</p>
+      ) : (
+        <EmailOtpVerify
+          email={email}
+          purpose="REGISTER"
+          disabled={loading}
+          onVerified={(token) => {
+            setEmailToken(token);
+            setVerifiedEmail(email.trim().toLowerCase());
+          }}
+        />
+      )}
       <TextField
         label="Password"
         name="password"
@@ -120,6 +147,13 @@ export default function RegisterPage() {
         required
         autoComplete="new-password"
         minLength={8}
+      />
+      <TextField
+        label="Mobile number (optional, for contact only)"
+        name="mobile"
+        type="tel"
+        autoComplete="tel"
+        placeholder="e.g. 9876543210"
       />
       <label className="checkbox-row">
         <input
@@ -132,8 +166,8 @@ export default function RegisterPage() {
           I accept the{" "}
           <a href="/terms" target="_blank" rel="noreferrer">
             Terms of Service
-          </a>{" "}
-          (draft wording for legal review).
+          </a>
+          .
         </span>
       </label>
       <label className="checkbox-row">
@@ -147,8 +181,8 @@ export default function RegisterPage() {
           I accept the{" "}
           <a href={privacyHref} target="_blank" rel="noreferrer">
             Privacy Policy
-          </a>{" "}
-          (draft wording for legal review).
+          </a>
+          {privacy?.policy?.version ? ` (version ${privacy.policy.version})` : ""}.
         </span>
       </label>
       <label className="checkbox-row">
@@ -160,10 +194,10 @@ export default function RegisterPage() {
         />
         <span>
           I confirm I am a parent/guardian and consent to create learning
-          profiles for my children (draft wording for legal review).
+          profiles for my children.
         </span>
       </label>
-      <Button type="submit" loading={loading} disabled={!policyReady}>
+      <Button type="submit" loading={loading} disabled={!policyReady || !emailVerified}>
         Create account
       </Button>
       <p className="muted">

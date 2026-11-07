@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "Little Readers",
+    "name": "LEARN WISE",
     "slug": "little-readers",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -17,10 +17,10 @@
       "bundleIdentifier": "com.littlereaders.app",
       "buildNumber": "10",
       "infoPlist": {
-        "CFBundleDisplayName": "Little Readers",
+        "CFBundleDisplayName": "LEARN WISE",
         "ITSAppUsesNonExemptEncryption": false,
         "LSApplicationQueriesSchemes": ["mailto", "https", "http"],
-        "NSPhotoLibraryUsageDescription": "Little Readers may access photos only when you choose a document or image to upload as an administrator.",
+        "NSPhotoLibraryUsageDescription": "LEARN WISE may access photos only when you choose a document or image to upload as an administrator.",
         "UIBackgroundModes": []
       },
       "config": {

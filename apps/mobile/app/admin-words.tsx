@@ -239,7 +239,7 @@ export default function AdminWordsScreen() {
       const safe = catLabel.replace(/[^a-zA-Z0-9]+/g, "-").replace(/^-|-$/g, "");
       const name = isAz
         ? `${safe || "ABC-Learning"}-A-to-Z.csv`
-        : `little-readers-${grade}${categoryId ? `-${safe}` : ""}.csv`;
+        : `learn-wise-${grade}${categoryId ? `-${safe}` : ""}.csv`;
       if (Platform.OS === "web" && typeof document !== "undefined") {
         const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
         const url = URL.createObjectURL(blob);

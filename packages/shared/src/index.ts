@@ -1,6 +1,6 @@
 import type { AgeGroupCode, LearningLevelCode } from "@little-readers/types";
 
-export const APP_NAME = "Little Readers";
+export const APP_NAME = "LEARN WISE";
 export const APP_TAGLINE = "Kids Learning Academy";
 
 export const AGE_GROUPS: Record<

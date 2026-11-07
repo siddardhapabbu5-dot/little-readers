@@ -52,6 +52,14 @@ config.resolver.resolveRequest = (context, moduleName, platform) => {
     return { type: "sourceFile", filePath };
   }
 
+  if (moduleName === "react-dom" || moduleName.startsWith("react-dom/")) {
+    return context.resolveRequest(
+      { ...context, originModulePath: path.join(projectRoot, "index.js") },
+      moduleName,
+      platform
+    );
+  }
+
   if (defaultResolveRequest) {
     return defaultResolveRequest(context, moduleName, platform);
   }

@@ -4,7 +4,7 @@ export default function ForSchoolsPage() {
   return (
     <MarketingPage title="For Schools">
       <p>
-        Little Readers supports multi-school annual subscriptions with teachers,
+        LEARN WISE supports multi-school annual subscriptions with teachers,
         classes, assignments and progress reporting.
       </p>
       <p>

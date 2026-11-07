@@ -98,9 +98,9 @@ async function pickDictionaryFile(): Promise<PickedFile | null> {
 export default function AdminDictionaryScreen() {
   const router = useRouter();
   const [picked, setPicked] = useState<PickedFile | null>(null);
-  const [sourceName, setSourceName] = useState("Little Readers Kids Starter");
+  const [sourceName, setSourceName] = useState("LEARN WISE Kids Starter");
   const [licence, setLicence] = useState(
-    "Project-owned sample template for Little Readers"
+    "Project-owned sample template for LEARN WISE"
   );
   const [batch, setBatch] = useState<BatchInfo | null>(null);
   const [assignments, setAssignments] = useState<Assignment[]>([]);
@@ -154,10 +154,10 @@ export default function AdminDictionaryScreen() {
       } else {
         throw new Error("No file data");
       }
-      form.append("sourceName", sourceName.trim() || "Little Readers Kids Starter");
+      form.append("sourceName", sourceName.trim() || "LEARN WISE Kids Starter");
       form.append(
         "licence",
-        licence.trim() || "Project-owned sample template for Little Readers"
+        licence.trim() || "Project-owned sample template for LEARN WISE"
       );
 
       const data = await apiUpload<BatchInfo>("/admin/dictionary/uploads", form);
@@ -180,10 +180,10 @@ export default function AdminDictionaryScreen() {
       const data = await apiRequest<BatchInfo>("/admin/dictionary/uploads/inline", {
         method: "POST",
         body: JSON.stringify({
-          sourceName: sourceName.trim() || "Little Readers Kids Starter",
+          sourceName: sourceName.trim() || "LEARN WISE Kids Starter",
           licence:
-            licence.trim() || "Project-owned sample template for Little Readers",
-          filename: "little-readers-kids-dictionary-template.csv",
+            licence.trim() || "Project-owned sample template for LEARN WISE",
+          filename: "learn-wise-kids-dictionary-template.csv",
           rows: KIDS_STARTER_WORDS,
         }),
       });
@@ -335,7 +335,7 @@ export default function AdminDictionaryScreen() {
               style={styles.input}
               value={sourceName}
               onChangeText={setSourceName}
-              placeholder="Little Readers Kids Starter"
+              placeholder="LEARN WISE Kids Starter"
               placeholderTextColor={colors.textMuted}
             />
             <Text style={styles.meta}>Licence</Text>

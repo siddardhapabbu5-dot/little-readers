@@ -119,7 +119,7 @@ function LoginForm() {
             📖
           </span>
           <span>
-            <strong>Little Readers</strong>
+            <strong>LEARN WISE</strong>
             <small>Read • Spell • Learn • Grow</small>
           </span>
         </a>
@@ -170,7 +170,7 @@ function LoginForm() {
       <main className="lr-pro-main">
         <section className="lr-pro-hero">
           <h1>
-            Welcome to <span>Little Readers!</span>
+            Welcome to <span>LEARN WISE!</span>
           </h1>
           <p>
             A fun and smart way for kids to{" "}
@@ -267,7 +267,7 @@ function LoginForm() {
         </section>
 
         <aside className="lr-pro-why">
-          <h2>⭐ Why Choose Little Readers?</h2>
+          <h2>⭐ Why Choose LEARN WISE?</h2>
           <ul>
             {FEATURES.map((f) => (
               <li key={f.title} className={`tone-${f.tone}`}>
@@ -286,12 +286,12 @@ function LoginForm() {
 
       <footer className="lr-pro-footer">
         <div className="lr-pro-footer-links">
-          <a href="/about">📚 About Little Readers</a>
+          <a href="/about">📚 About LEARN WISE</a>
           <a href="/privacy">🛡️ Privacy Policy</a>
           <a href="/terms">📄 Terms and Conditions</a>
           <a href="/contact">✉️ Contact</a>
         </div>
-        <p>© {new Date().getFullYear()} Little Readers. All rights reserved.</p>
+        <p>© {new Date().getFullYear()} LEARN WISE. All rights reserved.</p>
       </footer>
     </div>
   );

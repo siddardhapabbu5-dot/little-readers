@@ -5,6 +5,7 @@ import type {
   LoginInput,
   RegisterInput,
   ResetPasswordInput,
+  ResetPasswordWithOtpInput,
 } from "@little-readers/validation";
 import { AppError } from "../lib/errors.js";
 import { sendPasswordResetEmail } from "../lib/email.js";
@@ -12,6 +13,8 @@ import { signAccessToken } from "../lib/jwt.js";
 import { hashPassword, verifyPassword } from "../lib/password.js";
 import { prisma } from "../lib/prisma.js";
 import { env } from "../config/env.js";
+import { activateParentDeviceSession } from "../parent-auth/session.service.js";
+import { consumeEmailVerification } from "./email-otp.service.js";
 
 function hashResetToken(rawToken: string) {
   return createHash("sha256").update(rawToken).digest("hex");
@@ -87,10 +90,25 @@ export async function registerParent(
     );
   }
 
+  // Vitest suites register freely unless they pass a token or disable the bypass.
+  const requireEmailVerification = !isVitest || Boolean(input.emailVerificationToken);
+  if (requireEmailVerification && !input.emailVerificationToken) {
+    throw new AppError("Verify your email address before creating the account.", 400, {
+      code: "EMAIL_NOT_VERIFIED",
+    });
+  }
+
   const consentVersion = publishedPolicy?.version ?? "vitest";
   const passwordHash = await hashPassword(input.password);
 
   const user = await prisma.$transaction(async (tx) => {
+    if (requireEmailVerification) {
+      await consumeEmailVerification(tx, {
+        email,
+        purpose: "REGISTER",
+        verificationToken: input.emailVerificationToken!,
+      });
+    }
     const created = await tx.user.create({
       data: {
         name: input.name,
@@ -135,6 +153,15 @@ export async function registerParent(
     return created;
   });
 
+  if (input.deviceId) {
+    return activateParentDeviceSession({
+      parent: user,
+      deviceId: input.deviceId,
+      deviceName: input.deviceName,
+      platform: input.platform ?? "unknown",
+    });
+  }
+
   const accessToken = signAccessToken({
     sub: user.id,
     email: user.email,
@@ -161,6 +188,17 @@ export async function loginUser(input: LoginInput) {
   const valid = await verifyPassword(password, user.passwordHash);
   if (!valid) {
     throw new AppError("Invalid email or password", 401);
+  }
+
+  // Mobile parents keep the one-device rule (previous device session is revoked).
+  if (user.role === UserRole.PARENT && input.deviceId) {
+    return activateParentDeviceSession({
+      parent: user,
+      deviceId: input.deviceId,
+      deviceName: input.deviceName,
+      platform: input.platform ?? "unknown",
+      appVersion: input.appVersion,
+    });
   }
 
   const accessToken = signAccessToken({
@@ -290,6 +328,33 @@ export async function resetPasswordWithToken(input: ResetPasswordInput) {
     // Invalidate any other outstanding tokens for this user.
     await tx.passwordResetToken.updateMany({
       where: { userId: record.userId, usedAt: null, id: { not: record.id } },
+      data: { usedAt: new Date() },
+    });
+  });
+
+  return {
+    message: "Password updated. You can log in with your new password.",
+  };
+}
+
+/** Forgot-password via email OTP: requires a verified RESET_PASSWORD token. */
+export async function resetPasswordWithEmailOtp(input: ResetPasswordWithOtpInput) {
+  const email = input.email.trim().toLowerCase();
+  const passwordHash = await hashPassword(input.password);
+
+  await prisma.$transaction(async (tx) => {
+    await consumeEmailVerification(tx, {
+      email,
+      purpose: "RESET_PASSWORD",
+      verificationToken: input.verificationToken,
+    });
+    const user = await tx.user.findUnique({ where: { email } });
+    if (!user || !user.isActive) {
+      throw new AppError("This account cannot reset its password.", 403);
+    }
+    await tx.user.update({ where: { id: user.id }, data: { passwordHash } });
+    await tx.passwordResetToken.updateMany({
+      where: { userId: user.id, usedAt: null },
       data: { usedAt: new Date() },
     });
   });

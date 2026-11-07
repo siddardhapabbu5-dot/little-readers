@@ -36,7 +36,7 @@ export function AdminShell({
   return (
     <div className="admin-shell vocab-admin">
       <aside className="vocab-admin-nav">
-        <div className="vocab-admin-brand">Little Readers Admin</div>
+        <div className="vocab-admin-brand">LEARN WISE Admin</div>
         <nav>
           {NAV.map((item) => (
             <Link

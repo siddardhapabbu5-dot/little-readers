@@ -108,9 +108,9 @@ dictionaryRouter.post(
         originalFilename: body.filename ?? "kids-inline.csv",
         mimeType: "text/csv",
         buffer: Buffer.from(csv, "utf8"),
-        sourceName: body.sourceName ?? "Little Readers Kids Starter",
+        sourceName: body.sourceName ?? "LEARN WISE Kids Starter",
         licence:
-          body.licence ?? "Project-owned sample template for Little Readers",
+          body.licence ?? "Project-owned sample template for LEARN WISE",
       });
       res.status(201).json({ data });
     } catch (error) {

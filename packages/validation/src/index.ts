@@ -40,9 +40,14 @@ export const registerSchema = z.object({
   name: z.string().trim().min(2, "Name is required").max(100),
   email: z.string().trim().email("Valid email is required").max(255),
   password: passwordSchema,
-  /** Optional national or E.164 mobile for Student OTP (guardian User.mobileE164; default country +91). */
+  /** Optional contact mobile (guardian User.mobileE164; default country +91). Not verified. */
   mobile: z.string().trim().min(8).max(20).optional(),
   countryCode: z.string().trim().min(1).max(8).optional(),
+  /** Token from POST /auth/email-otp/verify (purpose REGISTER). */
+  emailVerificationToken: z.string().trim().min(20).max(200).optional(),
+  deviceId: z.string().trim().min(16).max(128).optional(),
+  platform: z.string().trim().min(2).max(40).optional(),
+  deviceName: z.string().trim().max(80).optional(),
   acceptTerms: z.literal(true, {
     errorMap: () => ({ message: "You must accept the terms of service" }),
   }),
@@ -61,7 +66,33 @@ export const registerSchema = z.object({
 export const loginSchema = z.object({
   email: z.string().trim().email("Valid email is required"),
   password: z.string().min(1, "Password is required"),
+  /** Mobile app install id — parents get a one-device session when provided. */
+  deviceId: z.string().trim().min(16).max(128).optional(),
+  platform: z.string().trim().min(2).max(40).optional(),
+  deviceName: z.string().trim().max(80).optional(),
+  appVersion: z.string().trim().max(40).optional(),
 });
+
+export const emailOtpSendSchema = z.object({
+  email: z.string().trim().email("Valid email is required").max(255),
+  purpose: z.enum(["REGISTER", "RESET_PASSWORD"]),
+});
+
+export const emailOtpVerifySchema = emailOtpSendSchema.extend({
+  otp: z.string().trim().regex(/^\d{6}$/, "Enter the 6-digit code"),
+});
+
+export const resetPasswordWithOtpSchema = z
+  .object({
+    email: z.string().trim().email("Valid email is required"),
+    verificationToken: z.string().trim().min(20).max(200),
+    password: passwordSchema,
+    confirmPassword: z.string().min(1, "Confirm your password"),
+  })
+  .refine((data) => data.password === data.confirmPassword, {
+    message: "Passwords do not match",
+    path: ["confirmPassword"],
+  });
 
 export const forgotPasswordSchema = z.object({
   email: z.string().trim().email("Valid email is required"),
@@ -255,6 +286,7 @@ export type RegisterInput = z.infer<typeof registerSchema>;
 export type LoginInput = z.infer<typeof loginSchema>;
 export type ForgotPasswordInput = z.infer<typeof forgotPasswordSchema>;
 export type ResetPasswordInput = z.infer<typeof resetPasswordSchema>;
+export type ResetPasswordWithOtpInput = z.infer<typeof resetPasswordWithOtpSchema>;
 export type AdminForgotPasswordInput = z.infer<typeof adminForgotPasswordSchema>;
 export type AdminResetPasswordInput = z.infer<typeof adminResetPasswordSchema>;
 export type CreateChildInput = z.infer<typeof createChildSchema>;

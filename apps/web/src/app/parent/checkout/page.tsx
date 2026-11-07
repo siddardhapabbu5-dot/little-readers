@@ -41,7 +41,13 @@ function formatMoney(paise: number, currency: string) {
 
 declare global {
   interface Window {
-    Razorpay?: new (options: Record<string, unknown>) => { open: () => void };
+    Razorpay?: new (options: Record<string, unknown>) => {
+      open: () => void;
+      on: (
+        event: "payment.failed",
+        cb: (resp: { error?: { description?: string; reason?: string } }) => void
+      ) => void;
+    };
   }
 }
 
@@ -126,6 +132,7 @@ export default function ParentCheckoutPage() {
     setError(null);
     setMessage(null);
     setPhase("pending");
+    let orderId: string | null = null;
     try {
       const order = await apiRequest<{
         orderId: string;
@@ -148,16 +155,18 @@ export default function ParentCheckoutPage() {
         throw new Error("Razorpay key missing");
       }
 
+      orderId = order.orderId;
       setPendingOrderId(order.orderId);
       await loadRazorpayScript();
       if (!window.Razorpay) throw new Error("Razorpay Checkout unavailable");
 
       await new Promise<void>((resolve, reject) => {
+        let lastFailure: string | null = null;
         const rzp = new window.Razorpay!({
           key: order.keyId,
           amount: order.amountPaise,
           currency: order.currency,
-          name: "Little Readers",
+          name: "LEARN WISE",
           description: order.plan.label,
           order_id: order.orderId,
           handler: async (response: {
@@ -176,7 +185,7 @@ export default function ParentCheckoutPage() {
                 }),
               });
               setPhase("success");
-              setMessage("Payment verified. Subscription / seats updated.");
+              setMessage("Payment successful and verified. Your subscription / seats are now active.");
               setPendingOrderId(null);
               resolve();
             } catch (e) {
@@ -197,22 +206,30 @@ export default function ParentCheckoutPage() {
                 body: JSON.stringify({ orderId: order.orderId }),
               }).catch(() => undefined);
               setPhase("failure");
-              setError("Checkout was cancelled or dismissed.");
+              setError(
+                lastFailure
+                  ? `Payment failed: ${lastFailure}. Nothing was activated; if money was debited, the bank will reverse it.`
+                  : "Payment cancelled. Nothing was charged or activated."
+              );
               setPendingOrderId(null);
               resolve();
             },
           },
+        });
+        rzp.on("payment.failed", (resp) => {
+          lastFailure =
+            resp.error?.description ?? resp.error?.reason ?? "the bank declined the payment";
         });
         rzp.open();
       });
     } catch (e) {
       setPhase("failure");
       setError(e instanceof ApiClientError ? e.message : String(e));
-      if (pendingOrderId && token) {
+      if (orderId && token) {
         void apiRequest("/payments/cancel", {
           method: "POST",
           token,
-          body: JSON.stringify({ orderId: pendingOrderId }),
+          body: JSON.stringify({ orderId }),
         }).catch(() => undefined);
       }
     } finally {

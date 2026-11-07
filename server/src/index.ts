@@ -6,7 +6,7 @@ import { startProgrammePublisher } from "./programmes/publisher.service.js";
 const app = createApp();
 
 app.listen(env.PORT, () => {
-  console.log(`Little Readers API listening on http://localhost:${env.PORT}`);
+  console.log(`LEARN WISE API listening on http://localhost:${env.PORT}`);
   console.log(`Health check: http://localhost:${env.PORT}/api/health`);
   startProgrammePublisher();
   void ensureDemoLogins()

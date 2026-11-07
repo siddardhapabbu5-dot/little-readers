@@ -615,7 +615,8 @@ export async function cancelPendingPayment(
 }
 
 function receiptNumberFor(paymentId: string, paidAt: Date) {
-  const ymd = paidAt.toISOString().slice(0, 10).replace(/-/g, "");
+  const IST_OFFSET_MS = 330 * 60 * 1000;
+  const ymd = new Date(paidAt.getTime() + IST_OFFSET_MS).toISOString().slice(0, 10).replace(/-/g, "");
   return `LW-${ymd}-${paymentId.slice(-8).toUpperCase()}`;
 }
 

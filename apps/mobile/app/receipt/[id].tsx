@@ -1,5 +1,5 @@
 import { useCallback, useState } from "react";
-import { ActivityIndicator, ScrollView, Share, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Platform, ScrollView, Share, StyleSheet, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -35,6 +35,17 @@ function money(paise: number, currency: string) {
   })}`;
 }
 
+function planLabel(r: Receipt) {
+  const looksLikeCode = /^[A-Z0-9_\- ]+$/.test(r.planName);
+  if (!looksLikeCode) return r.planName;
+  const n = r.durationMonths;
+  if (n === 12) return "1 Year";
+  if (n) return n === 1 ? "Monthly" : `${n} Months`;
+  return r.planName.replace(/[_-]+/g, " ");
+}
+
+const STACKED = new Set(["Payment ID", "Order ID"]);
+
 function day(value: string | null) {
   return value ? new Date(value).toLocaleDateString(undefined, { dateStyle: "medium" }) : "—";
 }
@@ -64,7 +75,7 @@ export default function ReceiptScreen() {
         ["Date", new Date(receipt.paidAt).toLocaleString()],
         ["Parent", receipt.parentName || receipt.parentEmail],
         ["Email", receipt.parentEmail],
-        ["Plan", receipt.planName],
+        ["Plan", planLabel(receipt)],
         ...(receipt.durationMonths
           ? ([["Duration", `${receipt.durationMonths} month${receipt.durationMonths === 1 ? "" : "s"}`]] as [string, string][])
           : []),
@@ -102,17 +113,26 @@ export default function ReceiptScreen() {
                 <Text style={styles.meta}>Verified by LEARN WISE. Your subscription is active.</Text>
               </View>
               <Card style={{ gap: 10 }}>
-                {rows.map(([k, v]) => (
-                  <View key={k} style={styles.row}>
-                    <Text style={styles.label}>{k}</Text>
-                    <Text
-                      style={[styles.value, k === "Total paid" && styles.total]}
-                      selectable
-                    >
-                      {v}
-                    </Text>
-                  </View>
-                ))}
+                {rows.map(([k, v]) =>
+                  STACKED.has(k) ? (
+                    <View key={k} style={{ gap: 2 }}>
+                      <Text style={styles.label}>{k}</Text>
+                      <Text style={styles.idValue} selectable>
+                        {v}
+                      </Text>
+                    </View>
+                  ) : (
+                    <View key={k} style={styles.row}>
+                      <Text style={styles.label}>{k}</Text>
+                      <Text
+                        style={[styles.value, k === "Total paid" && styles.total]}
+                        selectable
+                      >
+                        {v}
+                      </Text>
+                    </View>
+                  )
+                )}
               </Card>
               <SoftButton label="Share receipt" onPress={() => void share()} />
             </>
@@ -130,7 +150,13 @@ const styles = StyleSheet.create({
   hero: { alignItems: "center", gap: 6, paddingVertical: 8 },
   meta: { color: colors.textMuted, textAlign: "center" },
   row: { flexDirection: "row", justifyContent: "space-between", gap: 12 },
-  label: { color: colors.textMuted, fontWeight: "600" },
+  label: { color: colors.textMuted, fontWeight: "600", flexShrink: 0 },
+  idValue: {
+    color: colors.text,
+    fontWeight: "600",
+    fontSize: 12,
+    ...(Platform.OS === "web" ? ({ wordBreak: "break-all" } as object) : {}),
+  },
   value: { color: colors.text, fontWeight: "700", flexShrink: 1, textAlign: "right" },
   total: { color: colors.primaryDark, fontSize: 17, fontWeight: "800" },
 });

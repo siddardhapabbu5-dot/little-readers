@@ -20,6 +20,7 @@ import {
 } from "../components/ui";
 import { IconButton, KidsHeader } from "../components/kids";
 import { AuthGate } from "../components/AuthGate";
+import { CertificateEarned, type EarnedCertificate } from "../components/CertificateEarned";
 import { ApiError } from "../services/api";
 import { apiRequest } from "../services/learning-session";
 import { ROLE_SETS } from "../services/auth-errors";
@@ -68,6 +69,7 @@ interface ResultsPayload {
   accuracy: number;
   wordsLearned: number;
   nextCategory: { id: string; label: string; emoji: string } | null;
+  newCertificates?: EarnedCertificate[];
 }
 
 const LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
@@ -81,6 +83,8 @@ export default function PlayScreen() {
     title?: string;
     /** Deep-link into Listen or Spell for the first word. */
     startRound?: string;
+    /** "1" = start a new round instead of continuing the unfinished one. */
+    fresh?: string;
   }>();
 
   const [session, setSession] = useState<SessionPayload | null>(null);
@@ -125,7 +129,7 @@ export default function PlayScreen() {
             ...(params.lessonId
               ? { lessonId: params.lessonId, resume: true }
               // Omit count → server gives remaining unlearned words (up to full category).
-              : { categoryId: params.categoryId }),
+              : { categoryId: params.categoryId, resume: params.fresh !== "1" }),
           }),
         });
         // Ensure Symbol emoji from A–Z sheets always render for parent/kid play.
@@ -165,7 +169,7 @@ export default function PlayScreen() {
         setLoading(false);
       }
     })();
-  }, [params.categoryId, params.lessonId, params.childId, params.startRound]);
+  }, [params.categoryId, params.lessonId, params.childId, params.startRound, params.fresh]);
 
   const letterChoices = useMemo(() => {
     if (!question) return [];
@@ -379,6 +383,7 @@ export default function PlayScreen() {
         categoryId: String(params.categoryId),
         childId: String(params.childId),
         title: params.title ?? session?.category.label ?? "Play",
+        fresh: "1",
       },
     });
   }
@@ -447,6 +452,7 @@ export default function PlayScreen() {
                 <Stat label="Accuracy" value={`${results.accuracy}%`} />
                 <Stat label="Words" value={String(results.wordsLearned)} />
               </View>
+              <CertificateEarned certificates={results.newCertificates} />
               <SoftButton label="Replay category" onPress={replayCategory} />
               <SoftButton label="Back to categories" onPress={() => router.back()} />
               {results.nextCategory ? (

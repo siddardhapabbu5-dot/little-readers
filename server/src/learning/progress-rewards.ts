@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Phase 2 — Progress & rewards (genuine data only).
  *
  * Reward rules:
@@ -9,6 +9,7 @@
  *   when thresholds are met. Never invent locked→unlocked on the client alone.
  */
 
+import { MIX_MODES } from "@little-readers/shared";
 import { prisma } from "../lib/prisma.js";
 import { AppError } from "../lib/errors.js";
 
@@ -91,7 +92,56 @@ export const ACHIEVEMENT_CATALOG = [
     description: "Hit today’s daily word goal (IST)",
     emoji: "🌟",
   },
+  {
+    code: "daily_challenge",
+    title: "Challenge Champ",
+    description: "Finish a Daily Challenge",
+    emoji: "📅",
+  },
+  {
+    code: "revision_world",
+    title: "Memory Hero",
+    description: "Finish a Revision World round",
+    emoji: "🔁",
+  },
+  {
+    code: "mixed_games",
+    title: "Game Explorer",
+    description: "Finish a Mixed Games round",
+    emoji: "🌈",
+  },
 ] as const;
+
+const MODE_ACHIEVEMENT: Record<string, string> = {
+  DAILY_CHALLENGE: "daily_challenge",
+  REVISION_WORLD: "revision_world",
+  MIXED: "mixed_games",
+};
+
+/** Has this child finished today's Daily Challenge (IST)? */
+export async function getDailyChallengeStatus(childId: string) {
+  const day = kolkataDayBounds();
+  const [today, total] = await Promise.all([
+    prisma.learningSession.findFirst({
+      where: {
+        childId,
+        mode: "DAILY_CHALLENGE",
+        status: "COMPLETED",
+        completedAt: { gte: day.start, lte: day.end },
+      },
+      select: { stars: true, points: true },
+    }),
+    prisma.learningSession.count({
+      where: { childId, mode: "DAILY_CHALLENGE", status: "COMPLETED" },
+    }),
+  ]);
+  return {
+    date: day.date,
+    completedToday: Boolean(today),
+    starsToday: today?.stars ?? 0,
+    totalCompleted: total,
+  };
+}
 
 async function assertChildOwned(
   parentId: string,
@@ -284,6 +334,15 @@ export async function awardMilestoneAchievements(childId: string) {
       description: "Hit today’s daily word goal (IST)",
     });
   }
+  const modesDone = await prisma.learningSession.findMany({
+    where: { childId, status: "COMPLETED", mode: { in: [...MIX_MODES] } },
+    select: { mode: true },
+    distinct: ["mode"],
+  });
+  for (const m of modesDone) {
+    const def = ACHIEVEMENT_CATALOG.find((a) => a.code === MODE_ACHIEVEMENT[m.mode ?? ""]);
+    if (def) toAward.push({ code: def.code, title: def.title, description: def.description });
+  }
 
   for (const a of toAward) {
     await prisma.achievement.upsert({
@@ -384,7 +443,10 @@ export async function getChildLearningHistory(
     return {
       sessionId: s.id,
       status: s.status,
-      activityType: inferActivityType(rounds),
+      activityType:
+        s.mode && (MIX_MODES as readonly string[]).includes(s.mode)
+          ? s.mode
+          : inferActivityType(rounds),
       category: {
         id: s.category.id,
         label: s.category.label,
@@ -542,9 +604,43 @@ export async function getChildProgressDashboard(
       ? Math.round((totalCorrectAttempts / totalAttempts) * 100)
       : 0;
 
-  const points = progressRows.reduce((s, p) => s + p.points, 0);
-  const stars = progressRows.reduce((s, p) => s + p.stars, 0);
+  const [mixedAgg, certificateRows, levelCategories, dailyChallenge] = await Promise.all([
+    prisma.learningSession.aggregate({
+      where: { childId, status: "COMPLETED", mode: { in: [...MIX_MODES] } },
+      _sum: { stars: true, points: true },
+    }),
+    prisma.certificate.findMany({
+      where: { childId, categoryId: { not: null } },
+      select: { id: true, categoryId: true, certificateNo: true, title: true, issuedAt: true },
+      orderBy: { issuedAt: "desc" },
+    }),
+    prisma.learningCategory.findMany({
+      where: {
+        isPublished: true,
+        group: { level: { children: { some: { id: childId } } } },
+      },
+      orderBy: { sortOrder: "asc" },
+      select: { id: true, code: true, label: true, emoji: true },
+    }),
+    getDailyChallengeStatus(childId),
+  ]);
+
+  const points =
+    progressRows.reduce((s, p) => s + p.points, 0) + (mixedAgg._sum.points ?? 0);
+  const stars = progressRows.reduce((s, p) => s + p.stars, 0) + (mixedAgg._sum.stars ?? 0);
   const dailyTarget = 5;
+  const certByCategory = new Map(certificateRows.map((c) => [c.categoryId, c]));
+  const completedCategoryIds = new Set(
+    progressRows.filter((p) => p.completed).map((p) => p.categoryId)
+  );
+  const categoryBadges = levelCategories.map((c) => ({
+    categoryId: c.id,
+    label: c.label,
+    emoji: c.emoji,
+    badge: completedCategoryIds.has(c.id),
+    certificateId: certByCategory.get(c.id)?.id ?? null,
+  }));
+  const emojiByCode = new Map(levelCategories.map((c) => [c.code, c.emoji]));
   const wordsLearnedToday = dailyWordGroups.length;
 
   const earnedByCode = new Map(achievements.map((a) => [a.code, a]));
@@ -562,12 +658,14 @@ export async function getChildProgressDashboard(
 
   // Category-completion achievements also appear on the board.
   const categoryAchievements = achievements
-    .filter((a) => a.code.startsWith("cat_"))
+    .filter((a) => a.code.startsWith("cat_") || a.code.startsWith("cert_"))
     .map((a) => ({
       code: a.code,
       title: a.title,
       description: a.description,
-      emoji: "🏅",
+      emoji: a.code.startsWith("cert_")
+        ? "🎓"
+        : emojiByCode.get(a.code.slice(4)) ?? "🏅",
       unlocked: true,
       earnedAt: a.earnedAt,
     }));
@@ -693,5 +791,8 @@ export async function getChildProgressDashboard(
     },
     achievements: [...achievementBoard, ...categoryAchievements],
     earnedAchievements: achievements,
+    categoryBadges,
+    certificates: certificateRows,
+    dailyChallenge,
   };
 }

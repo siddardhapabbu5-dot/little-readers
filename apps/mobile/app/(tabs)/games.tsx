@@ -2,11 +2,13 @@ import { useCallback, useMemo, useState } from "react";
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
+import type { ActivityCode, MixMode } from "@little-readers/shared";
 import { SoftButton, ErrorText } from "../../components/ui";
 import { SectionRow } from "../../components/kids";
 import { apiRequest, ApiError } from "../../services/api";
 import { getActiveChild, saveActiveChild } from "../../services/secure";
 import { displayEmoji } from "../../services/emoji";
+import { isOn, startActivity, useActivities } from "../../services/activities";
 import { openLearningActivity } from "../../services/learning-nav";
 import { colors, radii, shadow } from "../../theme";
 
@@ -22,34 +24,25 @@ type Category = {
   emoji: string;
   unlocked: boolean;
   wordCount: number;
+  progress?: { completed?: boolean; wordsLearned?: number } | null;
 };
 type Group = { categories: Category[] };
+type DailyStatus = { completedToday: boolean; totalCompleted: number };
 
-type GameKey = "MATCHING" | "QUIZ";
-const GAMES: Array<{ key: GameKey; emoji: string; title: string; body: string; color: string }> = [
-  {
-    key: "MATCHING",
-    emoji: "🧩",
-    title: "Match It",
-    body: "Pair each word with its picture.",
-    color: colors.skySoft,
-  },
-  {
-    key: "QUIZ",
-    emoji: "🎯",
-    title: "Quiz Time",
-    body: "Read the clue, tap the right word.",
-    color: colors.yellowSoft,
-  },
-];
+const TILE_COLORS: Partial<Record<ActivityCode, string>> = {
+  MATCH_IT: colors.skySoft,
+  QUIZ_TIME: colors.yellowSoft,
+};
 
 /** Kids' game zone: pick a game first, then the words to play with. */
 export default function GamesTab() {
   const router = useRouter();
   const params = useLocalSearchParams<{ categoryId?: string }>();
+  const { activities } = useActivities();
   const [child, setChild] = useState<ChildRow | null>(null);
   const [categories, setCategories] = useState<Category[]>([]);
-  const [game, setGame] = useState<GameKey | null>(null);
+  const [daily, setDaily] = useState<DailyStatus | null>(null);
+  const [game, setGame] = useState<ActivityCode | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -68,12 +61,18 @@ export default function GamesTab() {
 
           if (active && active.hasLearningSeat !== false) {
             const levelKey = active.level || "LEVEL_1";
-            const curriculum = await apiRequest<{ groups: Group[] }>(
-              `/learning/levels/${encodeURIComponent(levelKey)}/groups?childId=${encodeURIComponent(active.id)}`
-            );
+            const [curriculum, dailyStatus] = await Promise.all([
+              apiRequest<{ groups: Group[] }>(
+                `/learning/levels/${encodeURIComponent(levelKey)}/groups?childId=${encodeURIComponent(active.id)}`
+              ),
+              apiRequest<DailyStatus>(
+                `/learning/progress/${encodeURIComponent(active.id)}/daily-challenge`
+              ).catch(() => null),
+            ]);
             setCategories(
               (curriculum.groups ?? []).flatMap((g) => g.categories).filter((c) => c.wordCount > 0)
             );
+            setDaily(dailyStatus);
           } else {
             setCategories([]);
           }
@@ -87,35 +86,50 @@ export default function GamesTab() {
     }, [])
   );
 
+  const games = activities.filter((a) => a.kind === "game" && a.mode && a.enabled);
+  const surpriseOn = isOn(activities, "SURPRISE") && games.length > 0;
   const playable = useMemo(() => categories.filter((c) => c.unlocked), [categories]);
   const preset = playable.find((c) => c.id === params.categoryId) ?? null;
+  const learnedAny = categories.some((c) => (c.progress?.wordsLearned ?? 0) > 0);
+  const completedAny = categories.some((c) => c.progress?.completed);
 
-  function play(activity: GameKey, category: Category) {
+  function play(code: ActivityCode, category: Category) {
     if (!child) return;
-    openLearningActivity(router, {
-      activity,
+    startActivity(router, activities, code, {
       categoryId: category.id,
       childId: child.id,
       title: category.label,
     });
   }
 
-  function pickGame(key: GameKey) {
+  function pickGame(code: ActivityCode) {
     if (preset) {
-      play(key, preset);
+      play(code, preset);
       return;
     }
-    setGame((g) => (g === key ? null : key));
+    setGame((g) => (g === code ? null : code));
   }
 
   function surprise() {
     if (!playable.length) return;
-    const g = GAMES[Math.floor(Math.random() * GAMES.length)];
-    const c = playable[Math.floor(Math.random() * playable.length)];
-    play(g.key, c);
+    play("SURPRISE", preset ?? playable[Math.floor(Math.random() * playable.length)]);
   }
 
-  const chosen = GAMES.find((g) => g.key === game) ?? null;
+  function openWorld(mix: MixMode, title: string) {
+    if (!child) return;
+    const opts = { categoryId: "", childId: child.id, title, mix };
+    if (mix === "REVISION_WORLD") {
+      openLearningActivity(router, { activity: "REVISION", ...opts });
+      return;
+    }
+    if (mix === "DAILY_CHALLENGE" && isOn(activities, "QUIZ_TIME")) {
+      openLearningActivity(router, { activity: "QUIZ", ...opts });
+      return;
+    }
+    startActivity(router, activities, "SURPRISE", opts);
+  }
+
+  const chosen = games.find((g) => g.code === game) ?? null;
 
   return (
     <SafeAreaView style={styles.safe} edges={["top"]}>
@@ -141,38 +155,43 @@ export default function GamesTab() {
         ) : (
           <>
             <View style={styles.grid}>
-              {GAMES.map((g) => (
+              {games.map((g) => (
                 <Pressable
-                  key={g.key}
-                  onPress={() => pickGame(g.key)}
+                  key={g.code}
+                  onPress={() => pickGame(g.code)}
                   style={({ pressed }) => [
                     styles.tile,
                     shadow.card,
-                    { backgroundColor: g.color, opacity: pressed ? 0.85 : 1 },
-                    game === g.key && styles.tileOn,
+                    { backgroundColor: TILE_COLORS[g.code] ?? colors.mintSoft, opacity: pressed ? 0.85 : 1 },
+                    game === g.code && styles.tileOn,
                   ]}
                 >
                   <Text style={styles.tileEmoji}>{g.emoji}</Text>
                   <Text style={styles.tileTitle}>{g.title}</Text>
-                  <Text style={styles.tileBody}>{g.body}</Text>
+                  <Text style={styles.tileBody}>{g.description}</Text>
                 </Pressable>
               ))}
-              <Pressable
-                onPress={surprise}
-                style={({ pressed }) => [
-                  styles.tile,
-                  styles.tileWide,
-                  shadow.card,
-                  { backgroundColor: colors.pinkSoft, opacity: pressed ? 0.85 : 1 },
-                ]}
-              >
-                <Text style={styles.tileEmoji}>🎲</Text>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.tileTitle}>Surprise Game!</Text>
-                  <Text style={styles.tileBody}>A random game with random words.</Text>
-                </View>
-              </Pressable>
+              {surpriseOn ? (
+                <Pressable
+                  onPress={surprise}
+                  style={({ pressed }) => [
+                    styles.tile,
+                    styles.tileWide,
+                    shadow.card,
+                    { backgroundColor: colors.pinkSoft, opacity: pressed ? 0.85 : 1 },
+                  ]}
+                >
+                  <Text style={styles.tileEmoji}>🎲</Text>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.tileTitle}>Surprise Game!</Text>
+                    <Text style={styles.tileBody}>A random game with random words.</Text>
+                  </View>
+                </Pressable>
+              ) : null}
             </View>
+            {games.length === 0 ? (
+              <Text style={styles.sub}>Games are switched off right now. Try Learn!</Text>
+            ) : null}
 
             {preset ? (
               <SoftButton
@@ -191,7 +210,7 @@ export default function GamesTab() {
                     <Pressable
                       key={c.id}
                       disabled={!c.unlocked}
-                      onPress={() => play(chosen.key, c)}
+                      onPress={() => play(chosen.code, c)}
                       style={({ pressed }) => [
                         styles.cat,
                         shadow.soft,
@@ -211,10 +230,80 @@ export default function GamesTab() {
                 <Text style={styles.hint}>🔒 Finish earlier topics in Learn to unlock more.</Text>
               </View>
             ) : null}
+
+            {!preset && games.length > 0 ? (
+              <>
+                <SectionRow title="Fun Worlds 🌟" />
+                <World
+                  emoji="📅"
+                  title="Daily Challenge"
+                  body={
+                    daily?.completedToday
+                      ? "Done for today ✅ Play again for fun, or come back tomorrow for a new mix."
+                      : "A new mix of words you know, every day."
+                  }
+                  color={colors.yellowSoft}
+                  disabled={!learnedAny}
+                  onPress={() => openWorld("DAILY_CHALLENGE", "Daily Challenge")}
+                />
+                <World
+                  emoji="🔁"
+                  title="Revision World"
+                  body={
+                    completedAny
+                      ? "Practise words from topics you finished."
+                      : "Opens after you finish your first topic."
+                  }
+                  color={colors.skySoft}
+                  disabled={!completedAny && !learnedAny}
+                  onPress={() => openWorld("REVISION_WORLD", "Revision World")}
+                />
+                <World
+                  emoji="🌈"
+                  title="Mixed Games"
+                  body={`Words from all ${playable.length} open topic${playable.length === 1 ? "" : "s"}, mixed up!`}
+                  color={colors.mintSoft}
+                  disabled={!learnedAny}
+                  onPress={() => openWorld("MIXED", "Mixed Games")}
+                />
+                {!learnedAny ? (
+                  <Text style={styles.hint}>Learn a few words first to open the Fun Worlds.</Text>
+                ) : null}
+              </>
+            ) : null}
           </>
         )}
       </ScrollView>
     </SafeAreaView>
+  );
+}
+
+function World(props: {
+  emoji: string;
+  title: string;
+  body: string;
+  color: string;
+  disabled?: boolean;
+  onPress: () => void;
+}) {
+  return (
+    <Pressable
+      disabled={props.disabled}
+      onPress={props.onPress}
+      style={({ pressed }) => [
+        styles.tile,
+        styles.tileWide,
+        styles.world,
+        shadow.card,
+        { backgroundColor: props.color, opacity: props.disabled ? 0.5 : pressed ? 0.85 : 1 },
+      ]}
+    >
+      <Text style={styles.tileEmoji}>{props.disabled ? "🔒" : props.emoji}</Text>
+      <View style={{ flex: 1 }}>
+        <Text style={styles.tileTitle}>{props.title}</Text>
+        <Text style={styles.tileBody}>{props.body}</Text>
+      </View>
+    </Pressable>
   );
 }
 
@@ -235,6 +324,8 @@ const styles = StyleSheet.create({
   },
   tileWide: { flexBasis: "100%", flexDirection: "row", alignItems: "center", gap: 14, minHeight: 0 },
   tileOn: { borderColor: colors.primary },
+  /** World cards sit in a column, where flexBasis would set height. */
+  world: { flexBasis: "auto", flexGrow: 0 },
   tileEmoji: { fontSize: 44 },
   tileTitle: { fontWeight: "900", fontSize: 19, color: colors.text },
   tileBody: { color: colors.textMuted, fontWeight: "600", fontSize: 13 },

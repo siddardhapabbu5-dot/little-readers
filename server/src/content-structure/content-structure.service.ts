@@ -2,6 +2,7 @@ import type { LearningLevelKind } from "@prisma/client";
 import { AppError } from "../lib/errors.js";
 import { prisma } from "../lib/prisma.js";
 import { resolveStarterPack } from "./category-starter-packs.js";
+import { assertCategoryReadyToPublish } from "../learning/category-progress.js";
 
 const CODE_RE = /^[A-Z0-9_]{1,40}$/;
 
@@ -644,6 +645,10 @@ export async function updateCategory(
 ) {
   const existing = await prisma.learningCategory.findUnique({ where: { id } });
   if (!existing) throw new AppError("Category not found", 404);
+
+  if (patch.isPublished === true && !existing.isPublished) {
+    await assertCategoryReadyToPublish(id);
+  }
 
   if (patch.groupId && patch.groupId !== existing.groupId) {
     const group = await prisma.learningGroup.findUnique({

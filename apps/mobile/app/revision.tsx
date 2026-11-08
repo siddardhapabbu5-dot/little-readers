@@ -12,6 +12,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Card, ErrorText, SoftButton, Title } from "../components/ui";
 import { IconButton, KidsHeader } from "../components/kids";
 import { AuthGate } from "../components/AuthGate";
+import { CertificateEarned, type EarnedCertificate } from "../components/CertificateEarned";
 import { ApiError } from "../services/api";
 import { apiRequest, isPreviewChild } from "../services/learning-session";
 import { ROLE_SETS } from "../services/auth-errors";
@@ -46,6 +47,7 @@ type ResultsPayload = {
   points: number;
   accuracy: number;
   wordsLearned: number;
+  newCertificates?: EarnedCertificate[];
 };
 
 /**
@@ -58,6 +60,7 @@ export default function RevisionScreen() {
     categoryId?: string;
     childId: string;
     title?: string;
+    mix?: string;
   }>();
 
   const [session, setSession] = useState<SessionPayload | null>(null);
@@ -79,12 +82,12 @@ export default function RevisionScreen() {
     void (async () => {
       setLoading(true);
       try {
-        if (!params.childId || !params.categoryId) throw new Error("Missing params");
+        if (!params.childId || (!params.categoryId && !params.mix)) throw new Error("Missing params");
         const data = await apiRequest<SessionPayload>("/learning/sessions", {
           method: "POST",
           body: JSON.stringify({
             childId: params.childId,
-            categoryId: params.categoryId,
+            ...(params.mix ? { mix: params.mix } : { categoryId: params.categoryId }),
             activityMode: "REVISION",
             questionCount: 8,
             resume: false,
@@ -115,7 +118,7 @@ export default function RevisionScreen() {
         setLoading(false);
       }
     })();
-  }, [params.categoryId, params.childId, router]);
+  }, [params.categoryId, params.childId, params.mix, router]);
 
   const finish = useCallback(async () => {
     if (!session) return;
@@ -223,6 +226,7 @@ export default function RevisionScreen() {
               <Text style={styles.muted}>
                 {results.correctAnswers} reviewed correctly · {results.points} pts
               </Text>
+              <CertificateEarned certificates={results.newCertificates} />
               <SoftButton label="Back to Games" onPress={() => (isPreviewChild(params.childId) ? router.back() : router.replace("/(tabs)/games"))} />
               <SoftButton label="Home" onPress={() => router.replace("/(tabs)/home")} />
             </Card>

@@ -1,4 +1,5 @@
 import type { Router } from "expo-router";
+import type { MixMode } from "@little-readers/shared";
 
 export type LearningActivity =
   | "LISTEN_SPELL"
@@ -15,12 +16,15 @@ export function openLearningActivity(
     childId: string;
     title?: string;
     startRound?: "LISTEN" | "SPELL";
+    /** Mixed-category session (Daily Challenge, Revision World, Mixed Games). */
+    mix?: MixMode;
   }
 ) {
   const base = {
     categoryId: opts.categoryId,
     childId: opts.childId,
     title: opts.title ?? "Learn",
+    ...(opts.mix ? { mix: opts.mix } : {}),
   };
 
   if (opts.activity === "MATCHING") {

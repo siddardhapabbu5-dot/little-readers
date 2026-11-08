@@ -19,6 +19,7 @@ import {
 } from "../../components/kids";
 import { apiRequest, ApiError } from "../../services/api";
 import { getActiveChild } from "../../services/secure";
+import { displayEmoji } from "../../services/emoji";
 import { colors, radii, shadow } from "../../theme";
 
 type ProgressData = {
@@ -85,6 +86,20 @@ type ProgressData = {
     unlocked: boolean;
     earnedAt?: string | null;
   }>;
+  categoryBadges?: Array<{
+    categoryId: string;
+    label: string;
+    emoji: string;
+    badge: boolean;
+    certificateId: string | null;
+  }>;
+  certificates?: Array<{
+    id: string;
+    certificateNo: string | null;
+    title: string;
+    issuedAt: string;
+  }>;
+  dailyChallenge?: { completedToday: boolean; totalCompleted: number };
 };
 
 export default function RewardsTab() {
@@ -158,6 +173,59 @@ export default function RewardsTab() {
                   : `Correct words today · ${daily?.date ?? "today"} IST`
               }
             />
+
+            <View style={[styles.rowCard, shadow.soft, styles.challengeCard]}>
+              <Text style={styles.rowTitle}>
+                📅 Daily Challenge {data.dailyChallenge?.completedToday ? "✅" : ""}
+              </Text>
+              <Text style={styles.rowMeta}>
+                {data.dailyChallenge?.completedToday
+                  ? "Done for today. A new mix comes tomorrow!"
+                  : "Today's challenge is waiting in Games → Fun Worlds."}{" "}
+                Finished {data.dailyChallenge?.totalCompleted ?? 0} so far.
+              </Text>
+            </View>
+
+            <SectionRow title="Badge collection ⭐" />
+            <View style={styles.badgeGrid}>
+              {(data.categoryBadges ?? []).map((b) => (
+                <View
+                  key={b.categoryId}
+                  style={[styles.badge, shadow.soft, !b.badge && styles.badgeLocked]}
+                >
+                  <Text style={styles.badgeEmoji}>
+                    {b.badge ? displayEmoji(b.emoji) : "🔒"}
+                    {b.certificateId ? "🎓" : ""}
+                  </Text>
+                  <Text style={styles.badgeLabel} numberOfLines={2}>
+                    {b.label}
+                  </Text>
+                </View>
+              ))}
+            </View>
+            <Text style={styles.empty}>
+              Finish a topic to earn its badge. Learn every word to earn the 🎓 certificate.
+            </Text>
+
+            <SectionRow title="My certificates 🎓" />
+            {(data.certificates ?? []).length === 0 ? (
+              <Text style={styles.empty}>
+                No certificates yet. Learn all the words in a topic to earn one!
+              </Text>
+            ) : (
+              (data.certificates ?? []).map((c) => (
+                <View key={c.id} style={[styles.rowCard, shadow.soft]}>
+                  <Text style={styles.rowTitle}>🎓 {c.title}</Text>
+                  <Text style={styles.rowMeta}>
+                    {c.certificateNo} · {formatWhen(c.issuedAt)}
+                  </Text>
+                  <SoftButton
+                    label="View, download or share"
+                    onPress={() => router.push({ pathname: "/certificate", params: { id: c.id } })}
+                  />
+                </View>
+              ))
+            )}
 
             <View style={[styles.stats, shadow.card]}>
               <Stat label="Words tried" value={String(s?.wordsAttempted ?? 0)} />
@@ -327,6 +395,12 @@ function formatActivity(t: string) {
       return "Listen";
     case "SPELL":
       return "Spell";
+    case "DAILY_CHALLENGE":
+      return "Daily Challenge";
+    case "REVISION_WORLD":
+      return "Revision World";
+    case "MIXED":
+      return "Mixed Games";
     default:
       return t;
   }
@@ -398,4 +472,17 @@ const styles = StyleSheet.create({
   },
   lockedTitle: { fontWeight: "800", color: colors.textMuted, marginBottom: 4 },
   lockedItem: { color: colors.textMuted, fontWeight: "600" },
+  challengeCard: { backgroundColor: colors.yellowSoft },
+  badgeGrid: { flexDirection: "row", flexWrap: "wrap", gap: 10 },
+  badge: {
+    width: "31%",
+    backgroundColor: "#fff",
+    borderRadius: radii.lg,
+    padding: 10,
+    alignItems: "center",
+    gap: 4,
+  },
+  badgeLocked: { backgroundColor: colors.bgSoft, opacity: 0.7 },
+  badgeEmoji: { fontSize: 28 },
+  badgeLabel: { fontWeight: "700", fontSize: 11, color: colors.text, textAlign: "center" },
 });

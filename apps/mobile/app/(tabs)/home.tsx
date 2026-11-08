@@ -20,6 +20,7 @@ import {
 } from "../../components/kids";
 import { apiRequest, ApiError } from "../../services/api";
 import { openLearningActivity } from "../../services/learning-nav";
+import { startActivity, useActivities } from "../../services/activities";
 import { getActiveChild, getUser, saveActiveChild } from "../../services/secure";
 import { colors } from "../../theme";
 
@@ -81,8 +82,11 @@ function levelLabel(code?: string) {
   return code.replace(/^LEVEL_/i, "Level ");
 }
 
+const ACTIVITY_TINTS = [colors.skySoft, colors.yellowSoft, colors.mintSoft, colors.pinkSoft, colors.primarySoft];
+
 export default function HomeTab() {
   const router = useRouter();
+  const { activities } = useActivities();
   const [user, setUser] = useState<AuthUser | null>(null);
   const [child, setChild] = useState<ChildRow | null>(null);
   const [groups, setGroups] = useState<Group[]>([]);
@@ -233,7 +237,7 @@ export default function HomeTab() {
               message={
                 dailyCompleted >= dailyTarget
                   ? "Amazing! Daily word goal complete."
-                  : "Correct words today from Listen, Spell, Matching, Quiz or Revision."
+                  : "Correct words today from any activity or game."
               }
             />
 
@@ -271,41 +275,26 @@ export default function HomeTab() {
                 showsHorizontalScrollIndicator={false}
                 contentContainerStyle={{ gap: 12 }}
               >
-                <RecommendCard
-                  emoji="🎧"
-                  title={continueCat.label}
-                  tag="Listen"
-                  tint={colors.skySoft}
-                  onPress={() => openCategory(continueCat, "LISTEN_SPELL", "LISTEN")}
-                />
-                <RecommendCard
-                  emoji="✍️"
-                  title={continueCat.label}
-                  tag="Spell"
-                  tint={colors.yellowSoft}
-                  onPress={() => openCategory(continueCat, "LISTEN_SPELL", "SPELL")}
-                />
-                <RecommendCard
-                  emoji="🧩"
-                  title={continueCat.label}
-                  tag="Matching"
-                  tint={colors.mintSoft}
-                  onPress={() => openCategory(continueCat, "MATCHING")}
-                />
-                <RecommendCard
-                  emoji="📝"
-                  title={continueCat.label}
-                  tag="Quiz"
-                  tint={colors.pinkSoft}
-                  onPress={() => openCategory(continueCat, "QUIZ")}
-                />
-                <RecommendCard
-                  emoji="🔁"
-                  title={continueCat.label}
-                  tag="Revision"
-                  tint={colors.primarySoft}
-                  onPress={() => openCategory(continueCat, "REVISION")}
-                />
+                {activities
+                  .filter((a) => a.enabled)
+                  .map((a, i) => (
+                    <RecommendCard
+                      key={a.code}
+                      emoji={a.emoji}
+                      title={continueCat.label}
+                      tag={a.title}
+                      tint={ACTIVITY_TINTS[i % ACTIVITY_TINTS.length]}
+                      onPress={() =>
+                        child
+                          ? startActivity(router, activities, a.code, {
+                              categoryId: continueCat.id,
+                              childId: child.id,
+                              title: continueCat.label,
+                            })
+                          : router.push("/(tabs)/learn")
+                      }
+                    />
+                  ))}
               </ScrollView>
             ) : (
               <Text style={styles.hint}>Activities unlock when a category is available.</Text>

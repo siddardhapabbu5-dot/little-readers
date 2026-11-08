@@ -158,3 +158,80 @@ export const TERMS_OF_SERVICE: {
     },
   ],
 };
+
+/**
+ * Single source of truth for the five child activities. Admin ON/OFF settings,
+ * the parent Learn/Games screens and the admin preview all read this list.
+ */
+export const ACTIVITY_CODES = ["LISTEN", "SPELL", "MATCH_IT", "QUIZ_TIME", "SURPRISE"] as const;
+export type ActivityCode = (typeof ACTIVITY_CODES)[number];
+
+export type SessionActivityMode = "LISTEN_SPELL" | "MATCHING" | "QUIZ" | "REVISION";
+
+export type ActivityDefinition = {
+  code: ActivityCode;
+  title: string;
+  emoji: string;
+  description: string;
+  /** "learn" shows in the Learn tab, "game" in the Games tab. */
+  kind: "learn" | "game";
+  /** Session mode used to start it; null for Surprise (picks a random game). */
+  mode: SessionActivityMode | null;
+  startRound?: "LISTEN" | "SPELL";
+};
+
+export const ACTIVITY_CATALOG: readonly ActivityDefinition[] = [
+  {
+    code: "LISTEN",
+    title: "Listen",
+    emoji: "🎧",
+    description: "Hear each word and pick its picture.",
+    kind: "learn",
+    mode: "LISTEN_SPELL",
+    startRound: "LISTEN",
+  },
+  {
+    code: "SPELL",
+    title: "Spell",
+    emoji: "✍️",
+    description: "Build each word letter by letter.",
+    kind: "learn",
+    mode: "LISTEN_SPELL",
+    startRound: "SPELL",
+  },
+  {
+    code: "MATCH_IT",
+    title: "Match It",
+    emoji: "🧩",
+    description: "Pair each word with its picture.",
+    kind: "game",
+    mode: "MATCHING",
+  },
+  {
+    code: "QUIZ_TIME",
+    title: "Quiz Time",
+    emoji: "🎯",
+    description: "Read the clue, tap the right word.",
+    kind: "game",
+    mode: "QUIZ",
+  },
+  {
+    code: "SURPRISE",
+    title: "Surprise Game",
+    emoji: "🎲",
+    description: "A random game with random words.",
+    kind: "game",
+    mode: null,
+  },
+];
+
+export function isActivityCode(value: string): value is ActivityCode {
+  return (ACTIVITY_CODES as readonly string[]).includes(value);
+}
+
+/** Session modes that combine words from several categories. */
+export const MIX_MODES = ["DAILY_CHALLENGE", "REVISION_WORLD", "MIXED"] as const;
+export type MixMode = (typeof MIX_MODES)[number];
+
+/** Certificate numbers look like LW-2026-7K3QZP. */
+export const CERTIFICATE_PREFIX = "LW";

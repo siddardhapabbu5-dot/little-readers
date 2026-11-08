@@ -684,6 +684,8 @@ model LearningSession {
   categoryId      String
   /// When set, word pool comes from LessonVocabItem (Listen/Spell reuse).
   lessonId        String?
+  /// DAILY_CHALLENGE / REVISION_WORLD / MIXED: words come from several categories.
+  mode            String?
   status          LearningSessionStatus @default(IN_PROGRESS)
   listenScore     Int                   @default(0)
   spellScore      Int                   @default(0)
@@ -1143,11 +1145,24 @@ model Certificate {
   issuedAt    DateTime @default(now())
   issuedById  String?
   templateCode String?
+  /// Category this completion certificate is for (one per child per category).
+  categoryId    String?
+  /// Human-readable unique number, e.g. LW-2026-7K3QZP.
+  certificateNo String?  @unique
 
   child    Child @relation(fields: [childId], references: [id], onDelete: Cascade)
   issuedBy User? @relation("IssuedByAdmin", fields: [issuedById], references: [id])
 
+  @@unique([childId, categoryId])
   @@index([childId])
+}
+
+/// Admin ON/OFF switch per child activity (codes from ACTIVITY_CATALOG). Missing row = enabled.
+model ActivitySetting {
+  code        String   @id
+  enabled     Boolean  @default(true)
+  updatedById String?
+  updatedAt   DateTime @updatedAt
 }
 
 model AdminRole {

@@ -15,6 +15,13 @@ import {
   awardMilestoneAchievements,
   getChildProgressDashboard,
 } from "./progress-rewards.js";
+import { assertActivityModeEnabled } from "./activity-settings.js";
+import { issueCertificateIfMastered } from "./certificates.js";
+import { MIX_MODES, type MixMode } from "@little-readers/shared";
+
+function isMixMode(mode: string | null | undefined): mode is MixMode {
+  return Boolean(mode) && (MIX_MODES as readonly string[]).includes(mode!);
+}
 
 function liveEmoji(word: string, emoji: string | null | undefined) {
   return resolveAlphabetEmoji({
@@ -25,12 +32,13 @@ function liveEmoji(word: string, emoji: string | null | undefined) {
   });
 }
 
-/** Distinct vocabulary words this child got correct in a category (any session). */
+/** Distinct vocabulary words this child got correct in a category (any session, incl. mixed). */
 async function countDistinctWordsLearned(childId: string, categoryId: string) {
   const rows = await prisma.questionAttempt.findMany({
     where: {
       isCorrect: true,
-      session: { childId, categoryId },
+      session: { childId },
+      word: { categoryId },
     },
     select: { wordId: true },
     distinct: ["wordId"],
@@ -42,7 +50,8 @@ async function learnedWordIdSet(childId: string, categoryId: string) {
   const rows = await prisma.questionAttempt.findMany({
     where: {
       isCorrect: true,
-      session: { childId, categoryId },
+      session: { childId },
+      word: { categoryId },
     },
     select: { wordId: true },
     distinct: ["wordId"],
@@ -239,14 +248,10 @@ type SessionWord = {
 };
 
 /** Prefer words with prior incorrect attempts, then previously correct, then new. */
-async function orderPoolForRevision(
-  childId: string,
-  categoryId: string,
-  pool: SessionWord[]
-) {
+async function orderPoolForRevision(childId: string, pool: SessionWord[]) {
   const attempts = await prisma.questionAttempt.findMany({
     where: {
-      session: { childId, categoryId },
+      session: { childId },
       wordId: { in: pool.map((w) => w.id) },
     },
     select: { wordId: true, isCorrect: true },
@@ -379,7 +384,9 @@ export async function getActiveLearningSession(
       childId,
       status: "IN_PROGRESS",
       ...(opts.lessonId ? { lessonId: opts.lessonId } : {}),
-      ...(opts.categoryId && !opts.lessonId ? { categoryId: opts.categoryId, lessonId: null } : {}),
+      ...(opts.categoryId && !opts.lessonId
+        ? { categoryId: opts.categoryId, lessonId: null, mode: null }
+        : {}),
     },
     orderBy: { startedAt: "desc" },
     select: { id: true, lessonId: true, categoryId: true, startedAt: true },
@@ -408,6 +415,11 @@ export async function startLearningSession(
   }
 
   const activityMode = normalizeActivityMode(input.activityMode);
+  await assertActivityModeEnabled(activityMode);
+
+  if (input.mix) {
+    return startMixedSession(input.childId, input.mix, activityMode, input.questionCount);
+  }
 
   // --- Lesson-backed session (Listen/Spell reuse) ---
   if (input.lessonId) {
@@ -538,6 +550,7 @@ export async function startLearningSession(
         childId: input.childId,
         categoryId: input.categoryId,
         lessonId: null,
+        mode: null,
         status: "IN_PROGRESS",
       },
       orderBy: { startedAt: "desc" },
@@ -612,11 +625,7 @@ export async function startLearningSession(
   let resolvedDefault = Math.min(10, pool.length);
 
   if (activityMode === "REVISION") {
-    const revision = await orderPoolForRevision(
-      input.childId,
-      category.id,
-      pool
-    );
+    const revision = await orderPoolForRevision(input.childId, pool);
     orderedPool = revision.ordered;
     revisionNote = revision.hasHistory
       ? "Reviewing words you have practiced before, starting with ones that need more help."
@@ -647,6 +656,8 @@ export async function startLearningSession(
     data: {
       childId: input.childId,
       categoryId: category.id,
+      // Games are tagged so an abandoned game is never resumed as Listen/Spell.
+      mode: activityMode === "LISTEN_SPELL" ? null : activityMode,
       questionsTotal: selected.length,
       status: "IN_PROGRESS",
     },
@@ -735,6 +746,154 @@ export async function previewLearningSession(input: {
   };
 }
 
+const MIX_META: Record<MixMode, { label: string; emoji: string }> = {
+  DAILY_CHALLENGE: { label: "Daily Challenge", emoji: "📅" },
+  REVISION_WORLD: { label: "Revision World", emoji: "🔁" },
+  MIXED: { label: "Mixed Games", emoji: "🌈" },
+};
+
+/** Same order for the whole day per child, different every day. */
+function seededShuffle<T>(items: T[], seed: string): T[] {
+  let h = 2166136261;
+  for (let i = 0; i < seed.length; i += 1) {
+    h ^= seed.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  const next = () => {
+    h ^= h << 13;
+    h ^= h >>> 17;
+    h ^= h << 5;
+    return (h >>> 0) / 4294967296;
+  };
+  const copy = [...items];
+  for (let i = copy.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(next() * (i + 1));
+    [copy[i], copy[j]] = [copy[j], copy[i]];
+  }
+  return copy;
+}
+
+/**
+ * Daily Challenge: familiar (learned) words in a new daily mix.
+ * Revision World: words from completed categories, weakest first.
+ * Mixed Games: words from every unlocked category of the child's level.
+ */
+async function startMixedSession(
+  childId: string,
+  mix: MixMode,
+  activityMode: ActivityMode,
+  questionCount?: number
+) {
+  const child = await prisma.child.findUniqueOrThrow({
+    where: { id: childId },
+    select: { level: { select: { code: true } } },
+  });
+  const levelCode = child.level?.code ?? "LEVEL_1";
+  const categories = await prisma.learningCategory.findMany({
+    where: { isPublished: true, group: { level: { code: levelCode } } },
+    orderBy: { unlockOrder: "asc" },
+    include: {
+      words: { where: { isActive: true }, orderBy: { sortOrder: "asc" } },
+      progress: { where: { childId } },
+    },
+  });
+  const toWord = (w: (typeof categories)[number]["words"][number]): SessionWord => ({
+    id: w.id,
+    text: w.text,
+    meaning: w.meaning,
+    emoji: w.emoji,
+    imageUrl: w.imageUrl,
+    audioUrl: w.audioUrl,
+    firstLetter: w.firstLetter,
+    phonetic: w.phonetic,
+    difficulty: w.difficulty,
+  });
+
+  const completedIds = new Set(
+    categories.filter((c) => c.progress[0]?.completed).map((c) => c.id)
+  );
+  const unlocked = categories.filter((c) => {
+    const prior = categories.filter((o) => o.unlockOrder < c.unlockOrder);
+    return (
+      c.unlockOrder === 0 ||
+      prior.every((o) => completedIds.has(o.id)) ||
+      Boolean(c.progress[0]?.lastPlayedAt)
+    );
+  });
+
+  const learnedRows = await prisma.questionAttempt.findMany({
+    where: { isCorrect: true, session: { childId } },
+    select: { wordId: true },
+    distinct: ["wordId"],
+  });
+  const learned = new Set(learnedRows.map((r) => r.wordId));
+  const unlockedWords = unlocked.flatMap((c) => c.words.map(toWord));
+
+  let pool: SessionWord[];
+  let note: string | null = null;
+  if (mix === "DAILY_CHALLENGE") {
+    const familiar = unlockedWords.filter((w) => learned.has(w.id));
+    pool = familiar.length >= 4 ? familiar : unlockedWords;
+    pool = seededShuffle(pool, `${childId}:${kolkataDayBounds().date}`);
+    note = "Today's mix of words you know. A new mix comes tomorrow!";
+  } else if (mix === "REVISION_WORLD") {
+    const fromCompleted = categories
+      .filter((c) => completedIds.has(c.id))
+      .flatMap((c) => c.words.map(toWord));
+    const base = fromCompleted.length >= 4
+      ? fromCompleted
+      : unlockedWords.filter((w) => learned.has(w.id));
+    if (base.length < 4) {
+      throw new AppError("Learn a few more words first, then Revision World opens.", 400);
+    }
+    pool = (await orderPoolForRevision(childId, base)).ordered;
+    note = "Practising words from topics you finished, trickiest first.";
+  } else {
+    pool = shuffle(unlockedWords);
+    note = `Words from ${unlocked.length} topic${unlocked.length === 1 ? "" : "s"} all mixed up!`;
+  }
+
+  if (pool.length < 4) {
+    throw new AppError("Not enough words yet. Learn some words first!", 400);
+  }
+
+  const defaults: Record<ActivityMode, number> = { MATCHING: 6, QUIZ: 8, REVISION: 8, LISTEN_SPELL: 10 };
+  const count = Math.min(questionCount ?? defaults[activityMode], pool.length);
+  const selected = pool.slice(0, count);
+
+  const session = await prisma.learningSession.create({
+    data: {
+      childId,
+      categoryId:
+        categories.find((c) => c.words.some((w) => w.id === selected[0].id))?.id ??
+        categories[0].id,
+      mode: mix,
+      questionsTotal: selected.length,
+      status: "IN_PROGRESS",
+    },
+  });
+
+  return {
+    sessionId: session.id,
+    resumed: false as boolean,
+    activityMode,
+    mix,
+    revisionNote: note,
+    lesson: null as null,
+    category: {
+      id: mix,
+      code: mix,
+      label: MIX_META[mix].label,
+      emoji: MIX_META[mix].emoji,
+      levelLabel: levelCode,
+      groupLabel: "",
+    },
+    questionsTotal: selected.length,
+    questions: buildQuestions(selected, pool),
+    progress: { points: 0, listenCorrect: 0, spellCorrect: 0, attemptsCount: 0 },
+  };
+}
+
 export async function submitQuestionAttempt(
   parentId: string,
   sessionId: string,
@@ -759,9 +918,13 @@ export async function submitQuestionAttempt(
           lessonItems: { some: { lessonId: session.lessonId } },
         },
       })
-    : await prisma.vocabularyWord.findFirst({
-        where: { id: input.wordId, categoryId: session.categoryId },
-      });
+    : isMixMode(session.mode)
+      ? await prisma.vocabularyWord.findFirst({
+          where: { id: input.wordId, isActive: true, category: { isPublished: true } },
+        })
+      : await prisma.vocabularyWord.findFirst({
+          where: { id: input.wordId, categoryId: session.categoryId },
+        });
   if (!word) {
     throw new AppError(
       session.lessonId ? "Word not in this lesson" : "Word not in this category",
@@ -887,14 +1050,20 @@ export async function completeLearningSession(
     session.attempts.filter((a) => a.isCorrect).map((a) => a.wordId)
   ).size;
 
+  const mix = isMixMode(session.mode) ? session.mode : null;
   const buildResult = async (
     durationSec: number,
     nextCategory: { id: string; label: string; emoji: string; code: string } | null,
-    categoryWordsLearned: number
+    categoryWordsLearned: number,
+    newCertificates: Awaited<ReturnType<typeof issueCertificateIfMastered>>[] = []
   ) => ({
     sessionId: session.id,
     childName: session.child.displayName,
-    category: session.category,
+    category: mix && MIX_META[mix]
+      ? { id: mix, code: mix, label: MIX_META[mix].label, emoji: MIX_META[mix].emoji }
+      : session.category,
+    mix,
+    newCertificates: newCertificates.filter((c): c is NonNullable<typeof c> => Boolean(c)),
     questionsAttempted: session.attempts.length,
     correctAnswers: session.attempts.filter((a) => a.isCorrect).length,
     listenCorrect,
@@ -938,6 +1107,34 @@ export async function completeLearningSession(
   const durationSec = input.durationSec ?? 0;
   const minutesLearned = Math.max(1, Math.ceil(durationSec / 60));
 
+  if (mix) {
+    await prisma.learningSession.update({
+      where: { id: sessionId },
+      data: {
+        status: "COMPLETED",
+        completedAt: new Date(),
+        points,
+        stars,
+        wordsLearned: sessionWordsLearned,
+        durationSec,
+      },
+    });
+    const correctWordIds = [
+      ...new Set(session.attempts.filter((a) => a.isCorrect).map((a) => a.wordId)),
+    ];
+    const touched = await prisma.vocabularyWord.findMany({
+      where: { id: { in: correctWordIds } },
+      select: { categoryId: true },
+      distinct: ["categoryId"],
+    });
+    const certs = [];
+    for (const t of touched) {
+      certs.push(await issueCertificateIfMastered(session.childId, t.categoryId));
+    }
+    await awardMilestoneAchievements(session.childId);
+    return buildResult(durationSec, null, sessionWordsLearned, certs);
+  }
+
   const updated = await prisma.$transaction(async (tx) => {
     const closed = await tx.learningSession.update({
       where: { id: sessionId },
@@ -969,10 +1166,8 @@ export async function completeLearningSession(
     const distinctRows = await tx.questionAttempt.findMany({
       where: {
         isCorrect: true,
-        session: {
-          childId: session.childId,
-          categoryId: session.categoryId,
-        },
+        session: { childId: session.childId },
+        word: { categoryId: session.categoryId },
       },
       select: { wordId: true },
       distinct: ["wordId"],
@@ -1108,10 +1303,12 @@ export async function completeLearningSession(
     select: { id: true, label: true, emoji: true, code: true },
   });
 
+  const certificate = await issueCertificateIfMastered(session.childId, session.categoryId);
+
   // Milestone achievements + global wordsLearned / weak-word snapshot (idempotent).
   await awardMilestoneAchievements(session.childId);
 
-  return buildResult(durationSec, nextCategory, updated.nextWords);
+  return buildResult(durationSec, nextCategory, updated.nextWords, [certificate]);
 }
 
 /** Calendar day bounds in Asia/Kolkata (IST, UTC+05:30). */

@@ -24,21 +24,9 @@ import {
 } from "../services/api";
 import { ROLE_SETS } from "../services/auth-errors";
 import { displayEmoji } from "../services/emoji";
-import { openLearningActivity, type LearningActivity } from "../services/learning-nav";
-import { PREVIEW_CHILD_ID } from "../services/learning-session";
+import { AdminActivityPanel } from "../components/AdminActivityPanel";
+import { ReadinessPanel } from "../components/ReadinessPanel";
 import { colors } from "../theme";
-
-const PREVIEW_GAMES: Array<{
-  label: string;
-  activity: LearningActivity;
-  startRound?: "LISTEN" | "SPELL";
-}> = [
-  { label: "🎧 Listen", activity: "LISTEN_SPELL", startRound: "LISTEN" },
-  { label: "✍️ Spell", activity: "LISTEN_SPELL", startRound: "SPELL" },
-  { label: "🧩 Matching", activity: "MATCHING" },
-  { label: "📝 Quiz", activity: "QUIZ" },
-  { label: "🔁 Revision", activity: "REVISION" },
-];
 
 type GradeRow = { id: string; code: string; label: string };
 type FailedCategory = { category: string; count: number; reasons: string[] };
@@ -488,31 +476,8 @@ export default function AdminWordsScreen() {
                 />
               ))}
             </View>
-            {selectedCategory ? (
-              <View style={styles.previewBox}>
-                <Text style={styles.section}>Preview games · {selectedCategory.label}</Text>
-                <Text style={styles.meta}>
-                  Try the games exactly as children see them. Nothing is saved.
-                </Text>
-                <View style={styles.rowWrap}>
-                  {PREVIEW_GAMES.map((g) => (
-                    <SoftButton
-                      key={g.label}
-                      label={g.label}
-                      onPress={() =>
-                        openLearningActivity(router, {
-                          activity: g.activity,
-                          startRound: g.startRound,
-                          categoryId: selectedCategory.id,
-                          childId: PREVIEW_CHILD_ID,
-                          title: `Preview · ${selectedCategory.label}`,
-                        })
-                      }
-                    />
-                  ))}
-                </View>
-              </View>
-            ) : null}
+            <AdminActivityPanel category={selectedCategory} />
+            <ReadinessPanel grade={grade} />
             <TextInput
               style={styles.input}
               placeholder="Search word or meaning"
@@ -630,12 +595,6 @@ const styles = StyleSheet.create({
   content: { padding: 16, gap: 12, paddingBottom: 24 },
   note: { color: colors.textMuted, fontSize: 13, lineHeight: 18 },
   info: { color: colors.success, fontWeight: "700" },
-  previewBox: {
-    backgroundColor: "#EEF2FF",
-    borderRadius: 14,
-    padding: 12,
-    gap: 8,
-  },
   failBox: {
     backgroundColor: "#FEE2E2",
     borderColor: colors.danger,

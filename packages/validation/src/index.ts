@@ -251,9 +251,11 @@ export const startLearningSessionSchema = z
     resume: z.boolean().optional(),
     /** Activity mode for this session (defaults to Listen & Spell). */
     activityMode: learningActivityModeSchema.optional(),
+    /** Mixed-category session; categoryId is not needed. */
+    mix: z.enum(["DAILY_CHALLENGE", "REVISION_WORLD", "MIXED"]).optional(),
   })
   .superRefine((val, ctx) => {
-    if (!val.categoryId && !val.lessonId) {
+    if (!val.categoryId && !val.lessonId && !val.mix) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         message: "categoryId or lessonId is required",

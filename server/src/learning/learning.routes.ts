@@ -20,6 +20,7 @@ import {
 } from "./learning.service.js";
 import {
   getChildLearningHistory,
+  getDailyChallengeStatus,
   listWeakWords,
 } from "./progress-rewards.js";
 import {
@@ -32,6 +33,13 @@ import {
   type AuthenticatedRequest,
 } from "../middleware/auth.js";
 import { validateBody } from "../middleware/validate.js";
+import { listActivitySettings, setActivityEnabled } from "./activity-settings.js";
+import { getCategoryActivityProgress, getContentReadiness } from "./category-progress.js";
+import {
+  assertParentOwnsChild,
+  getCertificate,
+  listChildCertificates,
+} from "./certificates.js";
 import { prisma } from "../lib/prisma.js";
 
 export const learningRouter = Router();
@@ -365,6 +373,106 @@ learningRouter.post(
         String(req.params.sessionId),
         req.body
       );
+      res.status(200).json({ data });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+/** The five child activities with the admin ON/OFF state (same list for admin and parent). */
+learningRouter.get("/activities", async (_req: AuthenticatedRequest, res, next) => {
+  try {
+    res.status(200).json({ data: await listActivitySettings() });
+  } catch (error) {
+    next(error);
+  }
+});
+
+learningRouter.put(
+  "/activities/:code",
+  requireRoles("ADMIN", "SUPER_ADMIN"),
+  async (req: AuthenticatedRequest, res, next) => {
+    try {
+      if (typeof req.body?.enabled !== "boolean") {
+        res.status(400).json({ error: "enabled must be true or false" });
+        return;
+      }
+      const data = await setActivityEnabled(String(req.params.code), req.body.enabled, req.user!.id);
+      res.status(200).json({ data });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+learningRouter.get(
+  "/progress/:childId/categories/:categoryId",
+  progressReadRoles,
+  async (req: AuthenticatedRequest, res, next) => {
+    try {
+      const data = await getCategoryActivityProgress(
+        req.user!.id,
+        String(req.params.childId),
+        String(req.params.categoryId),
+        req.user!.role
+      );
+      res.status(200).json({ data });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+learningRouter.get(
+  "/progress/:childId/daily-challenge",
+  progressReadRoles,
+  async (req: AuthenticatedRequest, res, next) => {
+    try {
+      const childId = String(req.params.childId);
+      await assertParentOwnsChild(req.user!.id, childId, req.user!.role);
+      res.status(200).json({ data: await getDailyChallengeStatus(childId) });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+learningRouter.get(
+  "/progress/:childId/certificates",
+  progressReadRoles,
+  async (req: AuthenticatedRequest, res, next) => {
+    try {
+      const data = await listChildCertificates(
+        req.user!.id,
+        String(req.params.childId),
+        req.user!.role
+      );
+      res.status(200).json({ data });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+learningRouter.get("/certificates/:id", async (req: AuthenticatedRequest, res, next) => {
+  try {
+    const data = await getCertificate(req.user!.id, String(req.params.id), req.user!.role);
+    res.status(200).json({ data });
+  } catch (error) {
+    next(error);
+  }
+});
+
+learningRouter.get(
+  "/admin/readiness",
+  requireRoles("ADMIN", "SUPER_ADMIN"),
+  async (req: AuthenticatedRequest, res, next) => {
+    try {
+      const data = await getContentReadiness({
+        levelCode: typeof req.query.level === "string" ? req.query.level : undefined,
+        gradeCode: typeof req.query.grade === "string" ? req.query.grade : undefined,
+      });
       res.status(200).json({ data });
     } catch (error) {
       next(error);

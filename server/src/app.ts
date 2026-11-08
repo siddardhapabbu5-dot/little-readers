@@ -56,9 +56,12 @@ export function createApp() {
     });
   });
 
-  // Local Expo / web preview hammers APIs on every tab focus — keep prod limits only.
+  // Expo screens fire many requests per tab focus, and families on one mobile
+  // carrier often share a single public IP, so production needs headroom too.
   const rateMax =
-    env.NODE_ENV === "production" ? env.RATE_LIMIT_MAX : Math.max(env.RATE_LIMIT_MAX, 5000);
+    env.NODE_ENV === "production"
+      ? Math.max(env.RATE_LIMIT_MAX, 1000)
+      : Math.max(env.RATE_LIMIT_MAX, 5000);
   app.use(
     "/api",
     rateLimit({
@@ -67,7 +70,10 @@ export function createApp() {
       standardHeaders: true,
       legacyHeaders: false,
       message: { error: "Too many requests, please try again later" },
-      skip: () => process.env.VITEST === "true" || process.env.NODE_ENV === "test",
+      skip: (req) =>
+        process.env.VITEST === "true" ||
+        process.env.NODE_ENV === "test" ||
+        req.path === "/health",
     })
   );
 

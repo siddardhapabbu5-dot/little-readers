@@ -65,4 +65,25 @@ describe.skipIf(!hasDb)("Vocabulary grade/level CSV export & import", () => {
     expect(word?.meaning).toBe("sheet meaning");
     await prisma.vocabularyWord.deleteMany({ where: { text: stamp } });
   });
+
+  it("imports rows with an outdated group_code and reports failures per category", async () => {
+    const stamp = `groupword${String(Date.now()).replace(/\d/g, (d) => "abcdefghij"[Number(d)])}`;
+    const csv = [
+      "grade_code,level_code,group_code,category_code,category_label,word,meaning",
+      `GRADE_1,${levelCode},ZZ_OLD_GROUP,${categoryCode},"${categoryLabel}",${stamp},group meaning`,
+      `GRADE_1,${levelCode},,${categoryCode},"${categoryLabel}",bad_word_1,bad meaning`,
+    ].join("\n");
+
+    const imported = await request(app)
+      .post("/api/admin/vocabulary/words/import-sheet")
+      .set("Authorization", `Bearer ${adminToken}`)
+      .send({ csv });
+    expect(imported.status).toBe(200);
+    expect(imported.body.data.created + imported.body.data.updated).toBe(1);
+    expect(imported.body.data.failed).toBe(1);
+    expect(imported.body.data.failedByCategory).toEqual([
+      expect.objectContaining({ category: categoryLabel, count: 1 }),
+    ]);
+    await prisma.vocabularyWord.deleteMany({ where: { text: stamp } });
+  });
 });

@@ -27,6 +27,7 @@ import { displayEmoji } from "../services/emoji";
 import { colors } from "../theme";
 
 type GradeRow = { id: string; code: string; label: string };
+type FailedCategory = { category: string; count: number; reasons: string[] };
 
 type Category = {
   id: string;
@@ -109,6 +110,8 @@ export default function AdminWordsScreen() {
   const [reclassCategoryId, setReclassCategoryId] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
+  const [uploadFailures, setUploadFailures] = useState<FailedCategory[]>([]);
+  const [skippedTabs, setSkippedTabs] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
 
   const gradeId = useMemo(
@@ -267,6 +270,8 @@ export default function AdminWordsScreen() {
   async function uploadCsv() {
     setBusy(true);
     setError(null);
+    setUploadFailures([]);
+    setSkippedTabs([]);
     try {
       let fileName = "sheet.csv";
       let fileBlob: Blob | null = null;
@@ -333,7 +338,11 @@ export default function AdminWordsScreen() {
         format?: string;
         sheet?: string;
         sheetsImported?: string[];
+        skippedSheets?: string[];
+        failedByCategory?: FailedCategory[];
       }>("/admin/vocabulary/words/import-sheet", form);
+      setUploadFailures(data.failedByCategory ?? []);
+      setSkippedTabs(data.skippedSheets ?? []);
       const sheetNote = data.sheet
         ? ` · ${data.sheet}`
         : data.sheetsImported?.length
@@ -406,6 +415,28 @@ export default function AdminWordsScreen() {
           </Text>
           <ErrorText>{error}</ErrorText>
           {info ? <Text style={styles.info}>{info}</Text> : null}
+          {uploadFailures.length || skippedTabs.length ? (
+            <View style={styles.failBox}>
+              <Text style={styles.failTitle}>Not uploaded — please fix and upload again</Text>
+              {uploadFailures.map((f) => (
+                <View key={f.category} style={styles.failRow}>
+                  <Text style={styles.failCat}>
+                    {f.category}: {f.count} failed
+                  </Text>
+                  {f.reasons.map((r) => (
+                    <Text key={r} style={styles.failReason}>
+                      • {r}
+                    </Text>
+                  ))}
+                </View>
+              ))}
+              {skippedTabs.map((t) => (
+                <Text key={t} style={styles.failCat}>
+                  Tab "{t}": skipped (no matching category or no words)
+                </Text>
+              ))}
+            </View>
+          ) : null}
           {busy ? <ActivityIndicator color={colors.primary} /> : null}
 
           <Card style={{ gap: 8 }}>
@@ -559,6 +590,18 @@ const styles = StyleSheet.create({
   content: { padding: 16, gap: 12, paddingBottom: 24 },
   note: { color: colors.textMuted, fontSize: 13, lineHeight: 18 },
   info: { color: colors.success, fontWeight: "700" },
+  failBox: {
+    backgroundColor: "#FEE2E2",
+    borderColor: colors.danger,
+    borderWidth: 2,
+    borderRadius: 14,
+    padding: 12,
+    gap: 8,
+  },
+  failTitle: { color: colors.danger, fontWeight: "800", fontSize: 15 },
+  failRow: { gap: 2 },
+  failCat: { color: "#991B1B", fontWeight: "800" },
+  failReason: { color: "#7F1D1D", fontSize: 13 },
   section: { fontWeight: "800", fontSize: 16, color: colors.text },
   meta: { color: colors.textMuted, fontSize: 13, lineHeight: 18 },
   word: { fontWeight: "800", fontSize: 17, color: colors.text },

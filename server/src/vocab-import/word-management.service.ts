@@ -521,7 +521,7 @@ export async function importGradeLevelWordsCsv(csvText: string) {
 
   let created = 0;
   let updated = 0;
-  const errors: Array<{ row: number; error: string }> = [];
+  const errors: ImportRowError[] = [];
 
   for (let li = 1; li < lines.length; li++) {
     const cols = parseCsvLine(lines[li]);
@@ -536,30 +536,38 @@ export async function importGradeLevelWordsCsv(csvText: string) {
     const categoryLabel = get("category_label");
     const word = sanitizeWord(get("word"));
     const meaning = sanitizeText(get("meaning"), 500);
+    const rowCategory = categoryLabel || categoryCode || undefined;
     if (!word || !meaning) {
-      errors.push({ row: li + 1, error: "word and meaning required" });
+      errors.push({ row: li + 1, category: rowCategory, error: "word and meaning required" });
       continue;
     }
     const quality = wordQualityIssue(get("word")) ?? meaningQualityIssue(meaning);
     if (quality) {
-      errors.push({ row: li + 1, error: `${quality}: "${get("word").slice(0, 40)}"` });
+      errors.push({
+        row: li + 1,
+        category: rowCategory,
+        error: `${quality}: "${get("word").slice(0, 40)}"`,
+      });
       continue;
     }
 
-    const match = categories.find((c) => {
+    // Groups are hidden in Admin and categories can move between them, so group_code only breaks ties.
+    const candidates = categories.filter((c) => {
       const g = c.group.level.grade?.code;
       if (gradeCode && g !== gradeCode) return false;
       if (levelCode && c.group.level.code !== levelCode) return false;
-      if (groupCode && c.group.code !== groupCode) return false;
       if (categoryCode && c.code === categoryCode) return true;
       if (categoryLabel && c.label.toLowerCase() === categoryLabel.toLowerCase()) {
         return true;
       }
       return false;
     });
+    const match =
+      candidates.find((c) => groupCode && c.group.code === groupCode) ?? candidates[0];
     if (!match) {
       errors.push({
         row: li + 1,
+        category: rowCategory,
         error: `No category for ${gradeCode}/${levelCode}/${categoryLabel || categoryCode}`,
       });
       continue;
@@ -619,7 +627,22 @@ export async function importGradeLevelWordsCsv(csvText: string) {
     updated,
     failed: errors.length,
     errors: errors.slice(0, 40),
+    failedByCategory: summarizeFailures(errors),
   };
+}
+
+type ImportRowError = { row: number; error: string; category?: string };
+
+function summarizeFailures(errors: ImportRowError[]) {
+  const byCat = new Map<string, { category: string; count: number; reasons: string[] }>();
+  for (const e of errors) {
+    const key = e.category || "Unknown";
+    const entry = byCat.get(key) ?? { category: key, count: 0, reasons: [] };
+    entry.count += 1;
+    if (entry.reasons.length < 3) entry.reasons.push(`Row ${e.row}: ${e.error}`);
+    byCat.set(key, entry);
+  }
+  return [...byCat.values()].sort((a, b) => b.count - a.count);
 }
 
 function normHeader(h: string) {
@@ -717,7 +740,7 @@ export async function importAlphabetSheetRows(
 
   let created = 0;
   let updated = 0;
-  const errors: Array<{ row: number; error: string }> = [];
+  const errors: ImportRowError[] = [];
 
   for (let r = 1; r < rows.length; r++) {
     const cols = rows[r].map((c) => String(c ?? "").trim());
@@ -728,12 +751,16 @@ export async function importAlphabetSheetRows(
     const example = iExample >= 0 ? cols[iExample] : "";
     const word = sanitizeWord(wordRaw);
     if (!word) {
-      errors.push({ row: r + 1, error: "Word required" });
+      errors.push({ row: r + 1, category: category.label, error: "Word required" });
       continue;
     }
     const quality = wordQualityIssue(wordRaw);
     if (quality) {
-      errors.push({ row: r + 1, error: `${quality}: "${wordRaw.slice(0, 40)}"` });
+      errors.push({
+        row: r + 1,
+        category: category.label,
+        error: `${quality}: "${wordRaw.slice(0, 40)}"`,
+      });
       continue;
     }
     const meaning = sanitizeText(
@@ -803,6 +830,7 @@ export async function importAlphabetSheetRows(
     updated,
     failed: errors.length,
     errors: errors.slice(0, 40),
+    failedByCategory: summarizeFailures(errors),
   };
 }
 
@@ -918,7 +946,8 @@ export async function importVocabularySheet(input: {
       let created = 0;
       let updated = 0;
       let failed = 0;
-      const errors: Array<{ row: number; error: string }> = [];
+      const errors: ImportRowError[] = [];
+      const failedByCategory: ReturnType<typeof summarizeFailures> = [];
       const sheetsImported: string[] = [];
       const skippedSheets: string[] = [];
 
@@ -937,6 +966,7 @@ export async function importVocabularySheet(input: {
         updated += part.updated;
         failed += part.failed;
         errors.push(...part.errors);
+        failedByCategory.push(...part.failedByCategory);
         sheetsImported.push(`${sheetName} → ${best.c.label}`);
       }
 
@@ -953,6 +983,7 @@ export async function importVocabularySheet(input: {
         updated,
         failed,
         errors: errors.slice(0, 40),
+        failedByCategory: failedByCategory.sort((a, b) => b.count - a.count),
         sheetsImported,
         skippedSheets,
       };

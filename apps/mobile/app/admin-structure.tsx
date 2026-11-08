@@ -222,9 +222,8 @@ export default function AdminStructureScreen() {
       setSelectedGroupId("");
       return;
     }
-    if (!selectedGroupId || !levelGroups.some((g) => g.id === selectedGroupId)) {
-      setSelectedGroupId(levelGroups[0].id);
-    }
+    const last = levelGroups[levelGroups.length - 1].id;
+    if (selectedGroupId !== last) setSelectedGroupId(last);
   }, [levelGroups, selectedGroupId]);
 
   function suggestCategoryCode(label: string) {
@@ -734,9 +733,6 @@ export default function AdminStructureScreen() {
                 <Text style={styles.meta}>
                   Level path:{" "}
                   {gradeLevels.map((l) => l.code).join(", ")}
-                  {levelGroups.length
-                    ? ` · Groups ${levelGroups.map((g) => g.code).join(", ")}`
-                    : ""}
                 </Text>
               ) : (
                 <Text style={styles.meta}>No level linked yet.</Text>
@@ -850,30 +846,12 @@ export default function AdminStructureScreen() {
                 <Text style={styles.meta}>No level linked to this grade yet.</Text>
               )}
 
-              {levelGroups.length > 1 ? (
-                <>
-                  <Text style={styles.meta}>Group (for new categories)</Text>
-                  <View style={styles.tabs}>
-                    {levelGroups.map((g) => (
-                      <SoftButton
-                        key={g.id}
-                        label={g.code}
-                        active={selectedGroupId === g.id}
-                        onPress={() => setSelectedGroupId(g.id)}
-                      />
-                    ))}
-                  </View>
-                </>
-              ) : levelGroups.length === 1 ? (
-                <Text style={styles.meta}>
-                  Group {levelGroups[0].code} (auto — only one group)
-                </Text>
-              ) : (
+              {levelGroups.length === 0 ? (
                 <Text style={styles.meta}>
                   No group yet — create this grade with scaffold, or add Group A on web
                   Settings.
                 </Text>
-              )}
+              ) : null}
 
               <View style={styles.rowBetween}>
                 <Text style={styles.section}>Categories</Text>
@@ -899,14 +877,7 @@ export default function AdminStructureScreen() {
               {panel?.kind === "create-category" ? (
                 <View style={styles.createBox}>
                   <Text style={styles.meta}>
-                    Adds a topic under {selectedGrade.code}
-                    {levelGroups.length
-                      ? ` · Group ${
-                          levelGroups.find((g) => g.id === selectedGroupId)?.code ??
-                          levelGroups[0].code
-                        }`
-                      : ""}
-                    .
+                    Adds a topic at the end of {selectedGrade.code}.
                   </Text>
                   <Field
                     label="Label"
@@ -1000,9 +971,6 @@ export default function AdminStructureScreen() {
                   </Text>
                   <Text style={styles.meta}>
                     {panelCategory.code}
-                    {panelCategory.group?.code
-                      ? ` · Group ${panelCategory.group.code}`
-                      : ""}
                     {panelCategory.group?.level?.code
                       ? ` · ${panelCategory.group.level.code}`
                       : ""}
@@ -1044,7 +1012,6 @@ export default function AdminStructureScreen() {
                 <View key={c.id} style={styles.rowItem}>
                   <Text style={styles.rowTitle}>
                     {c.label}
-                    {c.group?.code ? ` · Group ${c.group.code}` : ""}
                   </Text>
                   <Text style={styles.meta}>
                     {c._count?.words ?? 0} words ·{" "}

@@ -15,6 +15,7 @@ type Receipt = {
   paidAt: string;
   parentName: string | null;
   parentEmail: string;
+  childNames?: string[];
   planName: string;
   durationMonths: number | null;
   seatsPurchased: number;
@@ -24,6 +25,8 @@ type Receipt = {
   currency: string;
   razorpayOrderId: string | null;
   razorpayPaymentId: string | null;
+  subscriptionStartsAt?: string | null;
+  subscriptionEndsAt?: string | null;
   validUntil: string | null;
 };
 
@@ -72,14 +75,18 @@ export default function ReceiptScreen() {
   const rows: [string, string][] = receipt
     ? [
         ["Receipt no.", receipt.receiptNumber],
-        ["Date", new Date(receipt.paidAt).toLocaleString()],
+        ["Payment date", new Date(receipt.paidAt).toLocaleString()],
         ["Parent", receipt.parentName || receipt.parentEmail],
         ["Email", receipt.parentEmail],
+        ...(receipt.childNames?.length
+          ? ([[receipt.childNames.length > 1 ? "Children" : "Child", receipt.childNames.join(", ")]] as [string, string][])
+          : []),
         ["Plan", planLabel(receipt)],
         ...(receipt.durationMonths
           ? ([["Duration", `${receipt.durationMonths} month${receipt.durationMonths === 1 ? "" : "s"}`]] as [string, string][])
           : []),
-        ["Valid until", day(receipt.validUntil)],
+        ["Starts", day(receipt.subscriptionStartsAt ?? null)],
+        ["Expires", day(receipt.subscriptionEndsAt ?? receipt.validUntil)],
         ["Amount", money(receipt.amountPaise, receipt.currency)],
         ...(receipt.taxPaise
           ? ([["Tax", money(receipt.taxPaise, receipt.currency)]] as [string, string][])

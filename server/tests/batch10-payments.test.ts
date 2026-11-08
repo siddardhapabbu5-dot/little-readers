@@ -1,4 +1,4 @@
-import { beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import request from "supertest";
 import { createApp } from "../src/app.js";
 import { prisma } from "../src/lib/prisma.js";
@@ -17,7 +17,9 @@ describe.skipIf(!hasDb)("Batch 10 — Razorpay checkout + activation", () => {
   let parentId = "";
   let adminToken = "";
   let teacherToken = "";
+  let yearlyPlanId = "";
   const stamp = Date.now();
+  const yearly = () => ({ planId: yearlyPlanId });
 
   beforeAll(async () => {
     process.env.JWT_SECRET =
@@ -27,7 +29,6 @@ describe.skipIf(!hasDb)("Batch 10 — Razorpay checkout + activation", () => {
     process.env.RAZORPAY_KEY_ID = "rzp_test_stub";
     process.env.RAZORPAY_KEY_SECRET = "stub_secret_for_hmac_tests_only";
     process.env.RAZORPAY_WEBHOOK_SECRET = "whsec_stub_tests";
-    process.env.PLAN_FAMILY_YEARLY_AMOUNT_PAISE = "49900";
     process.env.PLAN_EXTRA_SEAT_AMOUNT_PAISE = "9900";
     process.env.TAX_RATE_BPS = "0";
 
@@ -71,6 +72,41 @@ describe.skipIf(!hasDb)("Batch 10 — Razorpay checkout + activation", () => {
       password: "TeacherDemo1",
     });
     teacherToken = tLogin.body.data.tokens.accessToken;
+
+    const plan = await request(app)
+      .post("/api/admin/academic/subscription-plans")
+      .set("Authorization", `Bearer ${adminToken}`)
+      .send({
+        name: "Yearly",
+        code: `PAY_Y_${stamp}`,
+        durationMonths: 12,
+        amountPaise: 49900,
+        includedSeats: 2,
+        isPublished: true,
+      });
+    expect(plan.status).toBe(201);
+    yearlyPlanId = plan.body.data.id;
+
+    const status = await request(app)
+      .get("/api/agreements")
+      .set("Authorization", `Bearer ${parentToken}`);
+    expect(status.body.data.allPublished).toBe(true);
+    const accept = await request(app)
+      .post("/api/agreements/accept")
+      .set("Authorization", `Bearer ${parentToken}`)
+      .send({
+        versionIds: status.body.data.documents.map((d: { current: { id: string } }) => d.current.id),
+      });
+    expect(accept.status).toBe(201);
+  });
+
+  afterAll(async () => {
+    if (yearlyPlanId) {
+      await prisma.subscriptionPlan.update({
+        where: { id: yearlyPlanId },
+        data: { isActive: false, isPublished: false },
+      });
+    }
   });
 
   beforeEach(() => {
@@ -81,7 +117,7 @@ describe.skipIf(!hasDb)("Batch 10 — Razorpay checkout + activation", () => {
     const order = await request(app)
       .post("/api/payments/orders")
       .set("Authorization", `Bearer ${parentToken}`)
-      .send({ purpose: "FAMILY_YEARLY" });
+      .send(yearly());
     expect(order.status).toBe(201);
     const orderId = order.body.data.orderId as string;
 
@@ -110,7 +146,7 @@ describe.skipIf(!hasDb)("Batch 10 — Razorpay checkout + activation", () => {
     const order = await request(app)
       .post("/api/payments/orders")
       .set("Authorization", `Bearer ${parentToken}`)
-      .send({ purpose: "FAMILY_YEARLY" });
+      .send(yearly());
     expect(order.status).toBe(201);
     const orderId = order.body.data.orderId as string;
     const paid = stubMarkOrderPaid(orderId);
@@ -228,7 +264,7 @@ describe.skipIf(!hasDb)("Batch 10 — Razorpay checkout + activation", () => {
     const order = await request(app)
       .post("/api/payments/orders")
       .set("Authorization", `Bearer ${parentToken}`)
-      .send({ purpose: "FAMILY_YEARLY" });
+      .send(yearly());
     expect(order.status).toBe(201);
     const orderId = order.body.data.orderId as string;
     const paid = stubMarkOrderPaid(orderId, `pay_race_${stamp}`);
@@ -290,7 +326,7 @@ describe.skipIf(!hasDb)("Batch 10 — Razorpay checkout + activation", () => {
     const cancelled = await request(app)
       .post("/api/payments/orders")
       .set("Authorization", `Bearer ${parentToken}`)
-      .send({ purpose: "FAMILY_YEARLY" });
+      .send(yearly());
     const cancelledId = cancelled.body.data.orderId as string;
     const cancel = await request(app)
       .post("/api/payments/cancel")
@@ -302,7 +338,7 @@ describe.skipIf(!hasDb)("Batch 10 — Razorpay checkout + activation", () => {
     const failed = await request(app)
       .post("/api/payments/orders")
       .set("Authorization", `Bearer ${parentToken}`)
-      .send({ purpose: "FAMILY_YEARLY" });
+      .send(yearly());
     const failedId = failed.body.data.orderId as string;
     const body = JSON.stringify({
       id: `evt_fail_${stamp}`,
@@ -329,6 +365,88 @@ describe.skipIf(!hasDb)("Batch 10 — Razorpay checkout + activation", () => {
     expect(after?.expiresAt?.getTime()).toBe(before?.expiresAt?.getTime());
   });
 
+  it("prices orders only from the published DB plan and ignores client amounts", async () => {
+    const legacy = await request(app)
+      .post("/api/payments/orders")
+      .set("Authorization", `Bearer ${parentToken}`)
+      .send({ purpose: "FAMILY_YEARLY" });
+    expect(legacy.status).toBe(400);
+    expect(legacy.body.code ?? legacy.body.details?.code).toBe("PLAN_REQUIRED");
+
+    const order = await request(app)
+      .post("/api/payments/orders")
+      .set("Authorization", `Bearer ${parentToken}`)
+      .send({ planId: yearlyPlanId, amountPaise: 100, amount: 100, totalPaise: 100 });
+    expect(order.status).toBe(201);
+    expect(order.body.data.amountPaise).toBe(49900);
+    const row = await prisma.payment.findFirst({
+      where: { razorpayOrderId: order.body.data.orderId },
+    });
+    expect(row?.amountCents).toBe(49900);
+
+    const orderId = order.body.data.orderId as string;
+    const paid = stubMarkOrderPaid(orderId, `pay_short_${stamp}`);
+    paid.amount = 100;
+    const short = await request(app)
+      .post("/api/payments/verify")
+      .set("Authorization", `Bearer ${parentToken}`)
+      .send({ orderId, paymentId: paid.id, signature: signCheckout(orderId, paid.id) });
+    expect(short.status).toBe(400);
+    const after = await prisma.payment.findFirst({ where: { razorpayOrderId: orderId } });
+    expect(after?.status).toBe("PENDING");
+  });
+
+  it("keeps paid amount and period on the receipt after Admin changes the price", async () => {
+    const order = await request(app)
+      .post("/api/payments/orders")
+      .set("Authorization", `Bearer ${parentToken}`)
+      .send(yearly());
+    const orderId = order.body.data.orderId as string;
+    const paid = stubMarkOrderPaid(orderId, `pay_rcpt_${stamp}`);
+    const verify = await request(app)
+      .post("/api/payments/verify")
+      .set("Authorization", `Bearer ${parentToken}`)
+      .send({ orderId, paymentId: paid.id, signature: signCheckout(orderId, paid.id) });
+    expect(verify.status).toBe(200);
+    const paymentId = order.body.data.paymentId as string;
+    const subBefore = await prisma.subscription.findFirst({
+      where: { userId: parentId },
+      orderBy: { createdAt: "desc" },
+    });
+
+    const reprice = await request(app)
+      .patch(`/api/admin/academic/subscription-plans/${yearlyPlanId}`)
+      .set("Authorization", `Bearer ${adminToken}`)
+      .send({ amountPaise: 59900 });
+    expect(reprice.status).toBe(200);
+
+    const receipt = await request(app)
+      .get(`/api/payments/${paymentId}/receipt`)
+      .set("Authorization", `Bearer ${parentToken}`);
+    expect(receipt.status).toBe(200);
+    const r = receipt.body.data;
+    expect(r.totalPaise).toBe(49900);
+    expect(r.razorpayPaymentId).toBe(paid.id);
+    expect(r.durationMonths).toBe(12);
+    expect(Array.isArray(r.childNames)).toBe(true);
+    expect(new Date(r.subscriptionEndsAt).getTime()).toBe(subBefore!.expiresAt.getTime());
+    expect(new Date(r.subscriptionStartsAt).getTime()).toBeLessThan(
+      new Date(r.subscriptionEndsAt).getTime()
+    );
+
+    const subAfter = await prisma.subscription.findFirst({
+      where: { userId: parentId },
+      orderBy: { createdAt: "desc" },
+    });
+    expect(subAfter?.expiresAt.getTime()).toBe(subBefore?.expiresAt.getTime());
+
+    const next = await request(app)
+      .post("/api/payments/orders")
+      .set("Authorization", `Bearer ${parentToken}`)
+      .send(yearly());
+    expect(next.body.data.amountPaise).toBe(59900);
+  });
+
   it("refuses live Razorpay keys unless explicitly allowed", async () => {
     const prev = process.env.RAZORPAY_KEY_ID;
     process.env.RAZORPAY_KEY_ID = "rzp_live_notreal";
@@ -342,7 +460,7 @@ describe.skipIf(!hasDb)("Batch 10 — Razorpay checkout + activation", () => {
       const order = await request(app)
         .post("/api/payments/orders")
         .set("Authorization", `Bearer ${parentToken}`)
-        .send({ purpose: "FAMILY_YEARLY" });
+        .send(yearly());
       expect(order.status).toBe(503);
       expect(order.body.code ?? order.body.details?.code).toBe("LIVE_KEYS_BLOCKED");
     } finally {

@@ -102,12 +102,8 @@ export async function getPlansCatalog(levelId?: string) {
       durationMonths: p.durationMonths,
     }));
 
-  // Fallback env monthly/yearly only when no DB catalog yet.
-  if (!mapped.length) {
-    mapped.push(
-      ...listConfiguredPlans().filter((p) => p.purpose !== "EXTRA_SEATS")
-    );
-  }
+  // Subscription prices come only from Admin-published DB plans.
+  const hasSubscriptionPlans = mapped.length > 0;
   mapped.push(...envPlans);
 
   const enabled = paymentsEnabled() || mapped.some((p) => p.purpose !== "EXTRA_SEATS");
@@ -118,7 +114,7 @@ export async function getPlansCatalog(levelId?: string) {
         process.env.PAYMENT_ENABLED === "1" ||
         paymentsEnabled()) &&
         (process.env.RAZORPAY_KEY_ID || publicKeyId()) &&
-        mapped.length > 0 &&
+        hasSubscriptionPlans &&
         !liveBlocked
     ),
     currency: mapped[0]?.currency ?? "INR",
@@ -127,9 +123,9 @@ export async function getPlansCatalog(levelId?: string) {
     dbCatalog: dbPlans.length > 0,
     note: liveBlocked
       ? "Checkout is paused: live Razorpay keys are not approved yet."
-      : mapped.length > 0
+      : hasSubscriptionPlans
         ? null
-        : "No published subscription plans yet. Ask Admin to publish plans, or configure env plan amounts.",
+        : "No published subscription plans yet. Ask Admin to publish plans.",
     // keep flag for callers that still check paymentsEnabled alone
     gatewayReady: paymentsEnabled() || enabled,
   };
@@ -196,28 +192,19 @@ export async function createCheckoutOrder(
     };
   } else {
     const purpose = input.purpose;
-    if (!purpose) {
-      throw new AppError("planId or purpose is required", 400);
+    if (purpose !== "EXTRA_SEATS") {
+      throw new AppError("Choose a published subscription plan", 400, {
+        code: "PLAN_REQUIRED",
+      });
     }
     const envPlan = getPlan(purpose, input.seats ?? 1);
     if (!envPlan) {
       throw new AppError("Selected plan is not available", 400);
     }
     plan = envPlan;
-    durationMonths =
-      purpose === "FAMILY_MONTHLY"
-        ? 1
-        : purpose === "FAMILY_3_MONTH"
-          ? 3
-          : purpose === "FAMILY_6_MONTH"
-            ? 6
-            : purpose === "FAMILY_YEARLY"
-              ? 12
-              : undefined;
     snapshot = {
       planCode: envPlan.code,
       planName: envPlan.label,
-      durationMonths,
       includedSeats: envPlan.includedSeats,
       amountPaise: envPlan.amountPaise,
       taxPaise: envPlan.taxPaise,
@@ -331,6 +318,7 @@ async function activateVerifiedPayment(
       planCode?: string;
       planName?: string;
       includedSeats?: number;
+      [key: string]: unknown;
     } = {};
     try {
       meta = payment.metadataJson
@@ -371,6 +359,20 @@ async function activateVerifiedPayment(
             : BASE_INCLUDED
         )
       );
+
+      // Receipt facts for this payment only; later renewals must not rewrite them.
+      const children = await tx.child.findMany({
+        where: { parentId: payment.userId, isActive: true },
+        orderBy: [{ hasLearningSeat: "desc" }, { createdAt: "asc" }],
+        take: includedSeats,
+        select: { displayName: true },
+      });
+      meta = {
+        ...meta,
+        periodStartsAt: base.toISOString(),
+        periodEndsAt: expiresAt.toISOString(),
+        childNames: children.map((c) => c.displayName),
+      };
 
       if (subscription) {
         subscription = await tx.subscription.update({
@@ -422,6 +424,7 @@ async function activateVerifiedPayment(
         receiptNumber: payment.receiptNumber ?? receiptNumberFor(payment.id, now),
         subscriptionId: subscription?.id ?? payment.subscriptionId,
         rawEventId: opts?.eventId ?? payment.rawEventId,
+        metadataJson: JSON.stringify(meta),
       },
     });
 
@@ -472,8 +475,11 @@ export async function verifyAndActivate(
     });
     throw new AppError(`Payment not successful (${remote.status})`, 402);
   }
-  if (remote.amount !== payment.amountCents) {
-    throw new AppError("Payment amount mismatch", 400);
+  if (
+    remote.amount !== payment.amountCents ||
+    (remote.currency && remote.currency !== payment.currency)
+  ) {
+    throw new AppError("Payment amount mismatch", 400, { code: "AMOUNT_MISMATCH" });
   }
 
   return activateVerifiedPayment(payment.id, input.paymentId);
@@ -514,7 +520,7 @@ export async function handleWebhook(rawBody: string, signature: string | undefin
       where: { razorpayOrderId: entity.order_id, provider: "razorpay" },
     });
     if (!payment) return { ignored: true, reason: "unknown order" };
-    if (entity.amount != null && entity.amount !== payment.amountCents) {
+    if (entity.amount !== payment.amountCents) {
       throw new AppError("Webhook amount mismatch", 400);
     }
     return activateVerifiedPayment(payment.id, entity.id, { eventId });
@@ -626,7 +632,7 @@ export async function getPaymentReceipt(userId: string, paymentId: string) {
     where: { id: paymentId, userId },
     include: {
       user: { select: { name: true, email: true } },
-      subscription: { select: { plan: true, expiresAt: true } },
+      subscription: { select: { plan: true, startedAt: true, expiresAt: true } },
     },
   });
   if (!payment) throw new AppError("Payment not found", 404);
@@ -640,6 +646,9 @@ export async function getPaymentReceipt(userId: string, paymentId: string) {
     durationMonths?: number;
     amountPaise?: number;
     taxPaise?: number;
+    periodStartsAt?: string;
+    periodEndsAt?: string;
+    childNames?: string[];
   } = {};
   try {
     meta = payment.metadataJson ? JSON.parse(payment.metadataJson) : {};
@@ -648,11 +657,23 @@ export async function getPaymentReceipt(userId: string, paymentId: string) {
   }
   const total = payment.amountCents;
   const tax = Number(meta.taxPaise) || 0;
+  const childNames =
+    meta.childNames ??
+    (
+      await prisma.child.findMany({
+        where: { parentId: payment.userId, isActive: true },
+        orderBy: [{ hasLearningSeat: "desc" }, { createdAt: "asc" }],
+        select: { displayName: true },
+      })
+    ).map((c) => c.displayName);
+  const startsAt = meta.periodStartsAt ?? payment.subscription?.startedAt ?? null;
+  const endsAt = meta.periodEndsAt ?? payment.subscription?.expiresAt ?? null;
   return {
     receiptNumber: payment.receiptNumber,
     paidAt: payment.paidAt,
     parentName: payment.user.name,
     parentEmail: payment.user.email,
+    childNames,
     planName: meta.planName ?? payment.planCode ?? payment.purpose,
     durationMonths: meta.durationMonths ?? null,
     seatsPurchased: payment.seatsPurchased,
@@ -662,7 +683,9 @@ export async function getPaymentReceipt(userId: string, paymentId: string) {
     currency: payment.currency,
     razorpayOrderId: payment.razorpayOrderId,
     razorpayPaymentId: payment.razorpayPaymentId,
-    validUntil: payment.subscription?.expiresAt ?? null,
+    subscriptionStartsAt: startsAt,
+    subscriptionEndsAt: endsAt,
+    validUntil: endsAt,
   };
 }
 

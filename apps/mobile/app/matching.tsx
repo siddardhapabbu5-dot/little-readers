@@ -12,7 +12,8 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Card, ErrorText, SoftButton, Title } from "../components/ui";
 import { IconButton, KidsHeader } from "../components/kids";
 import { AuthGate } from "../components/AuthGate";
-import { apiRequest, ApiError } from "../services/api";
+import { ApiError } from "../services/api";
+import { apiRequest, isPreviewChild } from "../services/learning-session";
 import { ROLE_SETS } from "../services/auth-errors";
 import { displayEmoji } from "../services/emoji";
 import { speakWord } from "../services/speech";
@@ -265,7 +266,7 @@ export default function MatchingScreen() {
                 {results.correctAnswers}/{results.questionsAttempted} correct ·{" "}
                 {results.points} pts · {results.accuracy}%
               </Text>
-              <SoftButton label="Back to Games" onPress={() => router.replace("/(tabs)/games")} />
+              <SoftButton label="Back to Games" onPress={() => (isPreviewChild(params.childId) ? router.back() : router.replace("/(tabs)/games"))} />
               <SoftButton label="Home" onPress={() => router.replace("/(tabs)/home")} />
             </Card>
           </ScrollView>

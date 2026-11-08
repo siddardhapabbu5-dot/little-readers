@@ -14,6 +14,7 @@ import {
   listLearningCategories,
   listLearningLevels,
   listLevelGroups,
+  previewLearningSession,
   startLearningSession,
   submitQuestionAttempt,
 } from "./learning.service.js";
@@ -304,6 +305,33 @@ learningRouter.post(
       );
       const status = data.resumed ? 200 : 201;
       res.status(status).json({ data });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+learningRouter.post(
+  "/preview-session",
+  requireRoles("ADMIN", "SUPER_ADMIN"),
+  async (req: AuthenticatedRequest, res, next) => {
+    try {
+      const categoryId = String(req.body?.categoryId ?? "");
+      if (!categoryId) {
+        res.status(400).json({ error: "categoryId is required" });
+        return;
+      }
+      const questionCount = Number(req.body?.questionCount);
+      const data = await previewLearningSession({
+        categoryId,
+        activityMode:
+          typeof req.body?.activityMode === "string" ? req.body.activityMode : undefined,
+        questionCount:
+          Number.isInteger(questionCount) && questionCount > 0 && questionCount <= 50
+            ? questionCount
+            : undefined,
+      });
+      res.status(200).json({ data });
     } catch (error) {
       next(error);
     }

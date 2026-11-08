@@ -677,6 +677,64 @@ export async function startLearningSession(
   };
 }
 
+/** Admin-only game preview: same questions as a real session, nothing is saved. */
+export async function previewLearningSession(input: {
+  categoryId: string;
+  activityMode?: string;
+  questionCount?: number;
+}) {
+  const activityMode = normalizeActivityMode(
+    input.activityMode as StartLearningSessionInput["activityMode"]
+  );
+  const category = await prisma.learningCategory.findUnique({
+    where: { id: input.categoryId },
+    include: {
+      words: { where: { isActive: true }, orderBy: { sortOrder: "asc" } },
+      group: { include: { level: true } },
+    },
+  });
+  if (!category || category.words.length === 0) {
+    throw new AppError("This category has no active words yet", 404);
+  }
+
+  const pool: SessionWord[] = category.words.map((w) => ({
+    id: w.id,
+    text: w.text,
+    meaning: w.meaning,
+    emoji: w.emoji,
+    imageUrl: w.imageUrl,
+    audioUrl: w.audioUrl,
+    firstLetter: w.firstLetter,
+    phonetic: w.phonetic,
+    difficulty: w.difficulty,
+  }));
+  const defaults: Record<string, number> = { MATCHING: 6, QUIZ: 8, REVISION: 8, LISTEN_SPELL: 10 };
+  const count = Math.min(input.questionCount ?? defaults[activityMode] ?? 10, pool.length);
+  const selected = shuffle(pool).slice(0, count);
+
+  return {
+    sessionId: `preview-${Date.now()}`,
+    resumed: false,
+    activityMode,
+    revisionNote:
+      activityMode === "REVISION"
+        ? "Admin preview — children see the words they need more practice on first."
+        : null,
+    lesson: null,
+    category: {
+      id: category.id,
+      code: category.code,
+      label: category.label,
+      emoji: category.emoji,
+      levelLabel: category.group.level.label,
+      groupLabel: category.group.label,
+    },
+    questionsTotal: selected.length,
+    questions: buildQuestions(selected, pool),
+    progress: { points: 0, listenCorrect: 0, spellCorrect: 0, attemptsCount: 0 },
+  };
+}
+
 export async function submitQuestionAttempt(
   parentId: string,
   sessionId: string,

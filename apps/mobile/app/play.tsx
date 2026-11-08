@@ -20,7 +20,8 @@ import {
 } from "../components/ui";
 import { IconButton, KidsHeader } from "../components/kids";
 import { AuthGate } from "../components/AuthGate";
-import { apiRequest, ApiError } from "../services/api";
+import { ApiError } from "../services/api";
+import { apiRequest } from "../services/learning-session";
 import { ROLE_SETS } from "../services/auth-errors";
 import { displayEmoji } from "../services/emoji";
 import { prefetchKidVoice, speakWord } from "../services/speech";

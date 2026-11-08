@@ -3,6 +3,7 @@ import Constants from "expo-constants";
 import * as Crypto from "expo-crypto";
 import * as SecureStore from "expo-secure-store";
 import { Platform } from "react-native";
+import { clearAvatarCache } from "./avatar-cache";
 
 /** Human-readable phone name (e.g. "Galaxy A14") for device-lock records. */
 export function phoneLabel() {
@@ -195,6 +196,7 @@ export async function clearSession() {
   await clearRefreshToken();
   await clearUser();
   await clearActiveChild();
+  clearAvatarCache();
   // Intentionally keep INSTALL_KEY so reinstall-without-secure-wipe still binds,
   // and logout does not release device registration.
 }

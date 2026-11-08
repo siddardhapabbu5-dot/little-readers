@@ -135,6 +135,8 @@ model User {
   /// Parent gate PIN (bcrypt). Required before kids chrome opens adult tools.
   parentPinHash String?
   parentPinUpdatedAt DateTime?
+  /// Small profile photo as a data:image/jpeg;base64 URL (resized on the device, max ~300 KB).
+  avatarUrl    String?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 

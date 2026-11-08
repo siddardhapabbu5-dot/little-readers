@@ -217,6 +217,35 @@ export async function loginUser(input: LoginInput) {
   };
 }
 
+const AVATAR_RE = /^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/]+=*$/;
+const AVATAR_MAX_CHARS = 400_000;
+
+export async function getMyAvatar(userId: string) {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { avatarUrl: true },
+  });
+  if (!user) throw new AppError("User not found", 404);
+  return { avatarUrl: user.avatarUrl };
+}
+
+export async function setMyAvatar(userId: string, image: unknown) {
+  if (image === null) {
+    await prisma.user.update({ where: { id: userId }, data: { avatarUrl: null } });
+    return { avatarUrl: null };
+  }
+  if (typeof image !== "string" || !AVATAR_RE.test(image)) {
+    throw new AppError("Photo must be a JPEG, PNG or WebP image", 400, { code: "AVATAR_INVALID" });
+  }
+  if (image.length > AVATAR_MAX_CHARS) {
+    throw new AppError("Photo is too large. Please choose a smaller photo.", 413, {
+      code: "AVATAR_TOO_LARGE",
+    });
+  }
+  await prisma.user.update({ where: { id: userId }, data: { avatarUrl: image } });
+  return { avatarUrl: image };
+}
+
 export async function getCurrentUser(userId: string) {
   const user = await prisma.user.findUnique({
     where: { id: userId },

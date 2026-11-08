@@ -2,8 +2,8 @@ import { useCallback, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useFocusEffect, useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { ProfilePhoto } from "../../components/ProfilePhoto";
 import {
-  AvatarBubble,
   Card,
   PrimaryButton,
   SoftButton,
@@ -67,7 +67,7 @@ export default function ProfileTab() {
     <SafeAreaView style={styles.safe} edges={["top"]}>
       <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.header}>
-          <AvatarBubble emoji="👤" size={72} />
+          <ProfilePhoto size={72} />
           <View style={{ flex: 1 }}>
             <Title>{user?.name ?? "Profile"}</Title>
             <Text style={styles.meta}>{user?.email}</Text>

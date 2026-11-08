@@ -5,6 +5,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { AdminTabBar } from "../components/AdminTabBar";
 import { AuthGate } from "../components/AuthGate";
+import { ProfilePhoto } from "../components/ProfilePhoto";
 import { PrimaryButton } from "../components/ui";
 import { ROLE_SETS } from "../services/auth-errors";
 import { clearSession, getUser } from "../services/secure";
@@ -125,9 +126,7 @@ export default function AdminSettingsScreen() {
 
         <ScrollView contentContainerStyle={styles.content}>
           <View style={[styles.profile, shadow.soft]}>
-            <View style={styles.avatar}>
-              <Ionicons name="person" size={22} color={adminColors.primary} />
-            </View>
+            <ProfilePhoto size={64} />
             <View style={{ flex: 1 }}>
               <Text style={styles.name}>{user?.name ?? "Admin"}</Text>
               <Text style={styles.email}>{user?.email ?? ""}</Text>

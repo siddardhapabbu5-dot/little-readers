@@ -13,7 +13,9 @@ import { z } from "zod";
 import {
   changePassword,
   getCurrentUser,
+  getMyAvatar,
   loginUser,
+  setMyAvatar,
   registerParent,
   requestPasswordReset,
   resetPasswordWithEmailOtp,
@@ -159,6 +161,22 @@ authRouter.get("/me", requireAuth, async (req: AuthenticatedRequest, res, next) 
   try {
     const user = await getCurrentUser(req.user!.id);
     res.status(200).json({ data: user });
+  } catch (error) {
+    next(error);
+  }
+});
+
+authRouter.get("/me/avatar", requireAuth, async (req: AuthenticatedRequest, res, next) => {
+  try {
+    res.status(200).json({ data: await getMyAvatar(req.user!.id) });
+  } catch (error) {
+    next(error);
+  }
+});
+
+authRouter.put("/me/avatar", requireAuth, async (req: AuthenticatedRequest, res, next) => {
+  try {
+    res.status(200).json({ data: await setMyAvatar(req.user!.id, req.body?.image) });
   } catch (error) {
     next(error);
   }

@@ -21,6 +21,7 @@ import { AdminStatsSkeleton } from "../components/admin/AdminSkeleton";
 import { AdminStatCard } from "../components/admin/AdminStatCard";
 import { dash } from "../components/admin/dashboardTheme";
 import { AuthGate } from "../components/AuthGate";
+import { AvatarImage } from "../components/ProfilePhoto";
 import { ErrorText } from "../components/ui";
 import { apiRequest, ApiError } from "../services/api";
 import { ROLE_SETS } from "../services/auth-errors";
@@ -480,7 +481,10 @@ export default function AdminScreen() {
                   onPress={() => setMenuOpen((v) => !v)}
                   style={styles.avatarBtn}
                 >
-                  <Text style={styles.avatarText}>{initials}</Text>
+                  <AvatarImage
+                    size={36}
+                    fallback={<Text style={styles.avatarText}>{initials}</Text>}
+                  />
                 </Pressable>
               </View>
             </View>
@@ -762,6 +766,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     borderWidth: 2,
     borderColor: "rgba(255,255,255,0.55)",
+    overflow: "hidden",
   },
   avatarText: { color: dash.purple, fontWeight: "800", fontSize: 13 },
   menu: {

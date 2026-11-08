@@ -78,3 +78,5 @@ server/storage/vocab-uploads/*
 server/storage/dictionary-uploads/*
 !server/storage/dictionary-uploads/.gitkeep
 
+
+apps/mobile/dist-web/

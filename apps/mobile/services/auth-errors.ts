@@ -45,7 +45,6 @@ export type AppRole =
 export function routeForRole(role: string): string {
   switch (role) {
     case "SUPER_ADMIN":
-      return "/super-admin";
     case "ADMIN":
     case "SCHOOL_ADMIN":
       return "/admin";

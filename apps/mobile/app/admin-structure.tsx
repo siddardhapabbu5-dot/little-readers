@@ -763,6 +763,13 @@ export default function AdminStructureScreen() {
             </Card>
           ) : null}
 
+          <Text style={styles.gradeAges}>
+            {sortedGrades.filter((g) => g.isActive).length} active grade
+            {sortedGrades.filter((g) => g.isActive).length === 1 ? "" : "s"}
+            {sortedGrades.some((g) => !g.isActive)
+              ? ` · ${sortedGrades.filter((g) => !g.isActive).length} inactive`
+              : ""}
+          </Text>
           <View style={styles.gradeGrid}>
             {sortedGrades.map((g) => {
               const on = selectedGrade?.id === g.id;

@@ -18,7 +18,12 @@ import { colors } from "../../theme";
 
 type AuthUser = { id: string; name: string; email: string; role: string };
 
-type GateTarget = "/parent" | "/subscription" | "/devices" | "/privacy-request";
+type GateTarget =
+  | "/parent"
+  | "/subscription"
+  | "/devices"
+  | "/privacy-request"
+  | "/change-password";
 
 export default function ProfileTab() {
   const router = useRouter();
@@ -90,6 +95,15 @@ export default function ProfileTab() {
                 onPress={() => openAdult("/privacy-request")}
               />
             </>
+          ) : null}
+
+          {isParentFamily || isTeacher ? (
+            <MenuRow
+              label="Change password"
+              onPress={() =>
+                isParentFamily ? openAdult("/change-password") : router.push("/change-password")
+              }
+            />
           ) : null}
 
           {isAdmin ? (

@@ -183,6 +183,7 @@ export default function SuperAdminScreen() {
             label="Dictionary → Grades"
             onPress={() => router.push("/admin-dictionary")}
           />
+          <SoftButton label="Change password" onPress={() => router.push("/change-password")} />
         </ScrollView>
       </SafeAreaView>
     </AuthGate>

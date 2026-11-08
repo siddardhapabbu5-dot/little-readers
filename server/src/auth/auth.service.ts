@@ -7,6 +7,7 @@ import type {
   ResetPasswordInput,
   ResetPasswordWithOtpInput,
 } from "@little-readers/validation";
+import { adminPasswordSchema, passwordSchema } from "@little-readers/validation";
 import { AppError } from "../lib/errors.js";
 import { sendPasswordResetEmail } from "../lib/email.js";
 import { signAccessToken } from "../lib/jwt.js";
@@ -335,6 +336,56 @@ export async function resetPasswordWithToken(input: ResetPasswordInput) {
   return {
     message: "Password updated. You can log in with your new password.",
   };
+}
+
+const ADMIN_PASSWORD_ROLES = new Set<UserRole>([
+  UserRole.ADMIN,
+  UserRole.SUPER_ADMIN,
+  UserRole.SCHOOL_ADMIN,
+]);
+
+/** Signed-in password change. Signs the account out everywhere, including this session. */
+export async function changePassword(
+  userId: string,
+  input: { currentPassword: string; newPassword: string; confirmPassword: string }
+) {
+  const user = await prisma.user.findUnique({ where: { id: userId } });
+  if (!user || !user.isActive) {
+    throw new AppError("Invalid or inactive account", 401);
+  }
+  if (!(await verifyPassword(input.currentPassword, user.passwordHash))) {
+    throw new AppError("Current password is incorrect.", 400, {
+      code: "CURRENT_PASSWORD_INVALID",
+    });
+  }
+  if (input.newPassword !== input.confirmPassword) {
+    throw new AppError("Passwords do not match.", 400, { code: "PASSWORD_MISMATCH" });
+  }
+  if (input.newPassword === input.currentPassword) {
+    throw new AppError("Choose a new password that is different from the current one.", 400, {
+      code: "PASSWORD_UNCHANGED",
+    });
+  }
+  const rule = ADMIN_PASSWORD_ROLES.has(user.role) ? adminPasswordSchema : passwordSchema;
+  const checked = rule.safeParse(input.newPassword);
+  if (!checked.success) {
+    throw new AppError(checked.error.issues[0]?.message ?? "Password is too weak.", 400, {
+      code: "WEAK_PASSWORD",
+    });
+  }
+
+  const passwordHash = await hashPassword(input.newPassword);
+  // Whole seconds: JWT iat is in seconds, so tokens issued after this instant stay valid.
+  const passwordChangedAt = new Date(Math.floor(Date.now() / 1000) * 1000);
+  await prisma.$transaction([
+    prisma.user.update({ where: { id: user.id }, data: { passwordHash, passwordChangedAt } }),
+    prisma.passwordResetToken.updateMany({
+      where: { userId: user.id, usedAt: null },
+      data: { usedAt: new Date() },
+    }),
+  ]);
+
+  return { message: "Password changed. Please sign in again with your new password." };
 }
 
 /** Forgot-password via email OTP: requires a verified RESET_PASSWORD token. */

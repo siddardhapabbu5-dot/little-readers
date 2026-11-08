@@ -494,7 +494,7 @@ export default function PlayScreen() {
                   <Image
                     source={{ uri: question.word.imageUrl }}
                     style={styles.wordImageSm}
-                    accessibilityLabel={question.word.text}
+                    accessibilityLabel={feedback === "ok" ? question.word.text : "Picture clue"}
                   />
                 ) : (
                   <AvatarBubble
@@ -519,9 +519,15 @@ export default function PlayScreen() {
                     </Text>
                   ) : (
                     <>
-                      <Text style={styles.wordSm} numberOfLines={1}>
-                        {question.word.text}
-                      </Text>
+                      {feedback === "ok" ? (
+                        <Text style={styles.wordSm} numberOfLines={1}>
+                          {question.word.text}
+                        </Text>
+                      ) : (
+                        <Text style={styles.wordHidden} numberOfLines={1}>
+                          Tap 🔊 Play and listen
+                        </Text>
+                      )}
                       <Text style={styles.meaning} numberOfLines={1}>
                         {question.word.meaning}
                       </Text>
@@ -712,6 +718,7 @@ const styles = StyleSheet.create({
   },
   scoreText: { fontWeight: "800", color: colors.text },
   meta: { fontWeight: "700", color: colors.textMuted, fontSize: 12 },
+  wordHidden: { fontSize: 16, fontWeight: "800", color: colors.primary, marginVertical: 2 },
   wordSm: {
     fontSize: 22,
     fontWeight: "800",

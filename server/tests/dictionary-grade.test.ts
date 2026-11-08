@@ -108,18 +108,19 @@ describe.skipIf(!hasDb)("Four-grade dictionary classification", () => {
 
   it("imports JSON dictionary, classifies, approves and publishes without duplicating headword entries", async () => {
     const headword = "mom";
+    const tag = String(Date.now()).replace(/\d/g, (d) => "abcdefghij"[Number(d)]);
     const payload = [
       {
         headword,
         pronunciation: "test",
         senses: [
           {
-            definition: `A mother in the family (test ${Date.now()}).`,
+            definition: `A mother in the family (test ${tag}).`,
             wordType: "noun",
             synonyms: ["mama"],
           },
           {
-            definition: `A caring parent who helps children (test ${Date.now()}).`,
+            definition: `A caring parent who helps children (test ${tag}).`,
             wordType: "noun",
           },
         ],

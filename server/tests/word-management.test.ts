@@ -10,6 +10,7 @@ describe.skipIf(!hasDb)("Admin vocabulary word management", () => {
   let adminToken = "";
   let parentToken = "";
   const stamp = Date.now();
+  const tag = String(stamp).replace(/\d/g, (d) => "abcdefghij"[Number(d)]);
   let categoryA = "";
   let categoryB = "";
   let wrongGradeCategory = "";
@@ -84,7 +85,7 @@ describe.skipIf(!hasDb)("Admin vocabulary word management", () => {
   });
 
   it("creates, reads, updates, deactivates, and safely deletes a word", async () => {
-    const text = `wmword${stamp}`;
+    const text = `wmword${tag}`;
     const created = await request(app)
       .post("/api/admin/vocabulary/words")
       .set("Authorization", `Bearer ${adminToken}`)
@@ -141,8 +142,32 @@ describe.skipIf(!hasDb)("Admin vocabulary word management", () => {
     expect(del.body.data.deleted).toBe(true);
   });
 
+  it("rejects junk words like test ids, numbers and underscores", async () => {
+    for (const text of [
+      `playfix_${stamp}_w4`,
+      `wmword${stamp}`,
+      "x",
+      "bbbbbb",
+      "hello@world",
+    ]) {
+      const res = await request(app)
+        .post("/api/admin/vocabulary/words")
+        .set("Authorization", `Bearer ${adminToken}`)
+        .send({ categoryId: categoryA, text, meaning: "A real meaning.", emoji: "🧪" });
+      expect(res.status, text).toBe(400);
+      expect(res.body.code, text).toBe("WORD_QUALITY");
+    }
+
+    const badMeaning = await request(app)
+      .post("/api/admin/vocabulary/words")
+      .set("Authorization", `Bearer ${adminToken}`)
+      .send({ categoryId: categoryA, text: `wmmean${tag}`, meaning: `test_${stamp}`, emoji: "🧪" });
+    expect(badMeaning.status).toBe(400);
+    expect(badMeaning.body.code).toBe("WORD_QUALITY");
+  });
+
   it("reclassifies without changing word id and rejects invalid grade/category", async () => {
-    const text = `wmreclass${stamp}`;
+    const text = `wmreclass${tag}`;
     const created = await request(app)
       .post("/api/admin/vocabulary/words")
       .set("Authorization", `Bearer ${adminToken}`)
@@ -180,7 +205,7 @@ describe.skipIf(!hasDb)("Admin vocabulary word management", () => {
   });
 
   it("blocks hard delete when learning attempts exist", async () => {
-    const text = `wmhist${stamp}`;
+    const text = `wmhist${tag}`;
     const created = await request(app)
       .post("/api/admin/vocabulary/words")
       .set("Authorization", `Bearer ${adminToken}`)
@@ -227,7 +252,7 @@ describe.skipIf(!hasDb)("Admin vocabulary word management", () => {
   });
 
   it("bulk approve / reject / publish with per-id results", async () => {
-    const head = `wmbulk${stamp}`;
+    const head = `wmbulk${tag}`;
     const category = await prisma.learningCategory.findFirst({
       where: { isPublished: true },
       include: {

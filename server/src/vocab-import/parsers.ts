@@ -6,6 +6,7 @@ import { randomUUID } from "node:crypto";
 import {
   sanitizeText,
   sanitizeWord,
+  wordQualityIssue,
 } from "./file-security.js";
 import type { ExtractedVocabRow, ParseResult } from "./types.js";
 
@@ -119,8 +120,9 @@ function toExtracted(rawRows: RawRow[]): ExtractedVocabRow[] {
     const simpleMeaning = sanitizeText(raw.meaning, 200);
     const pronunciation = sanitizeText(raw.pronunciation || word, 80);
     const issues: string[] = [];
-    if (!word) issues.push("Empty word");
-    if (word && word.length < 2) issues.push("Word too short");
+    const quality = wordQualityIssue(raw.word);
+    if (quality) issues.push(quality);
+    else if (!word) issues.push("Empty word");
     if (!simpleMeaning) issues.push("Missing simple meaning");
 
     return {

@@ -4,7 +4,13 @@ import { AppError } from "../lib/errors.js";
 import { prisma } from "../lib/prisma.js";
 import { clearAllVocabularyWords } from "../../prisma/seeds/level1-vocabulary.js";
 import { resolveAlphabetEmoji } from "./alphabet-emoji.js";
-import { sanitizeText, sanitizeWord } from "./file-security.js";
+import {
+  assertWordQuality,
+  meaningQualityIssue,
+  sanitizeText,
+  sanitizeWord,
+  wordQualityIssue,
+} from "./file-security.js";
 
 export type WordListFilters = {
   q?: string;
@@ -174,6 +180,7 @@ export async function createAdminWord(input: {
   });
   if (!category) throw new AppError("categoryId not found", 400);
 
+  assertWordQuality(input.text, input.meaning);
   const text = sanitizeWord(input.text);
   const meaning = sanitizeText(input.meaning, 500);
   if (!text) throw new AppError("text is required", 400);
@@ -223,6 +230,7 @@ export async function updateAdminWord(
 
   let text = existing.text;
   if (patch.text !== undefined) {
+    assertWordQuality(patch.text);
     text = sanitizeWord(patch.text);
     if (!text) throw new AppError("text is required", 400);
     if (text !== existing.text) {
@@ -532,6 +540,11 @@ export async function importGradeLevelWordsCsv(csvText: string) {
       errors.push({ row: li + 1, error: "word and meaning required" });
       continue;
     }
+    const quality = wordQualityIssue(get("word")) ?? meaningQualityIssue(meaning);
+    if (quality) {
+      errors.push({ row: li + 1, error: `${quality}: "${get("word").slice(0, 40)}"` });
+      continue;
+    }
 
     const match = categories.find((c) => {
       const g = c.group.level.grade?.code;
@@ -716,6 +729,11 @@ export async function importAlphabetSheetRows(
     const word = sanitizeWord(wordRaw);
     if (!word) {
       errors.push({ row: r + 1, error: "Word required" });
+      continue;
+    }
+    const quality = wordQualityIssue(wordRaw);
+    if (quality) {
+      errors.push({ row: r + 1, error: `${quality}: "${wordRaw.slice(0, 40)}"` });
       continue;
     }
     const meaning = sanitizeText(

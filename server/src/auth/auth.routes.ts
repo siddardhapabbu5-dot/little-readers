@@ -9,7 +9,9 @@ import {
   resetPasswordSchema,
   resetPasswordWithOtpSchema,
 } from "@little-readers/validation";
+import { z } from "zod";
 import {
+  changePassword,
   getCurrentUser,
   loginUser,
   registerParent,
@@ -118,6 +120,35 @@ authRouter.post(
     try {
       const result = await resetPasswordWithToken(req.body);
       res.status(200).json({ data: result });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+const changePasswordRateLimit = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: env.NODE_ENV === "production" ? 10 : 200,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: "Too many password change attempts. Please try again later." },
+  skip: () => process.env.VITEST === "true" || process.env.NODE_ENV === "test",
+});
+
+authRouter.post(
+  "/change-password",
+  changePasswordRateLimit,
+  requireAuth,
+  validateBody(
+    z.object({
+      currentPassword: z.string().min(1, "Enter your current password").max(128),
+      newPassword: z.string().min(1, "Enter a new password").max(128),
+      confirmPassword: z.string().min(1, "Confirm your new password").max(128),
+    })
+  ),
+  async (req: AuthenticatedRequest, res, next) => {
+    try {
+      res.status(200).json({ data: await changePassword(req.user!.id, req.body) });
     } catch (error) {
       next(error);
     }

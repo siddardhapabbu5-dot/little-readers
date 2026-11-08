@@ -51,7 +51,7 @@ describe.skipIf(!hasDb)("Admin lesson management", () => {
 
     // Ensure at least 3 active words in category
     for (let i = 0; i < 3; i++) {
-      const text = `lsn${stamp}_${i}`;
+      const text = `lsn${String(stamp + i).replace(/\d/g, (d) => "abcdefghij"[Number(d)])}`;
       const created = await request(app)
         .post("/api/admin/vocabulary/words")
         .set("Authorization", `Bearer ${adminToken}`)

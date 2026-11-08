@@ -63,6 +63,7 @@ const COMPLIANCE: Array<{
     href: "/admin-privacy",
     icon: "document-text-outline",
   },
+  { label: "Change password", href: "/change-password", icon: "key-outline" },
 ];
 
 export default function AdminSettingsScreen() {

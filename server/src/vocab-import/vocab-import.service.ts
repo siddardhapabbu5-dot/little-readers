@@ -10,6 +10,7 @@ import {
   MAX_VOCAB_UPLOAD_BYTES,
   sanitizeText,
   sanitizeWord,
+  wordQualityIssue,
 } from "./file-security.js";
 import { annotateDuplicates, parseVocabularyFile } from "./parsers.js";
 import type { ExtractedVocabRow } from "./types.js";
@@ -240,8 +241,9 @@ export async function updateImportPreview(
       const word = sanitizeWord(row.word);
       const simpleMeaning = sanitizeText(row.simpleMeaning, 200);
       const issues: string[] = [];
-      if (!word) issues.push("Empty word");
-      if (word && word.length < 2) issues.push("Word too short");
+      const quality = wordQualityIssue(row.word);
+      if (quality) issues.push(quality);
+      else if (!word) issues.push("Empty word");
       if (!simpleMeaning) issues.push("Missing simple meaning");
       return {
         ...row,
@@ -301,7 +303,7 @@ export async function confirmImport(batchId: string, adminId: string) {
   }
 
   const rows = parsePreview(batch.previewJson).filter(
-    (r) => r.selected && r.status === "valid"
+    (r) => r.selected && r.status === "valid" && !wordQualityIssue(r.word)
   );
   if (rows.length === 0) {
     throw new AppError("No valid selected words to import", 400);

@@ -45,7 +45,7 @@ describe.skipIf(!hasDb)("Vocabulary grade/level CSV export & import", () => {
     expect(exported.text).toContain("grade_code");
     expect(exported.text).toContain("word");
 
-    const stamp = `sheetword${Date.now()}`;
+    const stamp = `sheetword${String(Date.now()).replace(/\d/g, (d) => "abcdefghij"[Number(d)])}`;
     const csv = [
       "grade_code,level_code,category_code,category_label,word,meaning,emoji,difficulty,sort_order,is_active",
       `GRADE_1,${levelCode},${categoryCode},"${categoryLabel}",${stamp},sheet meaning,book,1,1,true`,

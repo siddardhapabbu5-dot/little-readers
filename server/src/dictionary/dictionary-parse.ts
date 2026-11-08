@@ -1,7 +1,11 @@
 import * as XLSX from "xlsx";
 import { randomUUID } from "node:crypto";
 import { parseVocabularyFile } from "../vocab-import/parsers.js";
-import { sanitizeText, sanitizeWord } from "../vocab-import/file-security.js";
+import {
+  sanitizeText,
+  sanitizeWord,
+  wordQualityIssue,
+} from "../vocab-import/file-security.js";
 
 export type ParsedSense = {
   definition: string;
@@ -139,13 +143,14 @@ function parseJsonDictionary(buffer: Buffer, notes: string[]): ParsedDictionaryR
   for (const item of list) {
     if (!item || typeof item !== "object") continue;
     const obj = item as Record<string, unknown>;
-    const headword = sanitizeWord(
-      String(obj.headword ?? obj.word ?? obj.lemma ?? obj.term ?? "")
-    );
+    const rawHeadword = String(obj.headword ?? obj.word ?? obj.lemma ?? obj.term ?? "");
+    const headword = sanitizeWord(rawHeadword);
     const normalizedHeadword = normalizeHeadword(headword);
     const senses = sensesFromObject(obj);
     const issues: string[] = [];
-    if (!normalizedHeadword) issues.push("Missing headword");
+    const quality = wordQualityIssue(rawHeadword);
+    if (quality) issues.push(quality);
+    else if (!normalizedHeadword) issues.push("Missing headword");
     if (!senses.length) issues.push("Missing definition — not invented");
     rows.push({
       rowId: randomUUID(),
@@ -184,13 +189,14 @@ export async function parseDictionaryFile(
     });
     notes.push(`Spreadsheet rows: ${matrix.length}`);
     for (const raw of matrix) {
-      const headword = sanitizeWord(
-        String(raw.headword ?? raw.word ?? raw.Word ?? raw.Headword ?? "")
-      );
+      const rawHeadword = String(raw.headword ?? raw.word ?? raw.Word ?? raw.Headword ?? "");
+      const headword = sanitizeWord(rawHeadword);
       const normalizedHeadword = normalizeHeadword(headword);
       const senses = sensesFromObject(raw as Record<string, unknown>);
       const issues: string[] = [];
-      if (!normalizedHeadword) issues.push("Missing headword");
+      const quality = wordQualityIssue(rawHeadword);
+      if (quality) issues.push(quality);
+      else if (!normalizedHeadword) issues.push("Missing headword");
       if (!senses.length) issues.push("Missing definition — not invented");
       rows.push({
         rowId: randomUUID(),

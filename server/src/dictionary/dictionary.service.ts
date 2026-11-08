@@ -10,6 +10,7 @@ import {
   hashFile,
   MAX_VOCAB_UPLOAD_BYTES,
   sanitizeText,
+  assertWordQuality,
 } from "../vocab-import/file-security.js";
 import {
   CLASSIFICATION_VERSION,
@@ -520,6 +521,7 @@ export async function publishAssignment(assignmentId: string, reviewerId: string
 
   const headword = assignment.sense.entry.headword;
   const meaning = assignment.sense.definition;
+  assertWordQuality(headword, meaning);
   const firstLetter = headword.charAt(0).toUpperCase();
 
   const word = await prisma.vocabularyWord.upsert({

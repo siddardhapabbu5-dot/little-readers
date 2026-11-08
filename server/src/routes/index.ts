@@ -26,6 +26,7 @@ import {
   paymentsWebhookHandler,
 } from "../payments/payment.routes.js";
 import { agreementsRouter } from "../agreements/agreements.routes.js";
+import { challengesRouter } from "../challenges/challenges.routes.js";
 import { getChildLearningOverview } from "../learning/learning.service.js";
 import {
   requireAuth,
@@ -61,6 +62,7 @@ apiRouter.use("/admin/academic", academicAdminRouter);
 apiRouter.use("/parent/catalog", academicParentRouter);
 apiRouter.use("/children", childrenRouter);
 apiRouter.use("/learning", learningRouter);
+apiRouter.use("/challenges", challengesRouter);
 apiRouter.use("/admin/vocabulary", vocabImportRouter);
 apiRouter.use("/admin/dictionary", dictionaryRouter);
 apiRouter.use("/admin/content", contentStructureRouter);

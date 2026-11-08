@@ -253,6 +253,8 @@ export const startLearningSessionSchema = z
     activityMode: learningActivityModeSchema.optional(),
     /** Mixed-category session; categoryId is not needed. */
     mix: z.enum(["DAILY_CHALLENGE", "REVISION_WORLD", "MIXED"]).optional(),
+    /** Game was picked by Surprise Game (earns Surprise points). */
+    surprise: z.boolean().optional(),
   })
   .superRefine((val, ctx) => {
     if (!val.categoryId && !val.lessonId && !val.mix) {

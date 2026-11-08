@@ -235,3 +235,82 @@ export type MixMode = (typeof MIX_MODES)[number];
 
 /** Certificate numbers look like LW-2026-7K3QZP. */
 export const CERTIFICATE_PREFIX = "LW";
+
+/* ---------------- Challenge World (weekly points, leaderboards) ---------------- */
+
+export const POINT_SOURCES = [
+  "LISTEN",
+  "SPELL",
+  "MATCH_IT",
+  "QUIZ_TIME",
+  "SURPRISE",
+  "DAILY_CHALLENGE",
+  "REVISION_WORLD",
+  "MIXED",
+] as const;
+export type PointSource = (typeof POINT_SOURCES)[number];
+
+export const POINT_SOURCE_LABELS: Record<PointSource, string> = {
+  LISTEN: "Listen",
+  SPELL: "Spell",
+  MATCH_IT: "Match It",
+  QUIZ_TIME: "Quiz Time",
+  SURPRISE: "Surprise Game",
+  DAILY_CHALLENGE: "Daily Challenge",
+  REVISION_WORLD: "Revision World",
+  MIXED: "Mixed Games",
+};
+
+/** Default points per verified completion (Admin can change these). */
+export const DEFAULT_CHALLENGE_POINTS: Record<PointSource, number> = {
+  LISTEN: 5,
+  SPELL: 10,
+  MATCH_IT: 5,
+  QUIZ_TIME: 10,
+  SURPRISE: 5,
+  DAILY_CHALLENGE: 20,
+  REVISION_WORLD: 10,
+  MIXED: 5,
+};
+
+export type WeeklyGoals = {
+  /** Weekly Star: earn this many points in the week. */
+  points: number;
+  /** Learning Champion: learn on this many different days. */
+  activeDays: number;
+  /** Finish this many Daily Challenges. */
+  dailyChallenges: number;
+  /** Play this many different activities. */
+  activities: number;
+  /** Same activity + topic earns points at most this many times per day. */
+  repeatLimitPerDay: number;
+};
+
+export const DEFAULT_WEEKLY_GOALS: WeeklyGoals = {
+  points: 100,
+  activeDays: 4,
+  dailyChallenges: 2,
+  activities: 3,
+  repeatLimitPerDay: 3,
+};
+
+export type ChallengeBadgeDef = { key: string; title: string; emoji: string; description: string };
+
+/** Weekly badges; stored as Achievement codes `wk_<YYYYMMDD>_<key>`. */
+export const WEEKLY_BADGES: ChallengeBadgeDef[] = [
+  { key: "gold", title: "Gold Champion", emoji: "🥇", description: "1st place on the global leaderboard" },
+  { key: "silver", title: "Silver Champion", emoji: "🥈", description: "2nd place on the global leaderboard" },
+  { key: "bronze", title: "Bronze Champion", emoji: "🥉", description: "3rd place on the global leaderboard" },
+  { key: "star", title: "Weekly Star", emoji: "⭐", description: "Reached the weekly points goal" },
+  { key: "champion", title: "Learning Champion", emoji: "🔥", description: "Learned on many days this week" },
+  { key: "perfect", title: "Perfect Week", emoji: "🌈", description: "Completed every weekly goal" },
+];
+
+/** Teacher-awarded classroom badges; Achievement codes `class_<challengeId>_<key>`. */
+export const CLASSROOM_BADGES: ChallengeBadgeDef[] = [
+  { key: "class_champion", title: "Class Champion", emoji: "🏅", description: "Top learner of the class challenge" },
+  { key: "super_speller", title: "Super Speller", emoji: "✍️", description: "Amazing spelling this week" },
+  { key: "great_listener", title: "Great Listener", emoji: "🎧", description: "Wonderful listening this week" },
+  { key: "hard_worker", title: "Hard Worker", emoji: "💪", description: "Kept trying all week" },
+  { key: "kind_helper", title: "Kind Helper", emoji: "🤝", description: "Helped classmates learn" },
+];

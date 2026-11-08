@@ -300,6 +300,10 @@ export default function ParentScreen() {
                     onPress={() => router.push(`/child/${child.id}?tab=progress`)}
                   />
                   <SoftButton
+                    label="🏆 Challenge settings"
+                    onPress={() => router.push(`/parent-challenges?childId=${child.id}`)}
+                  />
+                  <SoftButton
                     label={isActive ? "Active ✓" : "Set active"}
                     active={isActive}
                     onPress={() => void setActive(child)}

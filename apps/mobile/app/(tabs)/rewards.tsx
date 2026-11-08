@@ -1,6 +1,7 @@
 import { useCallback, useState } from "react";
 import {
   ActivityIndicator,
+  Pressable,
   ScrollView,
   StyleSheet,
   Text,
@@ -185,6 +186,20 @@ export default function RewardsTab() {
                 Finished {data.dailyChallenge?.totalCompleted ?? 0} so far.
               </Text>
             </View>
+
+            <Pressable
+              onPress={() => router.push("/challenge-world")}
+              style={({ pressed }) => [
+                styles.rowCard,
+                shadow.soft,
+                { backgroundColor: "#EDE9FE", opacity: pressed ? 0.85 : 1 },
+              ]}
+            >
+              <Text style={styles.rowTitle}>🏆 Challenge World</Text>
+              <Text style={styles.rowMeta}>
+                Weekly points, goals, leaderboards and weekly badges. Tap to open →
+              </Text>
+            </Pressable>
 
             <SectionRow title="Badge collection ⭐" />
             <View style={styles.badgeGrid}>

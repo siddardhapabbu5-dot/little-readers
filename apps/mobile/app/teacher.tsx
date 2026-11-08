@@ -11,6 +11,7 @@ import { useFocusEffect, useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Card, ErrorText, SoftButton, Title } from "../components/ui";
 import { AuthGate } from "../components/AuthGate";
+import { ClassroomChallengePanel } from "../components/ClassroomChallengePanel";
 import { apiRequest, ApiError } from "../services/api";
 import { ROLE_SETS } from "../services/auth-errors";
 import { colors, radii } from "../theme";
@@ -260,6 +261,8 @@ export default function TeacherScreen() {
               <Text style={styles.item}>Total points: {report.totalPoints}</Text>
             </Card>
           ) : null}
+
+          {selectedId ? <ClassroomChallengePanel classroomId={selectedId} /> : null}
 
           {selectedId ? (
             <Card style={{ gap: 8 }}>

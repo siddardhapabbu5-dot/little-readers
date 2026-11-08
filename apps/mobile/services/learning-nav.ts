@@ -18,6 +18,8 @@ export function openLearningActivity(
     startRound?: "LISTEN" | "SPELL";
     /** Mixed-category session (Daily Challenge, Revision World, Mixed Games). */
     mix?: MixMode;
+    /** Picked by Surprise Game (earns Surprise points). */
+    surprise?: boolean;
   }
 ) {
   const base = {
@@ -25,6 +27,7 @@ export function openLearningActivity(
     childId: opts.childId,
     title: opts.title ?? "Learn",
     ...(opts.mix ? { mix: opts.mix } : {}),
+    ...(opts.surprise && !opts.mix ? { surprise: "1" } : {}),
   };
 
   if (opts.activity === "MATCHING") {

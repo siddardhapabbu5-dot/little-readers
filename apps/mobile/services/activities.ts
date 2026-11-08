@@ -43,7 +43,8 @@ export function startActivity(
   opts: { categoryId: string; childId: string; title?: string; mix?: MixMode }
 ) {
   let def = activities.find((a) => a.code === code);
-  if (def?.code === "SURPRISE") {
+  const surprise = def?.code === "SURPRISE";
+  if (surprise) {
     const games = activities.filter((a) => a.kind === "game" && a.mode && a.enabled);
     def = games[Math.floor(Math.random() * games.length)];
   }
@@ -51,6 +52,7 @@ export function startActivity(
   openLearningActivity(router, {
     activity: def.mode,
     startRound: def.startRound,
+    surprise,
     ...opts,
   });
   return true;

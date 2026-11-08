@@ -413,6 +413,14 @@ export default function AdminScreen() {
       tint: dash.purple,
       soft: dash.purpleSoft,
     },
+    {
+      title: "Challenge World",
+      subtitle: "Leaderboards, points, nicknames & badges",
+      href: "/admin-challenges",
+      icon: "trophy" as const,
+      tint: dash.orange,
+      soft: dash.orangeSoft,
+    },
   ];
 
   const visibleActions = showAllActions ? quickActions : quickActions.slice(0, 4);

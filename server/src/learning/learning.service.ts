@@ -17,6 +17,7 @@ import {
 } from "./progress-rewards.js";
 import { assertActivityModeEnabled } from "./activity-settings.js";
 import { issueCertificateIfMastered } from "./certificates.js";
+import { awardSessionPoints } from "../challenges/challenges.service.js";
 import { MIX_MODES, type MixMode } from "@little-readers/shared";
 
 function isMixMode(mode: string | null | undefined): mode is MixMode {
@@ -657,7 +658,12 @@ export async function startLearningSession(
       childId: input.childId,
       categoryId: category.id,
       // Games are tagged so an abandoned game is never resumed as Listen/Spell.
-      mode: activityMode === "LISTEN_SPELL" ? null : activityMode,
+      mode:
+        activityMode === "LISTEN_SPELL"
+          ? null
+          : input.surprise && (activityMode === "MATCHING" || activityMode === "QUIZ")
+            ? "SURPRISE"
+            : activityMode,
       questionsTotal: selected.length,
       status: "IN_PROGRESS",
     },
@@ -1132,7 +1138,10 @@ export async function completeLearningSession(
       certs.push(await issueCertificateIfMastered(session.childId, t.categoryId));
     }
     await awardMilestoneAchievements(session.childId);
-    return buildResult(durationSec, null, sessionWordsLearned, certs);
+    return {
+      ...(await buildResult(durationSec, null, sessionWordsLearned, certs)),
+      challenge: await awardChallengePointsSafe(sessionId),
+    };
   }
 
   const updated = await prisma.$transaction(async (tx) => {
@@ -1308,7 +1317,20 @@ export async function completeLearningSession(
   // Milestone achievements + global wordsLearned / weak-word snapshot (idempotent).
   await awardMilestoneAchievements(session.childId);
 
-  return buildResult(durationSec, nextCategory, updated.nextWords, [certificate]);
+  return {
+    ...(await buildResult(durationSec, nextCategory, updated.nextWords, [certificate])),
+    challenge: await awardChallengePointsSafe(sessionId),
+  };
+}
+
+/** Weekly challenge points must never block finishing a session. */
+async function awardChallengePointsSafe(sessionId: string) {
+  try {
+    return await awardSessionPoints(sessionId);
+  } catch (err) {
+    console.error("[challenges] could not award points", (err as Error).message);
+    return null;
+  }
 }
 
 /** Calendar day bounds in Asia/Kolkata (IST, UTC+05:30). */

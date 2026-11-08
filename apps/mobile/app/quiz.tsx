@@ -13,6 +13,7 @@ import { Card, ErrorText, SoftButton, Title } from "../components/ui";
 import { IconButton, KidsHeader } from "../components/kids";
 import { AuthGate } from "../components/AuthGate";
 import { CertificateEarned, type EarnedCertificate } from "../components/CertificateEarned";
+import { ChallengePointsEarned, type ChallengeResult } from "../components/ChallengePointsEarned";
 import { ApiError } from "../services/api";
 import { apiRequest, isPreviewChild } from "../services/learning-session";
 import { ROLE_SETS } from "../services/auth-errors";
@@ -54,6 +55,7 @@ type ResultsPayload = {
   accuracy: number;
   wordsLearned: number;
   newCertificates?: EarnedCertificate[];
+  challenge?: ChallengeResult;
 };
 
 export default function QuizScreen() {
@@ -63,6 +65,7 @@ export default function QuizScreen() {
     childId: string;
     title?: string;
     mix?: string;
+    surprise?: string;
   }>();
 
   const [session, setSession] = useState<SessionPayload | null>(null);
@@ -91,6 +94,7 @@ export default function QuizScreen() {
             activityMode: "QUIZ",
             questionCount: 8,
             resume: false,
+            ...(params.surprise === "1" ? { surprise: true } : {}),
           }),
         });
         setSession({
@@ -217,6 +221,7 @@ export default function QuizScreen() {
                 {results.accuracy}%
               </Text>
               <CertificateEarned certificates={results.newCertificates} />
+              <ChallengePointsEarned challenge={results.challenge} />
               <SoftButton label="Back to Games" onPress={() => (isPreviewChild(params.childId) ? router.back() : router.replace("/(tabs)/games"))} />
               <SoftButton label="Home" onPress={() => router.replace("/(tabs)/home")} />
             </Card>

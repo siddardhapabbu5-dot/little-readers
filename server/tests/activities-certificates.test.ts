@@ -91,6 +91,7 @@ describe.skipIf(!hasDb)("Shared activities, mixed sessions and certificates", ()
     } else {
       await prisma.activitySetting.deleteMany({ where: { code: "MATCH_IT" } });
     }
+    await prisma.pointsTransaction.deleteMany({ where: { categoryId: { in: [categoryId, draftCategoryId] } } });
     await prisma.certificate.deleteMany({ where: { categoryId: { in: [categoryId, draftCategoryId] } } });
     await prisma.achievement.deleteMany({ where: { code: { contains: TAG } } });
     await prisma.learningCategory.deleteMany({ where: { id: { in: [categoryId, draftCategoryId] } } });

@@ -282,6 +282,13 @@ model Child {
   isActive    Boolean  @default(true)
   /// True when this child occupies one of the parent's subscription learning seats.
   hasLearningSeat Boolean @default(false)
+  /// Parent-approved nickname shown on leaderboards (never the real name).
+  leaderboardNickname String?
+  /// Admin moderation: hides the nickname from every leaderboard.
+  nicknameHidden      Boolean   @default(false)
+  /// Global leaderboard needs parent consent; OFF by default.
+  globalLeaderboardOptIn Boolean @default(false)
+  globalConsentAt     DateTime?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
@@ -302,6 +309,11 @@ model Child {
   registeredDevice   StudentDevice?
   deviceTransfers    DeviceTransferEvent[]
   classroomEnrollments ClassroomEnrollment[]
+  pointsTransactions PointsTransaction[]
+  weeklyRankings     WeeklyRanking[]
+  friendInvites      FriendConnection[] @relation("FriendInviter")
+  friendJoins        FriendConnection[] @relation("FriendInvitee")
+  leaderboardReports LeaderboardReport[]
 
   @@index([parentId])
   @@index([gradeId])
@@ -1157,6 +1169,114 @@ model Certificate {
   @@index([childId])
 }
 
+/// Auditable learning-points ledger. Weekly scores = sum per UTC week; never edited by clients.
+model PointsTransaction {
+  id         String   @id @default(cuid())
+  childId    String
+  sessionId  String?
+  /// LISTEN, SPELL, MATCH_IT, QUIZ_TIME, SURPRISE, DAILY_CHALLENGE, REVISION_WORLD, MIXED
+  source     String
+  categoryId String?
+  points     Int
+  /// Monday 00:00 UTC of the competition week.
+  weekStart  DateTime
+  /// UTC calendar day (YYYY-MM-DD), used for repeat limits and active days.
+  dayKey     String
+  createdAt  DateTime @default(now())
+
+  child Child @relation(fields: [childId], references: [id], onDelete: Cascade)
+
+  @@unique([sessionId, source])
+  @@index([weekStart, childId])
+  @@index([childId, createdAt])
+  @@index([childId, source, dayKey])
+}
+
+/// Snapshot of the global leaderboard when a week closes (history survives opt-out).
+model WeeklyRanking {
+  id        String   @id @default(cuid())
+  weekStart DateTime
+  childId   String
+  nickname  String
+  points    Int
+  rank      Int
+  createdAt DateTime @default(now())
+
+  child Child @relation(fields: [childId], references: [id], onDelete: Cascade)
+
+  @@unique([weekStart, childId])
+  @@index([weekStart, rank])
+}
+
+/// Parent-approved private friend link. Inviter parent shares a code; both parents must agree.
+model FriendConnection {
+  id            String    @id @default(cuid())
+  childId       String
+  friendChildId String?
+  inviteCode    String    @unique
+  /// INVITED (code not used yet) → PENDING (waiting for inviter parent) → ACCEPTED / REJECTED / REMOVED
+  status        String    @default("INVITED")
+  expiresAt     DateTime
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  child       Child  @relation("FriendInviter", fields: [childId], references: [id], onDelete: Cascade)
+  friendChild Child? @relation("FriendInvitee", fields: [friendChildId], references: [id], onDelete: Cascade)
+
+  @@index([childId, status])
+  @@index([friendChildId, status])
+}
+
+/// Teacher-run weekly challenge for selected enrolled children of one classroom.
+model ClassroomChallenge {
+  id              String   @id @default(cuid())
+  classroomId     String
+  title           String
+  weekStart       DateTime
+  goalPoints      Int      @default(100)
+  childIds        String[]
+  createdByUserId String
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  classroom Classroom @relation(fields: [classroomId], references: [id], onDelete: Cascade)
+
+  @@unique([classroomId, weekStart])
+  @@index([weekStart])
+}
+
+/// Report of an inappropriate leaderboard nickname, reviewed by Admin.
+model LeaderboardReport {
+  id             String    @id @default(cuid())
+  childId        String
+  reporterUserId String
+  reason         String?
+  status         String    @default("OPEN")
+  createdAt      DateTime  @default(now())
+  resolvedAt     DateTime?
+
+  child Child @relation(fields: [childId], references: [id], onDelete: Cascade)
+
+  @@unique([childId, reporterUserId])
+  @@index([status])
+}
+
+/// Single-row Challenge World settings shared by Admin, Parent, Teacher and Child screens.
+model CompetitionConfig {
+  id                String    @id @default("default")
+  globalEnabled     Boolean   @default(true)
+  friendsEnabled    Boolean   @default(true)
+  classroomEnabled  Boolean   @default(true)
+  /// JSON map source → points per verified completion.
+  pointsJson        String?
+  /// JSON weekly goals (points, active days, daily challenges, different activities).
+  goalsJson         String?
+  /// Latest week whose global ranking + medals were finalized.
+  lastFinalizedWeek DateTime?
+  updatedById       String?
+  updatedAt         DateTime  @updatedAt
+}
+
 /// Admin ON/OFF switch per child activity (codes from ACTIVITY_CATALOG). Missing row = enabled.
 model ActivitySetting {
   code        String   @id
@@ -1258,6 +1378,7 @@ model Classroom {
   teachers     ClassroomTeacher[]
   enrollments  ClassroomEnrollment[]
   assignments  ClassroomLessonAssignment[]
+  challenges   ClassroomChallenge[]
 
   @@index([schoolId, isActive])
   @@unique([schoolId, name])

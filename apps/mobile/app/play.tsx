@@ -21,6 +21,7 @@ import {
 import { IconButton, KidsHeader } from "../components/kids";
 import { AuthGate } from "../components/AuthGate";
 import { CertificateEarned, type EarnedCertificate } from "../components/CertificateEarned";
+import { ChallengePointsEarned, type ChallengeResult } from "../components/ChallengePointsEarned";
 import { ApiError } from "../services/api";
 import { apiRequest } from "../services/learning-session";
 import { ROLE_SETS } from "../services/auth-errors";
@@ -70,6 +71,7 @@ interface ResultsPayload {
   wordsLearned: number;
   nextCategory: { id: string; label: string; emoji: string } | null;
   newCertificates?: EarnedCertificate[];
+  challenge?: ChallengeResult;
 }
 
 const LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
@@ -453,6 +455,7 @@ export default function PlayScreen() {
                 <Stat label="Words" value={String(results.wordsLearned)} />
               </View>
               <CertificateEarned certificates={results.newCertificates} />
+              <ChallengePointsEarned challenge={results.challenge} />
               <SoftButton label="Replay category" onPress={replayCategory} />
               <SoftButton label="Back to categories" onPress={() => router.back()} />
               {results.nextCategory ? (

@@ -142,6 +142,16 @@ export default function GamesTab() {
         </Text>
         <ErrorText>{error}</ErrorText>
 
+        {child && child.hasLearningSeat !== false ? (
+          <World
+            emoji="🏆"
+            title="Challenge World"
+            body="Weekly goals, leaderboards, friends and badges."
+            color="#EDE9FE"
+            onPress={() => router.push("/challenge-world")}
+          />
+        ) : null}
+
         {loading ? (
           <ActivityIndicator color={colors.primary} />
         ) : !child ? (

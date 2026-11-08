@@ -45,6 +45,7 @@ const OPERATIONS: Array<{
   icon: keyof typeof Ionicons.glyphMap;
 }> = [
   { label: "Schools", href: "/admin-schools", icon: "business-outline" },
+  { label: "Challenge World", href: "/admin-challenges", icon: "trophy-outline" },
   { label: "Devices", href: "/devices", icon: "phone-portrait-outline" },
   {
     label: "Parent device sessions",

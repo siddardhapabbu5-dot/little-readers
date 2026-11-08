@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
+  Image,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -10,7 +11,8 @@ import {
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Card, ErrorText, SoftButton, Title } from "../components/ui";
-import { IconButton, KidsHeader } from "../components/kids";
+import { IconButton, KidsHeader, SkyBackground } from "../components/kids";
+import { art } from "../components/illustrations";
 import { AuthGate } from "../components/AuthGate";
 import { CertificateEarned, type EarnedCertificate } from "../components/CertificateEarned";
 import { ChallengePointsEarned, type ChallengeResult } from "../components/ChallengePointsEarned";
@@ -202,6 +204,7 @@ export default function RevisionScreen() {
 
   return (
     <AuthGate roles={ROLE_SETS.kidsLearning}>
+      <SkyBackground>
       <SafeAreaView style={styles.safe} edges={["top", "bottom"]}>
         <KidsHeader
           left={<IconButton emoji="←" onPress={() => router.back()} />}
@@ -223,7 +226,7 @@ export default function RevisionScreen() {
         {results ? (
           <ScrollView contentContainerStyle={styles.content}>
             <Card color={colors.primary} style={styles.results}>
-              <Text style={{ fontSize: 56 }}>🔁</Text>
+              <Image source={art.revision} style={{ width: 130, height: 130 }} resizeMode="contain" />
               <Title>Revision done, {results.childName}!</Title>
               <Text style={styles.muted}>
                 {results.correctAnswers} reviewed correctly · {results.points} pts
@@ -315,12 +318,13 @@ export default function RevisionScreen() {
           </ScrollView>
         ) : null}
       </SafeAreaView>
+      </SkyBackground>
     </AuthGate>
   );
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: colors.bg },
+  safe: { flex: 1, backgroundColor: "transparent" },
   content: { padding: 20, gap: 12, paddingBottom: 40 },
   center: { padding: 40, alignItems: "center" },
   muted: { color: colors.textMuted, fontWeight: "600", textAlign: "center" },

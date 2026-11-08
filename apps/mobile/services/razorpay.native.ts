@@ -11,7 +11,7 @@ type NativeSuccess = {
 
 export async function openRazorpayCheckout(opts: CheckoutOptions): Promise<CheckoutResult> {
   if (!NativeModules.RNRazorpayCheckout) {
-    throw new Error("This app version can't take payments yet. Please update LEARN WISE.");
+    throw new Error("This app version can't take payments yet. Please update Learn Wise.");
   }
   // Loaded lazily: the module registers native event listeners on import.
   const RazorpayCheckout = require("react-native-razorpay").default as {
@@ -23,7 +23,7 @@ export async function openRazorpayCheckout(opts: CheckoutOptions): Promise<Check
       order_id: opts.orderId,
       amount: opts.amountPaise,
       currency: opts.currency,
-      name: "LEARN WISE",
+      name: "Learn Wise",
       description: opts.description,
       prefill: { email: opts.email ?? "", name: opts.name ?? "" },
       theme: { color: opts.themeColor },

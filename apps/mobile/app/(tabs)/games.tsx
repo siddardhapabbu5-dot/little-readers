@@ -1,10 +1,20 @@
 import { useCallback, useMemo, useState } from "react";
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import {
+  ActivityIndicator,
+  Image,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+  type ImageSourcePropType,
+} from "react-native";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import type { ActivityCode, MixMode } from "@little-readers/shared";
 import { SoftButton, ErrorText } from "../../components/ui";
-import { SectionRow } from "../../components/kids";
+import { SectionRow, SkyBackground } from "../../components/kids";
+import { ACTIVITY_ART, art, categoryTheme } from "../../components/illustrations";
 import { apiRequest, ApiError } from "../../services/api";
 import { getActiveChild, saveActiveChild } from "../../services/secure";
 import { displayEmoji } from "../../services/emoji";
@@ -28,11 +38,6 @@ type Category = {
 };
 type Group = { categories: Category[] };
 type DailyStatus = { completedToday: boolean; totalCompleted: number };
-
-const TILE_COLORS: Partial<Record<ActivityCode, string>> = {
-  MATCH_IT: colors.skySoft,
-  QUIZ_TIME: colors.yellowSoft,
-};
 
 /** Kids' game zone: pick a game first, then the words to play with. */
 export default function GamesTab() {
@@ -132,8 +137,9 @@ export default function GamesTab() {
   const chosen = games.find((g) => g.code === game) ?? null;
 
   return (
+    <SkyBackground>
     <SafeAreaView style={styles.safe} edges={["top"]}>
-      <ScrollView contentContainerStyle={styles.content}>
+      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <SectionRow title="Game Zone 🎮" />
         <Text style={styles.sub}>
           {preset
@@ -145,9 +151,10 @@ export default function GamesTab() {
         {child && child.hasLearningSeat !== false ? (
           <World
             emoji="🏆"
+            image={art.trophy}
             title="Challenge World"
             body="Weekly goals, leaderboards, friends and badges."
-            color="#EDE9FE"
+            color="#EDE7FF"
             onPress={() => router.push("/challenge-world")}
           />
         ) : null}
@@ -172,11 +179,11 @@ export default function GamesTab() {
                   style={({ pressed }) => [
                     styles.tile,
                     shadow.card,
-                    { backgroundColor: TILE_COLORS[g.code] ?? colors.mintSoft, opacity: pressed ? 0.85 : 1 },
+                    { backgroundColor: ACTIVITY_ART[g.code]?.tint ?? colors.mintSoft, opacity: pressed ? 0.85 : 1 },
                     game === g.code && styles.tileOn,
                   ]}
                 >
-                  <Text style={styles.tileEmoji}>{g.emoji}</Text>
+                  <Image source={ACTIVITY_ART[g.code].image} style={styles.tileArt} resizeMode="contain" />
                   <Text style={styles.tileTitle}>{g.title}</Text>
                   <Text style={styles.tileBody}>{g.description}</Text>
                 </Pressable>
@@ -191,7 +198,7 @@ export default function GamesTab() {
                     { backgroundColor: colors.pinkSoft, opacity: pressed ? 0.85 : 1 },
                   ]}
                 >
-                  <Text style={styles.tileEmoji}>🎲</Text>
+                  <Image source={art.surprise} style={styles.worldArt} resizeMode="contain" />
                   <View style={{ flex: 1 }}>
                     <Text style={styles.tileTitle}>Surprise Game!</Text>
                     <Text style={styles.tileBody}>A random game with random words.</Text>
@@ -216,7 +223,9 @@ export default function GamesTab() {
                   {chosen.emoji} {chosen.title} — choose your words
                 </Text>
                 <View style={styles.catGrid}>
-                  {categories.map((c) => (
+                  {categories.map((c, i) => {
+                    const theme = categoryTheme(c.label, i);
+                    return (
                     <Pressable
                       key={c.id}
                       disabled={!c.unlocked}
@@ -224,18 +233,24 @@ export default function GamesTab() {
                       style={({ pressed }) => [
                         styles.cat,
                         shadow.soft,
+                        { backgroundColor: theme.tint },
                         !c.unlocked && styles.catLocked,
                         { opacity: pressed ? 0.85 : 1 },
                       ]}
                     >
-                      <Text style={styles.catEmoji}>
-                        {c.unlocked ? displayEmoji(c.emoji) : "🔒"}
-                      </Text>
+                      {!c.unlocked ? (
+                        <Text style={styles.catEmoji}>🔒</Text>
+                      ) : theme.image ? (
+                        <Image source={theme.image} style={styles.catArt} resizeMode="contain" />
+                      ) : (
+                        <Text style={styles.catEmoji}>{displayEmoji(c.emoji)}</Text>
+                      )}
                       <Text style={styles.catLabel} numberOfLines={2}>
                         {c.label}
                       </Text>
                     </Pressable>
-                  ))}
+                    );
+                  })}
                 </View>
                 <Text style={styles.hint}>🔒 Finish earlier topics in Learn to unlock more.</Text>
               </View>
@@ -246,6 +261,7 @@ export default function GamesTab() {
                 <SectionRow title="Fun Worlds 🌟" />
                 <World
                   emoji="📅"
+                  image={art.starGoal}
                   title="Daily Challenge"
                   body={
                     daily?.completedToday
@@ -258,6 +274,7 @@ export default function GamesTab() {
                 />
                 <World
                   emoji="🔁"
+                  image={art.revision}
                   title="Revision World"
                   body={
                     completedAny
@@ -270,6 +287,7 @@ export default function GamesTab() {
                 />
                 <World
                   emoji="🌈"
+                  image={art.surprise}
                   title="Mixed Games"
                   body={`Words from all ${playable.length} open topic${playable.length === 1 ? "" : "s"}, mixed up!`}
                   color={colors.mintSoft}
@@ -285,11 +303,13 @@ export default function GamesTab() {
         )}
       </ScrollView>
     </SafeAreaView>
+    </SkyBackground>
   );
 }
 
 function World(props: {
   emoji: string;
+  image?: ImageSourcePropType;
   title: string;
   body: string;
   color: string;
@@ -308,7 +328,11 @@ function World(props: {
         { backgroundColor: props.color, opacity: props.disabled ? 0.5 : pressed ? 0.85 : 1 },
       ]}
     >
-      <Text style={styles.tileEmoji}>{props.disabled ? "🔒" : props.emoji}</Text>
+      {props.image && !props.disabled ? (
+        <Image source={props.image} style={styles.worldArt} resizeMode="contain" />
+      ) : (
+        <Text style={styles.tileEmoji}>{props.disabled ? "🔒" : props.emoji}</Text>
+      )}
       <View style={{ flex: 1 }}>
         <Text style={styles.tileTitle}>{props.title}</Text>
         <Text style={styles.tileBody}>{props.body}</Text>
@@ -318,9 +342,12 @@ function World(props: {
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: colors.bg },
-  content: { padding: 20, gap: 14, paddingBottom: 36 },
-  sub: { color: colors.textMuted, fontWeight: "600", lineHeight: 20 },
+  safe: { flex: 1 },
+  content: { padding: 18, gap: 14, paddingBottom: 36, width: "100%", maxWidth: 720, alignSelf: "center" },
+  sub: { color: colors.text, fontWeight: "700", lineHeight: 20, opacity: 0.8 },
+  tileArt: { width: 84, height: 84, alignSelf: "center" },
+  worldArt: { width: 72, height: 72 },
+  catArt: { width: 64, height: 56 },
   grid: { flexDirection: "row", flexWrap: "wrap", gap: 12 },
   tile: {
     flexGrow: 1,
@@ -350,7 +377,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 6,
   },
-  catLocked: { backgroundColor: colors.bgSoft },
+  catLocked: { backgroundColor: colors.bgSoft, opacity: 0.6 },
   catEmoji: { fontSize: 32 },
   catLabel: { fontWeight: "700", fontSize: 12, color: colors.text, textAlign: "center" },
   hint: { color: colors.textMuted, fontSize: 12 },

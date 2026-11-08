@@ -15,10 +15,12 @@ import {
   AvatarBubble,
   Card,
   ErrorText,
+  ProgressBar,
   SoftButton,
   Title,
 } from "../components/ui";
-import { IconButton, KidsHeader } from "../components/kids";
+import { IconButton, KidsHeader, SkyBackground } from "../components/kids";
+import { art } from "../components/illustrations";
 import { AuthGate } from "../components/AuthGate";
 import { CertificateEarned, type EarnedCertificate } from "../components/CertificateEarned";
 import { ChallengePointsEarned, type ChallengeResult } from "../components/ChallengePointsEarned";
@@ -75,6 +77,12 @@ interface ResultsPayload {
 }
 
 const LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
+const CHOICE_TINTS: Record<string, string> = {
+  A: colors.cream,
+  B: colors.pinkSoft,
+  C: colors.skySoft,
+  D: colors.greenSoft,
+};
 
 export default function PlayScreen() {
   const router = useRouter();
@@ -392,6 +400,7 @@ export default function PlayScreen() {
 
   return (
     <AuthGate roles={ROLE_SETS.kidsLearning}>
+      <SkyBackground>
       <SafeAreaView style={styles.safe} edges={["top", "bottom"]}>
         <KidsHeader
           left={<IconButton emoji="←" onPress={() => router.back()} />}
@@ -438,8 +447,8 @@ export default function PlayScreen() {
               </Animated.View>
             ) : null}
             <Card color={colors.primary} style={styles.resultsCard}>
-              <Text style={{ fontSize: 64 }}>🦊</Text>
-              <Title>Great job, {results.childName}!</Title>
+              <Image source={art.trophy} style={styles.resultsArt} resizeMode="contain" />
+              <Text style={styles.resultsTitle}>Great job, {results.childName}!</Text>
               <Text style={styles.resultsSub}>
                 {results.category.emoji} {results.category.label} finished
               </Text>
@@ -496,10 +505,26 @@ export default function PlayScreen() {
               </Animated.View>
             ) : null}
 
-            <View style={styles.promptBar}>
+            <View style={styles.progressRow}>
+              <View style={{ flex: 1 }}>
+                <ProgressBar value={question.index} max={Math.max(session.questionsTotal, 1)} color={colors.orange} />
+              </View>
+              <Text style={styles.progressText}>
+                {question.index}/{session.questionsTotal}
+              </Text>
+            </View>
+
+            <View style={[styles.promptBar, shadow.card]}>
               <View style={styles.promptLeft}>
                 {round === "LISTEN" ? (
-                  <AvatarBubble emoji="👂" size={52} bg={colors.skySoft} />
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel="Play the word"
+                    onPress={() => void speakWord(question.word.text, { profile: "kid" })}
+                    style={({ pressed }) => [styles.bigAudio, { transform: [{ scale: pressed ? 0.94 : 1 }] }]}
+                  >
+                    <Text style={styles.bigAudioIcon}>🔊</Text>
+                  </Pressable>
                 ) : question.word.imageUrl ? (
                   <Image
                     source={{ uri: question.word.imageUrl }}
@@ -524,8 +549,8 @@ export default function PlayScreen() {
                         : "Spell"}
                   </Text>
                   {round === "LISTEN" ? (
-                    <Text style={styles.meaning} numberOfLines={2}>
-                      Listen, then pick the picture.
+                    <Text style={styles.listenPrompt} numberOfLines={2}>
+                      Listen, then tap the right picture!
                     </Text>
                   ) : (
                     <>
@@ -572,10 +597,15 @@ export default function PlayScreen() {
                       {question.listenOptions.slice(row * 2, row * 2 + 2).map((opt) => (
                         <Pressable
                           key={opt.key}
-                          style={[
+                          accessibilityRole="button"
+                          accessibilityLabel={`Answer ${opt.key}`}
+                          style={({ pressed }) => [
                             styles.choiceFlex,
-                            shadow.soft,
+                            styles.choicePicture,
+                            { backgroundColor: CHOICE_TINTS[opt.key] ?? "#fff" },
+                            shadow.card,
                             highlightCorrect && opt.isCorrect ? styles.choiceHint : null,
+                            { transform: [{ scale: pressed ? 0.96 : 1 }] },
                           ]}
                           disabled={feedback === "ok" || saving}
                           onPress={() => {
@@ -601,7 +631,14 @@ export default function PlayScreen() {
                         {letterChoices.slice(row * 2, row * 2 + 2).map((letter) => (
                           <Pressable
                             key={letter}
-                            style={[styles.choiceFlex, shadow.soft]}
+                            accessibilityRole="button"
+                            accessibilityLabel={`Letter ${letter}`}
+                            style={({ pressed }) => [
+                              styles.choiceFlex,
+                              styles.letterTile,
+                              shadow.card,
+                              { transform: [{ scale: pressed ? 0.96 : 1 }] },
+                            ]}
                             disabled={feedback === "ok" || saving}
                             onPress={() => void onLetterPick(letter)}
                           >
@@ -629,7 +666,9 @@ export default function PlayScreen() {
                     {LETTERS.map((letter) => (
                       <Pressable
                         key={letter}
-                        style={[styles.key, shadow.soft]}
+                        accessibilityRole="button"
+                        accessibilityLabel={`Type ${letter}`}
+                        style={({ pressed }) => [styles.key, shadow.soft, { opacity: pressed ? 0.7 : 1 }]}
                         disabled={feedback === "ok" || saving}
                         onPress={() =>
                           setSpellValue((v) =>
@@ -657,7 +696,7 @@ export default function PlayScreen() {
             {feedback === "ok" ? (
               <View style={styles.feedbackBarOk}>
                 <Text style={styles.feedbackInline}>
-                  🌟 Good Job! {"★".repeat(starsFlash)} +{pointsFlash}
+                  🎉 Great job! {"⭐".repeat(starsFlash)} +{pointsFlash}
                 </Text>
                 <SoftButton
                   label={saving ? "…" : "Next"}
@@ -671,7 +710,7 @@ export default function PlayScreen() {
 
             {feedback === "try" ? (
               <View style={styles.feedbackBarTry}>
-                <Text style={styles.feedbackTry}>Nice try!</Text>
+                <Text style={styles.feedbackTry}>💪 Nice try! Listen again.</Text>
                 <SoftButton
                   label="Again"
                   onPress={() => {
@@ -687,6 +726,7 @@ export default function PlayScreen() {
           </View>
         ) : null}
       </SafeAreaView>
+      </SkyBackground>
     </AuthGate>
   );
 }
@@ -701,20 +741,32 @@ function Stat({ label, value }: { label: string; value: string }) {
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: colors.bg, paddingHorizontal: 12 },
+  safe: { flex: 1, paddingHorizontal: 14, width: "100%", maxWidth: 720, alignSelf: "center" },
   content: { gap: 14, paddingBottom: 28 },
-  playScreen: { flex: 1, minHeight: 0, gap: 8, paddingBottom: 4 },
+  playScreen: { flex: 1, minHeight: 0, gap: 10, paddingBottom: 6 },
   playBody: { flex: 1, minHeight: 0 },
+  progressRow: { flexDirection: "row", alignItems: "center", gap: 10, paddingHorizontal: 4 },
+  progressText: { fontWeight: "900", color: colors.text, fontSize: 14 },
   promptBar: {
     backgroundColor: "#fff",
-    borderRadius: radii.lg,
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-    gap: 6,
-    borderWidth: 1,
-    borderColor: colors.border,
+    borderRadius: radii.xl,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    gap: 8,
   },
-  promptLeft: { flexDirection: "row", alignItems: "center", gap: 10 },
+  promptLeft: { flexDirection: "row", alignItems: "center", gap: 12 },
+  bigAudio: {
+    width: 68,
+    height: 68,
+    borderRadius: 34,
+    backgroundColor: colors.primary,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 4,
+    borderColor: colors.primarySoft,
+  },
+  bigAudioIcon: { fontSize: 30 },
+  listenPrompt: { color: colors.text, fontSize: 17, fontWeight: "900", lineHeight: 22 },
   promptTextCol: { flex: 1, gap: 2 },
   centerBox: { alignItems: "center", gap: 12, marginTop: 48 },
   muted: { color: colors.textMuted, fontWeight: "600" },
@@ -727,25 +779,25 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
   },
   scoreText: { fontWeight: "800", color: colors.text },
-  meta: { fontWeight: "700", color: colors.textMuted, fontSize: 12 },
-  wordHidden: { fontSize: 16, fontWeight: "800", color: colors.primary, marginVertical: 2 },
+  meta: { fontWeight: "800", color: colors.textMuted, fontSize: 13 },
+  wordHidden: { fontSize: 17, fontWeight: "900", color: colors.primary, marginVertical: 2 },
   wordSm: {
-    fontSize: 22,
+    fontSize: 26,
     fontWeight: "800",
     color: colors.text,
     textTransform: "capitalize",
   },
-  meaning: { color: colors.textMuted, fontSize: 12, fontWeight: "600" },
+  meaning: { color: colors.textMuted, fontSize: 14, fontWeight: "700" },
   wordImageSm: {
-    width: 52,
-    height: 52,
-    borderRadius: 16,
+    width: 68,
+    height: 68,
+    borderRadius: 20,
     backgroundColor: colors.skySoft,
   },
   audioRow: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
-  clue: { color: colors.accent, fontWeight: "700", fontSize: 12 },
-  gridRows: { flex: 1, minHeight: 0, gap: 8 },
-  gridRow: { flex: 1, flexDirection: "row", gap: 8, minHeight: 0 },
+  clue: { color: colors.orange, fontWeight: "800", fontSize: 14 },
+  gridRows: { flex: 1, minHeight: 0, gap: 12 },
+  gridRow: { flex: 1, flexDirection: "row", gap: 12, minHeight: 0 },
   choiceFlex: {
     flex: 1,
     minHeight: 0,
@@ -757,14 +809,23 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     gap: 2,
   },
-  choiceHint: { borderWidth: 2, borderColor: colors.success },
-  choiceKey: { fontWeight: "800", color: colors.primary, fontSize: 13 },
-  choiceEmoji: { fontSize: 42, lineHeight: 50 },
-  letterBig: { fontSize: 40, fontWeight: "800", color: colors.primaryDark },
+  choicePicture: { borderRadius: radii.xl, borderWidth: 3, borderColor: "#fff", minHeight: 96 },
+  choiceHint: { borderWidth: 4, borderColor: colors.green },
+  choiceKey: {
+    position: "absolute",
+    top: 8,
+    left: 10,
+    fontWeight: "900",
+    color: colors.primary,
+    fontSize: 14,
+  },
+  choiceEmoji: { fontSize: 64, lineHeight: 76 },
+  letterTile: { borderRadius: radii.xl, borderWidth: 3, borderColor: "#fff", minHeight: 64 },
+  letterBig: { fontSize: 48, fontWeight: "900", color: colors.primaryDark },
   letterBlock: { flex: 1, gap: 6, minHeight: 0 },
   spellBlock: { flex: 1, gap: 8, justifyContent: "flex-end" },
   spellBox: {
-    minHeight: 40,
+    minHeight: 52,
     borderRadius: radii.md,
     backgroundColor: colors.primarySoft,
     alignItems: "center",
@@ -772,57 +833,63 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
   },
   spellTyped: {
-    fontSize: 22,
-    fontWeight: "800",
+    fontSize: 28,
+    fontWeight: "900",
     color: colors.primaryDark,
-    letterSpacing: 3,
+    letterSpacing: 4,
   },
   spellHint: {
     textAlign: "center",
-    color: colors.textMuted,
-    fontWeight: "600",
-    fontSize: 12,
+    color: colors.text,
+    fontWeight: "800",
+    fontSize: 16,
   },
   keyboard: {
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: 5,
+    gap: 6,
     justifyContent: "center",
   },
   key: {
-    width: 32,
-    height: 34,
-    borderRadius: 8,
+    width: 42,
+    height: 48,
+    borderRadius: 12,
     backgroundColor: "#fff",
+    borderBottomWidth: 3,
+    borderBottomColor: colors.primarySoft,
     alignItems: "center",
     justifyContent: "center",
   },
-  letter: { fontSize: 14, fontWeight: "800", color: colors.primaryDark },
-  spellActions: { flexDirection: "row", flexWrap: "wrap", gap: 6, justifyContent: "center" },
+  letter: { fontSize: 20, fontWeight: "900", color: colors.primaryDark },
+  spellActions: { flexDirection: "row", flexWrap: "wrap", gap: 8, justifyContent: "center" },
   feedbackBarOk: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
     gap: 8,
-    backgroundColor: colors.mintSoft,
+    flexShrink: 0,
+    backgroundColor: colors.greenSoft,
     borderRadius: radii.lg,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderWidth: 2,
+    borderColor: colors.green,
   },
   feedbackBarTry: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
     gap: 8,
-    backgroundColor: "#fff",
+    flexShrink: 0,
+    backgroundColor: colors.orangeSoft,
     borderRadius: radii.lg,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderWidth: 1,
-    borderColor: colors.border,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderWidth: 2,
+    borderColor: colors.orange,
   },
-  feedbackInline: { flex: 1, fontWeight: "800", color: colors.success, fontSize: 14 },
-  feedbackTry: { flex: 1, fontWeight: "700", color: colors.accent, fontSize: 13 },
+  feedbackInline: { flex: 1, fontWeight: "900", color: "#15803D", fontSize: 17 },
+  feedbackTry: { flex: 1, fontWeight: "900", color: "#C2410C", fontSize: 16 },
   confetti: {
     position: "absolute",
     top: 4,
@@ -832,7 +899,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   confettiText: { fontSize: 22 },
-  resultsCard: { alignItems: "center", gap: 10, marginTop: 12 },
+  resultsCard: { alignItems: "center", gap: 10, marginTop: 12, borderRadius: radii.xl },
+  resultsArt: { width: 140, height: 140 },
+  resultsTitle: { color: "#fff", fontSize: 26, fontWeight: "900", textAlign: "center" },
   resultsSub: { color: "#EDE9FE", fontWeight: "700", textAlign: "center" },
   statsGrid: {
     flexDirection: "row",

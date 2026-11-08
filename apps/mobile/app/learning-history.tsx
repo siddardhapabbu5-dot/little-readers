@@ -9,7 +9,7 @@ import {
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Card, ErrorText, SoftButton, Title } from "../components/ui";
-import { IconButton, KidsHeader } from "../components/kids";
+import { IconButton, KidsHeader, SkyBackground } from "../components/kids";
 import { AuthGate } from "../components/AuthGate";
 import { apiRequest, ApiError } from "../services/api";
 import { ROLE_SETS } from "../services/auth-errors";
@@ -98,6 +98,7 @@ export default function LearningHistoryScreen() {
 
   return (
     <AuthGate roles={ROLE_SETS.kidsLearning}>
+      <SkyBackground>
       <SafeAreaView style={styles.safe} edges={["top", "bottom"]}>
         <KidsHeader
           left={<IconButton emoji="←" onPress={() => router.back()} />}
@@ -152,6 +153,7 @@ export default function LearningHistoryScreen() {
           </ScrollView>
         )}
       </SafeAreaView>
+      </SkyBackground>
     </AuthGate>
   );
 }
@@ -185,7 +187,7 @@ function formatWhen(iso: string) {
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: colors.bg },
+  safe: { flex: 1, backgroundColor: "transparent" },
   content: { padding: 20, gap: 12, paddingBottom: 40 },
   center: { padding: 40, alignItems: "center" },
   sub: { color: colors.textMuted, fontWeight: "600", lineHeight: 20 },

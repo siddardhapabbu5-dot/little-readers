@@ -216,26 +216,31 @@ const styles = StyleSheet.create({
   primaryBtn: {
     borderRadius: radii.pill,
     paddingVertical: 16,
+    minHeight: 54,
     alignItems: "center",
+    justifyContent: "center",
   },
   primaryBtnText: {
     color: "#fff",
     fontWeight: "800",
-    fontSize: 16,
+    fontSize: 17,
   },
   softBtn: {
     backgroundColor: colors.primarySoft,
     borderRadius: radii.pill,
     paddingVertical: 12,
-    paddingHorizontal: 16,
+    paddingHorizontal: 18,
+    minHeight: 46,
     alignItems: "center",
+    justifyContent: "center",
   },
   softBtnActive: {
     backgroundColor: colors.primary,
   },
   softBtnText: {
     color: colors.primaryDark,
-    fontWeight: "700",
+    fontWeight: "800",
+    fontSize: 15,
   },
   softBtnTextActive: {
     color: "#fff",
@@ -259,8 +264,8 @@ const styles = StyleSheet.create({
     color: colors.textMuted,
   },
   progressTrack: {
-    height: 10,
-    backgroundColor: "#EDE9FE",
+    height: 12,
+    backgroundColor: "#E4ECF7",
     borderRadius: radii.pill,
     overflow: "hidden",
   },

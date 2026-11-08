@@ -15,6 +15,7 @@ import {
 } from "../../components/ParentGateModal";
 import { clearSession, getUser } from "../../services/secure";
 import { colors } from "../../theme";
+import { SkyBackground } from "../../components/kids";
 
 type AuthUser = { id: string; name: string; email: string; role: string };
 
@@ -64,6 +65,7 @@ export default function ProfileTab() {
   const isStudent = role === "STUDENT";
 
   return (
+    <SkyBackground>
     <SafeAreaView style={styles.safe} edges={["top"]}>
       <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.header}>
@@ -161,6 +163,7 @@ export default function ProfileTab() {
         }}
       />
     </SafeAreaView>
+    </SkyBackground>
   );
 }
 
@@ -190,7 +193,7 @@ function MenuRow({
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: colors.bg },
+  safe: { flex: 1, backgroundColor: "transparent" },
   content: { padding: 20, gap: 14 },
   header: { flexDirection: "row", gap: 14, alignItems: "center" },
   meta: { color: colors.textMuted },

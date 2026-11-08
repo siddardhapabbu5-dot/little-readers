@@ -16,8 +16,7 @@ import {
   IconButton,
   KidsHeader,
   RewardBanner,
-  SectionRow,
-} from "../../components/kids";
+  SectionRow, SkyBackground } from "../../components/kids";
 import { apiRequest, ApiError } from "../../services/api";
 import { getActiveChild } from "../../services/secure";
 import { displayEmoji } from "../../services/emoji";
@@ -143,9 +142,11 @@ export default function RewardsTab() {
   const locked = (data?.achievements ?? []).filter((a) => !a.unlocked).slice(0, 4);
 
   return (
+    <SkyBackground>
     <SafeAreaView style={styles.safe} edges={["top"]}>
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <KidsHeader
+          title="My Rewards"
           left={<IconButton emoji="←" onPress={() => router.push("/(tabs)/home")} />}
           right={
             <View style={styles.pointsPill}>
@@ -155,8 +156,8 @@ export default function RewardsTab() {
         />
 
         <RewardBanner
-          title={`Progress for ${data?.child?.displayName ?? "you"}`}
-          body="Stars and points come only from completed learning — nothing invented here."
+          title={`Well done, ${data?.child?.displayName ?? "superstar"}!`}
+          body="Learn words and finish games to earn more stars, badges and certificates."
           emoji="📊"
         />
 
@@ -384,6 +385,7 @@ export default function RewardsTab() {
         ) : null}
       </ScrollView>
     </SafeAreaView>
+    </SkyBackground>
   );
 }
 
@@ -436,7 +438,7 @@ function formatWhen(iso: string) {
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: colors.bg },
+  safe: { flex: 1, backgroundColor: "transparent" },
   content: { padding: 20, gap: 14, paddingBottom: 36 },
   pointsPill: {
     backgroundColor: "#fff",

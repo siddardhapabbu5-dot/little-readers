@@ -10,7 +10,7 @@ import { useFocusEffect, useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Card, ErrorText, SoftButton, Title } from "../components/ui";
 import { AuthGate } from "../components/AuthGate";
-import { BadgeChip, KidsHeader, IconButton } from "../components/kids";
+import { BadgeChip, KidsHeader, IconButton, SkyBackground } from "../components/kids";
 import { apiRequest, ApiError } from "../services/api";
 import { ROLE_SETS } from "../services/auth-errors";
 import { getActiveChild } from "../services/secure";
@@ -78,6 +78,7 @@ export default function RewardsAllScreen() {
 
   return (
     <AuthGate roles={ROLE_SETS.kidsLearning}>
+      <SkyBackground>
       <SafeAreaView style={styles.safe} edges={["top", "bottom"]}>
         <KidsHeader
           left={<IconButton emoji="←" onPress={() => router.back()} />}
@@ -149,6 +150,7 @@ export default function RewardsAllScreen() {
           </ScrollView>
         )}
       </SafeAreaView>
+      </SkyBackground>
     </AuthGate>
   );
 }
@@ -163,7 +165,7 @@ function Stat({ label, value }: { label: string; value: string }) {
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: colors.bg },
+  safe: { flex: 1, backgroundColor: "transparent" },
   content: { padding: 20, gap: 12, paddingBottom: 36 },
   center: { padding: 40, alignItems: "center" },
   section: { fontWeight: "800", fontSize: 16, color: colors.text },

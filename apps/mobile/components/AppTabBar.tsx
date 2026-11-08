@@ -5,10 +5,18 @@ import { colors, shadow } from "../theme";
 
 const ICONS: Record<string, string> = {
   home: "🏠",
-  learn: "🎓",
+  learn: "📚",
   games: "🎮",
-  rewards: "⭐",
-  profile: "👤",
+  rewards: "🏆",
+  profile: "🙂",
+};
+
+const TINTS: Record<string, string> = {
+  home: colors.skySoft,
+  learn: colors.primarySoft,
+  games: colors.greenSoft,
+  rewards: colors.yellowSoft,
+  profile: colors.pinkSoft,
 };
 
 export function AppTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
@@ -31,6 +39,7 @@ export function AppTabBar({ state, descriptors, navigation }: BottomTabBarProps)
             <Pressable
               key={route.key}
               accessibilityRole="button"
+              accessibilityLabel={label}
               accessibilityState={focused ? { selected: true } : {}}
               onPress={() => {
                 const event = navigation.emit({
@@ -44,7 +53,12 @@ export function AppTabBar({ state, descriptors, navigation }: BottomTabBarProps)
               }}
               style={styles.item}
             >
-              <View style={[styles.iconWrap, focused ? styles.iconWrapOn : null]}>
+              <View
+                style={[
+                  styles.iconWrap,
+                  focused ? { backgroundColor: TINTS[route.name] ?? colors.primarySoft } : null,
+                ]}
+              >
                 <Text style={[styles.icon, focused ? styles.iconOn : null]}>{emoji}</Text>
               </View>
               <Text style={[styles.label, focused ? styles.labelOn : null]} numberOfLines={1}>
@@ -61,48 +75,44 @@ export function AppTabBar({ state, descriptors, navigation }: BottomTabBarProps)
 const styles = StyleSheet.create({
   wrap: {
     backgroundColor: "#fff",
-    borderTopLeftRadius: 22,
-    borderTopRightRadius: 22,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
+    borderTopLeftRadius: 26,
+    borderTopRightRadius: 26,
   },
   bar: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-around",
     paddingTop: 10,
-    minHeight: 58,
+    minHeight: 62,
   },
   item: {
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    gap: 4,
+    gap: 3,
     paddingHorizontal: 2,
+    minHeight: 52,
   },
   iconWrap: {
-    width: 36,
+    width: 48,
     height: 36,
     borderRadius: 18,
     alignItems: "center",
     justifyContent: "center",
   },
-  iconWrapOn: {
-    backgroundColor: colors.primarySoft,
-  },
   icon: {
-    fontSize: 20,
-    lineHeight: 24,
+    fontSize: 22,
+    lineHeight: 26,
     textAlign: "center",
-    opacity: 0.55,
+    opacity: 0.5,
   },
   iconOn: {
     opacity: 1,
   },
   label: {
-    fontSize: 11,
-    lineHeight: 14,
-    fontWeight: "700",
+    fontSize: 12,
+    lineHeight: 15,
+    fontWeight: "800",
     color: colors.tabInactive,
     includeFontPadding: false,
     textAlign: "center",

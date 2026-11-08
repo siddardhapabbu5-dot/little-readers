@@ -83,7 +83,7 @@ export async function apiRequest<T>(
   } catch (err) {
     markNetworkUnreachable();
     throw new ApiError(
-      "We couldn't reach LEARN WISE. Check your connection and try again.",
+      "We couldn't reach Learn Wise. Check your connection and try again.",
       0,
       undefined,
       "NETWORK_UNAVAILABLE"
@@ -130,7 +130,7 @@ export async function apiUpload<T>(
   } catch {
     markNetworkUnreachable();
     throw new ApiError(
-      "We couldn't reach LEARN WISE. Check your connection and try again.",
+      "We couldn't reach Learn Wise. Check your connection and try again.",
       0,
       undefined,
       "NETWORK_UNAVAILABLE"

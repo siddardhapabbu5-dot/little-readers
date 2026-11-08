@@ -10,17 +10,25 @@ import { useFocusEffect, useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { ErrorText, SoftButton } from "../../components/ui";
 import {
+  CategoryTile,
   ContinueCard,
   DailyGoalCard,
+  FeatureTile,
   IconButton,
+  KidsButton,
   KidsHeader,
   RecommendCard,
   SectionRow,
+  SkyBackground,
+  StatPill,
   WelcomeHero,
 } from "../../components/kids";
+import { ACTIVITY_ART, art, categoryTheme } from "../../components/illustrations";
 import { apiRequest, ApiError } from "../../services/api";
 import { openLearningActivity } from "../../services/learning-nav";
-import { startActivity, useActivities } from "../../services/activities";
+import { isOn, startActivity, useActivities } from "../../services/activities";
+import type { ChallengeOverview } from "../../services/challenges";
+import { displayEmoji } from "../../services/emoji";
 import { getActiveChild, getUser, saveActiveChild } from "../../services/secure";
 import { colors } from "../../theme";
 
@@ -59,30 +67,12 @@ type ProgressPayload = {
     };
   };
 };
-
-function ageFromChild(child: ChildRow): string | null {
-  if (child.birthDate && /^\d{2}\/\d{2}\/\d{4}$/.test(child.birthDate)) {
-    const [dd, mm, yyyy] = child.birthDate.split("/").map(Number);
-    const born = new Date(yyyy, mm - 1, dd);
-    const now = new Date();
-    let age = now.getFullYear() - born.getFullYear();
-    const m = now.getMonth() - born.getMonth();
-    if (m < 0 || (m === 0 && now.getDate() < born.getDate())) age -= 1;
-    if (age >= 0 && age <= 18) return `Age ${age}`;
-  }
-  if (child.birthYear) {
-    const age = new Date().getFullYear() - child.birthYear;
-    if (age >= 0 && age <= 18) return `Age ~${age}`;
-  }
-  return null;
-}
+type DailyStatus = { completedToday: boolean; totalCompleted: number };
 
 function levelLabel(code?: string) {
   if (!code) return null;
   return code.replace(/^LEVEL_/i, "Level ");
 }
-
-const ACTIVITY_TINTS = [colors.skySoft, colors.yellowSoft, colors.mintSoft, colors.pinkSoft, colors.primarySoft];
 
 export default function HomeTab() {
   const router = useRouter();
@@ -91,6 +81,8 @@ export default function HomeTab() {
   const [child, setChild] = useState<ChildRow | null>(null);
   const [groups, setGroups] = useState<Group[]>([]);
   const [progress, setProgress] = useState<ProgressPayload | null>(null);
+  const [daily, setDaily] = useState<DailyStatus | null>(null);
+  const [week, setWeek] = useState<ChallengeOverview | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -119,17 +111,24 @@ export default function HomeTab() {
 
           if (active?.hasLearningSeat !== false && active) {
             const levelKey = active.level || "LEVEL_1";
-            const [p, curriculum] = await Promise.all([
+            const q = encodeURIComponent(active.id);
+            const [p, curriculum, d, w] = await Promise.all([
               apiRequest<ProgressPayload>(`/learning/progress/${active.id}`),
               apiRequest<{ groups: Group[] }>(
-                `/learning/levels/${encodeURIComponent(levelKey)}/groups?childId=${encodeURIComponent(active.id)}`
+                `/learning/levels/${encodeURIComponent(levelKey)}/groups?childId=${q}`
               ),
+              apiRequest<DailyStatus>(`/learning/progress/${q}/daily-challenge`).catch(() => null),
+              apiRequest<ChallengeOverview>(`/challenges/overview?childId=${q}`).catch(() => null),
             ]);
             setProgress(p);
             setGroups(curriculum.groups ?? []);
+            setDaily(d);
+            setWeek(w);
           } else {
             setProgress(null);
             setGroups([]);
+            setDaily(null);
+            setWeek(null);
           }
           setError(null);
         } catch (err) {
@@ -149,197 +148,315 @@ export default function HomeTab() {
     () => groups.flatMap((g) => g.categories.map((c) => ({ ...c, group: g.label }))),
     [groups]
   );
+  const withWords = categories.filter((c) => c.wordCount > 0);
 
   const continueCat =
-    categories.find((c) => (c.progress?.wordsLearned ?? 0) > 0 && !c.progress?.completed) ??
-    categories.find((c) => c.unlocked) ??
-    categories[0];
+    withWords.find((c) => (c.progress?.wordsLearned ?? 0) > 0 && !c.progress?.completed) ??
+    withWords.find((c) => c.unlocked) ??
+    withWords[0];
 
-  const recommended = categories.filter((c) => c.unlocked).slice(0, 4);
-  const daily = progress?.summary?.daily;
-  const dailyCompleted = daily?.wordsLearnedToday ?? 0;
-  const dailyTarget = daily?.target ?? 5;
-  const stars = progress?.summary?.stars ?? 0;
-  const words =
-    progress?.summary?.wordsCorrect ?? progress?.summary?.wordsLearned ?? 0;
-  const metaParts = [
-    child ? ageFromChild(child) : null,
-    child ? levelLabel(child.level) : null,
-    child ? `⭐ ${stars}` : null,
-    child && words > 0 ? `${words} words` : null,
-  ].filter(Boolean);
+  const learnedAny = categories.some((c) => (c.progress?.wordsLearned ?? 0) > 0);
+  const completedAny = categories.some((c) => c.progress?.completed);
+  const summary = progress?.summary;
+  const dailyCompleted = summary?.daily?.wordsLearnedToday ?? 0;
+  const dailyTarget = summary?.daily?.target ?? 5;
+  const stars = summary?.stars ?? 0;
+  const points = summary?.points ?? 0;
+  const words = summary?.wordsCorrect ?? summary?.wordsLearned ?? 0;
+  const level = child ? levelLabel(child.level) ?? "Level 1" : null;
+  const weekGoalsDone = week ? week.goals.filter((g) => g.done).length : 0;
 
-  function openCategory(
-    cat?: Category,
-    activity: "LISTEN_SPELL" | "MATCHING" | "QUIZ" | "REVISION" = "LISTEN_SPELL",
-    startRound?: "LISTEN" | "SPELL"
-  ) {
+  function openCategory(cat?: Category) {
     if (!cat || !child) {
       router.push("/(tabs)/learn");
       return;
     }
-    openLearningActivity(router, {
-      activity,
-      categoryId: cat.id,
-      childId: child.id,
-      title: cat.label,
-      startRound,
+    router.push({
+      pathname: "/category-play",
+      params: { categoryId: cat.id, childId: child.id, title: cat.label, emoji: cat.emoji },
     });
   }
 
+  function continueLearning() {
+    if (!continueCat || !child) {
+      router.push("/(tabs)/learn");
+      return;
+    }
+    openLearningActivity(router, {
+      activity: "LISTEN_SPELL",
+      categoryId: continueCat.id,
+      childId: child.id,
+      title: continueCat.label,
+    });
+  }
+
+  function openDaily() {
+    if (!child) return;
+    const opts = { categoryId: "", childId: child.id, title: "Daily Challenge", mix: "DAILY_CHALLENGE" as const };
+    if (isOn(activities, "QUIZ_TIME")) openLearningActivity(router, { activity: "QUIZ", ...opts });
+    else startActivity(router, activities, "SURPRISE", opts);
+  }
+
+  function openRevision() {
+    if (!child) return;
+    openLearningActivity(router, {
+      activity: "REVISION",
+      categoryId: "",
+      childId: child.id,
+      title: "Revision World",
+      mix: "REVISION_WORLD",
+    });
+  }
+
+  const ready = !loading && child && child.hasLearningSeat !== false;
+  const continuePct = continueCat
+    ? Math.round(((continueCat.progress?.wordsLearned ?? 0) / Math.max(continueCat.wordCount, 1)) * 100)
+    : 0;
+
   return (
-    <SafeAreaView style={styles.safe} edges={["top"]}>
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        <KidsHeader
-          left={<IconButton emoji="☰" onPress={() => router.push("/(tabs)/profile")} />}
-          right={<IconButton emoji="🎓" bg={colors.primarySoft} onPress={() => router.push("/(tabs)/learn")} />}
-        />
-
-        <WelcomeHero
-          name={child?.displayName ?? "Champ"}
-          message={
-            metaParts.length
-              ? metaParts.join(" · ")
-              : "Ready to learn something awesome today?"
-          }
-          character="🧒"
-        />
-
-        <ErrorText>{error}</ErrorText>
-
-        {loading ? (
-          <View style={styles.centerBox}>
-            <ActivityIndicator color={colors.primary} size="large" />
-            <Text style={styles.hint}>Loading your home…</Text>
-          </View>
-        ) : !child ? (
-          <View style={styles.centerBox}>
-            <Text style={styles.emptyTitle}>Add a student to start</Text>
-            <Text style={styles.hint}>
-              Create a student profile on the Parent screen, then come back here.
-            </Text>
-            <SoftButton label="Open Parent dashboard" onPress={() => router.push("/parent")} />
-          </View>
-        ) : child.hasLearningSeat === false ? (
-          <View style={styles.centerBox}>
-            <Text style={styles.emptyTitle}>Activate a learning seat</Text>
-            <Text style={styles.hint}>
-              {child.displayName} needs a seat before Kids Zone unlocks.
-            </Text>
-            <SoftButton label="Subscription / seats" onPress={() => router.push("/subscription")} />
-            <SoftButton label="Parent dashboard" onPress={() => router.push("/parent")} />
-          </View>
-        ) : (
-          <>
-            <DailyGoalCard
-              completed={dailyCompleted}
-              target={dailyTarget}
-              message={
-                dailyCompleted >= dailyTarget
-                  ? "Amazing! Daily word goal complete."
-                  : "Correct words today from any activity or game."
-              }
-            />
-
-            <SectionRow
-              title="Continue Learning"
-              action="See all"
-              onAction={() => router.push("/(tabs)/learn")}
-            />
-            {continueCat ? (
-              <ContinueCard
-                emoji={continueCat.emoji}
-                title={continueCat.label}
-                subtitle={`${continueCat.group ?? "Level 1"} · ${continueCat.progress?.wordsLearned ?? 0}/${continueCat.wordCount} words`}
-                progressPct={Math.round(
-                  ((continueCat.progress?.wordsLearned ?? 0) /
-                    Math.max(continueCat.wordCount, 1)) *
-                    100
-                )}
-                onContinue={() => openCategory(continueCat)}
+    <SkyBackground>
+      <SafeAreaView style={styles.safe} edges={["top"]}>
+        <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+          <KidsHeader
+            left={<IconButton emoji="☰" label="Profile" onPress={() => router.push("/(tabs)/profile")} />}
+            right={
+              <IconButton
+                emoji="🏆"
+                label="Challenge World"
+                bg={colors.yellowSoft}
+                onPress={() => router.push("/challenge-world")}
               />
-            ) : (
-              <Text style={styles.hint}>
-                Vocabulary is loading or not published yet. Check Learn for updates.
-              </Text>
-            )}
+            }
+          />
 
-            <SectionRow
-              title="Activities"
-              action="Games"
-              onAction={() => router.push("/(tabs)/games")}
-            />
-            {continueCat ? (
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={{ gap: 12 }}
-              >
-                {activities
-                  .filter((a) => a.enabled)
-                  .map((a, i) => (
-                    <RecommendCard
-                      key={a.code}
-                      emoji={a.emoji}
-                      title={continueCat.label}
-                      tag={a.title}
-                      tint={ACTIVITY_TINTS[i % ACTIVITY_TINTS.length]}
-                      onPress={() =>
-                        child
-                          ? startActivity(router, activities, a.code, {
+          <WelcomeHero
+            name={child?.displayName ?? user?.name?.split(" ")[0] ?? "Champ"}
+            message={
+              child
+                ? `${level} · Let's learn something new!`
+                : "Ready to learn something awesome today?"
+            }
+            character="🧒"
+          />
+
+          <ErrorText>{error}</ErrorText>
+
+          {loading ? (
+            <View style={styles.centerBox}>
+              <ActivityIndicator color={colors.primary} size="large" />
+              <Text style={styles.hint}>Loading your home…</Text>
+            </View>
+          ) : !child ? (
+            <View style={styles.emptyCard}>
+              <Text style={styles.emptyTitle}>Add a student to start</Text>
+              <Text style={styles.hint}>
+                Create a student profile on the Parent screen, then come back here.
+              </Text>
+              <SoftButton label="Open Parent dashboard" onPress={() => router.push("/parent")} />
+            </View>
+          ) : child.hasLearningSeat === false ? (
+            <View style={styles.emptyCard}>
+              <Text style={styles.emptyTitle}>Activate a learning seat</Text>
+              <Text style={styles.hint}>
+                {child.displayName} needs a seat before Kids Zone unlocks.
+              </Text>
+              <SoftButton label="Subscription / seats" onPress={() => router.push("/subscription")} />
+              <SoftButton label="Parent dashboard" onPress={() => router.push("/parent")} />
+            </View>
+          ) : null}
+
+          {ready ? (
+            <>
+              <View style={styles.statsRow}>
+                <StatPill emoji="⭐" value={stars} label="Stars" tint="#FFFBEA" />
+                <StatPill emoji="💎" value={points} label="Points" tint="#F1EDFF" />
+                <StatPill emoji="📖" value={words} label="Words" tint="#EAF8FF" />
+              </View>
+
+              <DailyGoalCard
+                completed={dailyCompleted}
+                target={dailyTarget}
+                message={
+                  dailyCompleted >= dailyTarget
+                    ? "Amazing! Daily word goal complete."
+                    : "Correct words today from any activity or game."
+                }
+              />
+
+              {continueCat ? (
+                <>
+                  <SectionRow
+                    title="Continue Learning"
+                    action="All topics"
+                    onAction={() => router.push("/(tabs)/learn")}
+                  />
+                  <ContinueCard
+                    emoji={displayEmoji(continueCat.emoji)}
+                    image={categoryTheme(continueCat.label).image}
+                    tint={categoryTheme(continueCat.label).tint}
+                    title={continueCat.label}
+                    subtitle={`${continueCat.progress?.wordsLearned ?? 0}/${continueCat.wordCount} words learned`}
+                    progressPct={continuePct}
+                    onContinue={continueLearning}
+                  />
+                  <KidsButton label="▶  Continue Learning" onPress={continueLearning} />
+                </>
+              ) : (
+                <View style={styles.emptyCard}>
+                  <Text style={styles.emptyTitle}>Words are on the way</Text>
+                  <Text style={styles.hint}>
+                    Vocabulary appears here after Admin publishes it. Nothing is invented.
+                  </Text>
+                </View>
+              )}
+
+              <SectionRow title="Challenges & Rewards" />
+              <View style={styles.featureGrid}>
+                <FeatureTile
+                  wide
+                  title="Daily Challenge"
+                  subtitle={
+                    daily?.completedToday
+                      ? "Done for today ✅ Play again for fun!"
+                      : learnedAny
+                        ? "A fresh mix of words you know. Earn bonus points!"
+                        : "Learn a few words first to unlock it."
+                  }
+                  image={art.starGoal}
+                  tint="#FFF3C4"
+                  disabled={!learnedAny}
+                  onPress={openDaily}
+                />
+                <FeatureTile
+                  wide
+                  title="Weekly Challenge"
+                  subtitle={
+                    week
+                      ? `${week.weekPoints} points this week · ${weekGoalsDone}/${week.goals.length} goals done`
+                      : "Weekly goals, badges and leaderboards."
+                  }
+                  image={art.trophy}
+                  tint="#EDE7FF"
+                  onPress={() => router.push("/challenge-world")}
+                />
+                <FeatureTile
+                  title="My Rewards"
+                  subtitle={`⭐ ${stars} stars`}
+                  emoji="🎖️"
+                  tint={colors.pinkSoft}
+                  onPress={() => router.push("/(tabs)/rewards")}
+                />
+                <FeatureTile
+                  title="Certificates"
+                  subtitle="View & share"
+                  image={art.certificate}
+                  tint={colors.cream}
+                  onPress={() => router.push("/(tabs)/rewards")}
+                />
+                <FeatureTile
+                  title="Leaderboard"
+                  subtitle={week?.globalRank ? `Rank #${week.globalRank.rank}` : "Weekly ranks"}
+                  emoji="🥇"
+                  tint={colors.skySoft}
+                  onPress={() => router.push({ pathname: "/challenge-world", params: { tab: "global" } })}
+                />
+                <FeatureTile
+                  wide
+                  title="Revision World"
+                  subtitle={
+                    completedAny || learnedAny
+                      ? "Practise the words you already learned."
+                      : "Opens after you learn your first words."
+                  }
+                  image={art.revision}
+                  tint={colors.greenSoft}
+                  disabled={!completedAny && !learnedAny}
+                  onPress={openRevision}
+                />
+              </View>
+
+              {continueCat ? (
+                <>
+                  <SectionRow
+                    title="Activities"
+                    action="Games"
+                    onAction={() => router.push("/(tabs)/games")}
+                  />
+                  <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    contentContainerStyle={{ gap: 12, paddingVertical: 4 }}
+                  >
+                    {activities
+                      .filter((a) => a.enabled)
+                      .map((a) => (
+                        <RecommendCard
+                          key={a.code}
+                          emoji={a.emoji}
+                          image={ACTIVITY_ART[a.code]?.image}
+                          title={a.title}
+                          tag={continueCat.label}
+                          tint={ACTIVITY_ART[a.code]?.tint ?? colors.skySoft}
+                          onPress={() =>
+                            startActivity(router, activities, a.code, {
                               categoryId: continueCat.id,
-                              childId: child.id,
+                              childId: child!.id,
                               title: continueCat.label,
                             })
-                          : router.push("/(tabs)/learn")
-                      }
-                    />
-                  ))}
-              </ScrollView>
-            ) : (
-              <Text style={styles.hint}>Activities unlock when a category is available.</Text>
-            )}
+                          }
+                        />
+                      ))}
+                  </ScrollView>
+                </>
+              ) : null}
 
-            <SectionRow title="Recommended for You" />
-            {recommended.length ? (
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={{ gap: 12 }}
-              >
-                {recommended.map((cat, i) => {
-                  const startRound: "LISTEN" | "SPELL" =
-                    i % 2 === 0 ? "LISTEN" : "SPELL";
-                  return (
-                    <RecommendCard
-                      key={`${cat.id}-${startRound}`}
-                      emoji={cat.emoji}
-                      title={cat.label}
-                      tag={startRound === "LISTEN" ? "Listen" : "Spell"}
-                      tint={startRound === "LISTEN" ? colors.skySoft : colors.yellowSoft}
-                      onPress={() =>
-                        openCategory(cat, "LISTEN_SPELL", startRound)
-                      }
-                    />
-                  );
-                })}
-              </ScrollView>
-            ) : (
-              <Text style={styles.hint}>No unlocked categories yet.</Text>
-            )}
-          </>
-        )}
+              {withWords.length ? (
+                <>
+                  <SectionRow
+                    title="Categories"
+                    action="See all"
+                    onAction={() => router.push("/(tabs)/learn")}
+                  />
+                  <View style={styles.tileGrid}>
+                    {withWords.slice(0, 6).map((cat, i) => {
+                      const theme = categoryTheme(cat.label, i);
+                      return (
+                        <CategoryTile
+                          key={cat.id}
+                          emoji={displayEmoji(cat.emoji)}
+                          title={cat.label}
+                          image={theme.image}
+                          tint={theme.tint}
+                          learned={cat.progress?.wordsLearned ?? 0}
+                          total={cat.wordCount}
+                          stars={cat.progress?.stars ?? 0}
+                          locked={!cat.unlocked}
+                          completed={cat.progress?.completed}
+                          onPress={() => openCategory(cat)}
+                        />
+                      );
+                    })}
+                  </View>
+                </>
+              ) : null}
+            </>
+          ) : null}
 
-        <View style={{ height: 8 }} />
-      </ScrollView>
-    </SafeAreaView>
+          <View style={{ height: 8 }} />
+        </ScrollView>
+      </SafeAreaView>
+    </SkyBackground>
   );
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: colors.bg },
-  content: { padding: 20, gap: 16, paddingBottom: 28 },
-  centerBox: { gap: 10, paddingVertical: 12 },
-  emptyTitle: { fontWeight: "800", fontSize: 18, color: colors.text },
+  safe: { flex: 1 },
+  content: { padding: 18, gap: 16, paddingBottom: 28, width: "100%", maxWidth: 720, alignSelf: "center" },
+  centerBox: { gap: 10, paddingVertical: 12, alignItems: "center" },
+  emptyCard: { gap: 10, padding: 16, borderRadius: 24, backgroundColor: "#fff" },
+  emptyTitle: { fontWeight: "900", fontSize: 18, color: colors.text },
   hint: { color: colors.textMuted, fontWeight: "600", lineHeight: 20 },
+  statsRow: { flexDirection: "row", gap: 10, flexWrap: "wrap" },
+  featureGrid: { flexDirection: "row", flexWrap: "wrap", gap: 12 },
+  tileGrid: { flexDirection: "row", flexWrap: "wrap", gap: 12 },
 });

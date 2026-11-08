@@ -159,7 +159,7 @@ export default function ParentChallengesScreen() {
                   </Text>
                   {settings.nicknameHidden ? (
                     <Text style={styles.warn}>
-                      This nickname was hidden by LEARN WISE moderators. Please choose a new one.
+                      This nickname was hidden by Learn Wise moderators. Please choose a new one.
                     </Text>
                   ) : null}
                   <TextInput
@@ -200,7 +200,7 @@ export default function ParentChallengesScreen() {
                   </View>
                   <Text style={styles.item}>
                     {!features?.global
-                      ? "The global leaderboard is switched off by LEARN WISE right now."
+                      ? "The global leaderboard is switched off by Learn Wise right now."
                       : settings.globalOptIn
                         ? `ON since ${new Date(settings.globalConsentAt ?? Date.now()).toLocaleDateString("en-GB")}. Your child appears only as “${settings.nickname}”. You can turn this off at any time.`
                         : "OFF (default). Turning it on shows only the approved nickname, weekly points and badges to other learners."}

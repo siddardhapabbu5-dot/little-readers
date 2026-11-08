@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useState } from "react";
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Image, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
 import { ErrorText, ProgressBar } from "../components/ui";
-import { IconButton, KidsHeader } from "../components/kids";
+import { IconButton, KidsHeader, SkyBackground } from "../components/kids";
+import { art } from "../components/illustrations";
 import { AuthGate } from "../components/AuthGate";
 import { apiRequest, ApiError } from "../services/api";
 import { ROLE_SETS } from "../services/auth-errors";
@@ -97,6 +98,7 @@ export default function ChallengeWorldScreen() {
 
   return (
     <AuthGate roles={ROLE_SETS.kidsLearning}>
+      <SkyBackground>
       <SafeAreaView style={styles.safe} edges={["top", "bottom"]}>
         <KidsHeader
           left={<IconButton emoji="←" onPress={() => router.back()} />}
@@ -113,7 +115,7 @@ export default function ChallengeWorldScreen() {
                   {formatCountdown(endsIn)}
                 </Text>
                 <View style={styles.heroRow}>
-                  <Text style={styles.heroTrophy}>🏆</Text>
+                  <Image source={art.trophy} style={styles.heroTrophy} resizeMode="contain" />
                   <View style={{ flex: 1 }}>
                     <Text style={styles.heroPoints}>{overview.weekPoints}</Text>
                     <Text style={styles.heroLabel}>points this week</Text>
@@ -153,6 +155,7 @@ export default function ChallengeWorldScreen() {
           ) : null}
         </ScrollView>
       </SafeAreaView>
+      </SkyBackground>
     </AuthGate>
   );
 }
@@ -441,12 +444,12 @@ function RewardsTab({ history, winners }: { history: ChallengeHistory | null; wi
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: colors.bg },
+  safe: { flex: 1, backgroundColor: "transparent" },
   content: { padding: 16, gap: 14, paddingBottom: 40 },
   hero: { borderRadius: radii.xl, padding: 18, gap: 8 },
   heroKicker: { color: "#fff", fontWeight: "700", opacity: 0.95 },
   heroRow: { flexDirection: "row", alignItems: "center", gap: 12 },
-  heroTrophy: { fontSize: 54 },
+  heroTrophy: { width: 84, height: 84 },
   heroPoints: { color: "#fff", fontSize: 44, fontWeight: "900" },
   heroLabel: { color: "#fff", fontWeight: "700" },
   heroSide: { alignItems: "flex-end" },

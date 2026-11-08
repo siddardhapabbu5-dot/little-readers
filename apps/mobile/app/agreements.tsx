@@ -182,7 +182,7 @@ export default function AgreementsScreen() {
           <ScrollView contentContainerStyle={styles.content}>
             <SoftButton label="← Back" onPress={() => !paying && router.back()} />
             <RegistrationSteps step={paying ? 6 : 5} />
-            <Title>LEARN WISE – Agreements</Title>
+            <Title>Learn Wise – Agreements</Title>
             <Text style={styles.meta}>
               Please read each document and tick every box to continue.
             </Text>
@@ -194,7 +194,7 @@ export default function AgreementsScreen() {
             {status && !status.allPublished ? (
               <Card>
                 <Text style={styles.meta}>
-                  LEARN WISE is still publishing its agreements. Please try again later.
+                  Learn Wise is still publishing its agreements. Please try again later.
                 </Text>
               </Card>
             ) : null}
@@ -251,7 +251,7 @@ export default function AgreementsScreen() {
                   <Text style={styles.small}>Optional</Text>
                   <Checkbox
                     checked={marketing}
-                    label="Send me LEARN WISE news, tips and offers by email. (You can still subscribe without this.)"
+                    label="Send me Learn Wise news, tips and offers by email. (You can still subscribe without this.)"
                     onPress={() => setMarketing((m) => !m)}
                   />
                 </Card>

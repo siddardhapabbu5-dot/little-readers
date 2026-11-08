@@ -211,7 +211,7 @@ export default function ParentScreen() {
             <Card style={{ gap: 8, borderColor: colors.danger, borderWidth: 1 }}>
               <Text style={styles.section}>Updated agreements</Text>
               <Text style={styles.meta}>
-                LEARN WISE updated its terms. Please review and accept them to keep using
+                Learn Wise updated its terms. Please review and accept them to keep using
                 subscriptions and payments.
               </Text>
               <PrimaryButton label="Review agreements" onPress={() => router.push("/agreements")} />

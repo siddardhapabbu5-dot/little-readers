@@ -173,7 +173,7 @@ export default function ChildSetupScreen() {
                   detail={
                     canLockHere
                       ? `Lock ${name} to this phone (${phoneLabel()}) now.`
-                      : "Open the LEARN WISE app on the child's phone to register it."
+                      : "Open the Learn Wise app on the child's phone to register it."
                   }
                   selected={device === "this"}
                   disabled={!canLockHere}

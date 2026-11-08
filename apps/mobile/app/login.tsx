@@ -156,23 +156,23 @@ export default function LoginScreen() {
           <View
             style={styles.header}
             accessibilityRole="header"
-            accessibilityLabel="LEARN WISE. Read, Spell, Learn, Succeed."
+            accessibilityLabel="Learn Wise. Read, Spell, Learn, Succeed."
           >
             <View style={styles.heroRow}>
               <Image
                 source={BOY}
                 style={styles.mascot}
                 resizeMode="contain"
-                accessibilityLabel="LEARN WISE boy character"
+                accessibilityLabel="Learn Wise boy character"
               />
               <View style={styles.brandCenter}>
                 <Image
                   source={LOGO_BOOKS}
                   style={styles.booksLogo}
                   resizeMode="contain"
-                  accessibilityLabel="LEARN WISE books logo"
+                  accessibilityLabel="Learn Wise books logo"
                 />
-                <Text style={styles.brand}>LEARN WISE</Text>
+                <Text style={styles.brand}>Learn Wise</Text>
                 <View style={styles.pill}>
                   <Text
                     style={styles.pillText}
@@ -192,7 +192,7 @@ export default function LoginScreen() {
                 source={GIRL}
                 style={styles.mascot}
                 resizeMode="contain"
-                accessibilityLabel="LEARN WISE girl character"
+                accessibilityLabel="Learn Wise girl character"
               />
             </View>
           </View>
@@ -208,7 +208,8 @@ export default function LoginScreen() {
               <View style={styles.ruleLine} />
             </View>
 
-            {__DEV__ && process.env.EXPO_PUBLIC_ENABLE_DEMO !== "0" ? (
+            {process.env.EXPO_PUBLIC_ENABLE_DEMO === "1" ||
+            (__DEV__ && process.env.EXPO_PUBLIC_ENABLE_DEMO !== "0") ? (
               <View style={styles.devRow} accessibilityLabel="Demo quick login">
                 <Text style={styles.devLabel}>Demo (tap to fill)</Text>
                 <View style={styles.devBtns}>
@@ -387,7 +388,7 @@ export default function LoginScreen() {
           </View>
 
           <View style={styles.footer}>
-            <Text style={styles.newUser}>New to LEARN WISE?</Text>
+            <Text style={styles.newUser}>New to Learn Wise?</Text>
             <Pressable
               accessibilityRole="button"
               accessibilityLabel="Create Student Account"

@@ -1,5 +1,5 @@
 /**
- * Lightweight online/offline signalling for LEARN WISE.
+ * Lightweight online/offline signalling for Learn Wise.
  *
  * Offline learning / background sync is NOT supported.
  * When offline, learning attempts must not be queued locally —

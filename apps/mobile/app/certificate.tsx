@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
-import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Image, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { ErrorText, SoftButton } from "../components/ui";
-import { IconButton, KidsHeader } from "../components/kids";
+import { IconButton, KidsButton, KidsHeader, SkyBackground } from "../components/kids";
+import { art } from "../components/illustrations";
 import { AuthGate } from "../components/AuthGate";
 import { apiRequest, ApiError } from "../services/api";
 import { ROLE_SETS } from "../services/auth-errors";
@@ -45,6 +46,7 @@ export default function CertificateScreen() {
 
   return (
     <AuthGate roles={ROLE_SETS.kidsLearning}>
+      <SkyBackground>
       <SafeAreaView style={styles.safe} edges={["top", "bottom"]}>
         <KidsHeader
           left={<IconButton emoji="←" onPress={() => router.back()} />}
@@ -57,6 +59,7 @@ export default function CertificateScreen() {
             <>
               <View style={[styles.frame, shadow.card]}>
                 <View style={styles.inner}>
+                  <Image source={art.certificate} style={styles.badgeArt} resizeMode="contain" />
                   <Text style={styles.brand}>{cert.appName}</Text>
                   <Text style={styles.kind}>CERTIFICATE OF ACHIEVEMENT</Text>
                   <Text style={styles.lead}>This certificate is proudly presented to</Text>
@@ -81,12 +84,15 @@ export default function CertificateScreen() {
                   </View>
                 </View>
               </View>
-              <SoftButton
+              <KidsButton
                 label={busy ? "Please wait…" : "⬇️ Download PDF"}
+                loading={busy}
                 onPress={() => void run(downloadCertificatePdf)}
               />
-              <SoftButton
+              <KidsButton
+                tone="orange"
                 label="📤 Share (WhatsApp and more)"
+                disabled={busy}
                 onPress={() => void run(shareCertificate)}
               />
               <SoftButton label="🏆 My rewards" onPress={() => router.push("/(tabs)/rewards")} />
@@ -94,13 +100,15 @@ export default function CertificateScreen() {
           ) : null}
         </ScrollView>
       </SafeAreaView>
+      </SkyBackground>
     </AuthGate>
   );
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: colors.bg },
-  content: { padding: 20, gap: 12, paddingBottom: 40 },
+  safe: { flex: 1, backgroundColor: "transparent", paddingHorizontal: 16 },
+  content: { paddingVertical: 12, gap: 12, paddingBottom: 40, width: "100%", maxWidth: 640, alignSelf: "center" },
+  badgeArt: { width: 84, height: 84, marginBottom: 2 },
   frame: {
     borderWidth: 5,
     borderColor: "#6C4CF1",

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
+  Image,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -9,8 +10,9 @@ import {
 } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Card, ErrorText, SoftButton, Title } from "../components/ui";
-import { IconButton, KidsHeader } from "../components/kids";
+import { Card, ErrorText, ProgressBar, SoftButton } from "../components/ui";
+import { IconButton, KidsButton, KidsHeader, SkyBackground } from "../components/kids";
+import { art } from "../components/illustrations";
 import { AuthGate } from "../components/AuthGate";
 import { CertificateEarned, type EarnedCertificate } from "../components/CertificateEarned";
 import { ChallengePointsEarned, type ChallengeResult } from "../components/ChallengePointsEarned";
@@ -193,6 +195,7 @@ export default function QuizScreen() {
 
   return (
     <AuthGate roles={ROLE_SETS.kidsLearning}>
+      <SkyBackground>
       <SafeAreaView style={styles.safe} edges={["top", "bottom"]}>
         <KidsHeader
           left={<IconButton emoji="←" onPress={() => router.back()} />}
@@ -214,9 +217,9 @@ export default function QuizScreen() {
         {results ? (
           <ScrollView contentContainerStyle={styles.content}>
             <Card color={colors.primary} style={styles.results}>
-              <Text style={{ fontSize: 56 }}>📝</Text>
-              <Title>Quiz complete, {results.childName}!</Title>
-              <Text style={styles.muted}>
+              <Image source={art.trophy} style={styles.resultsArt} resizeMode="contain" />
+              <Text style={styles.resultsTitle}>Quiz complete, {results.childName}!</Text>
+              <Text style={styles.resultsSub}>
                 {results.correctAnswers}/{results.questionsAttempted} · {results.points} pts ·{" "}
                 {results.accuracy}%
               </Text>
@@ -230,76 +233,120 @@ export default function QuizScreen() {
 
         {!loading && question && !results ? (
           <ScrollView contentContainerStyle={styles.content}>
-            <Text style={styles.progress}>
-              Question {qIndex + 1} / {session?.questions.length ?? 0}
-            </Text>
-            <Card style={styles.promptCard}>
+            <View style={styles.progressRow}>
+              <View style={{ flex: 1 }}>
+                <ProgressBar value={qIndex + 1} max={Math.max(session?.questions.length ?? 1, 1)} color={colors.orange} />
+              </View>
+              <Text style={styles.progress}>
+                {qIndex + 1}/{session?.questions.length ?? 0}
+              </Text>
+            </View>
+            <View style={[styles.promptCard, shadow.card]}>
+              <Image source={art.quiz} style={styles.quizArt} resizeMode="contain" />
               <Text style={styles.emoji}>{question.word.emoji}</Text>
               <Text style={styles.prompt}>What word matches this meaning?</Text>
               <Text style={styles.meaning}>{question.word.meaning}</Text>
-            </Card>
+            </View>
 
-            {question.listenOptions.map((opt) => (
-              <Pressable
-                key={opt.key}
-                disabled={feedback === "ok" || saving}
-                onPress={() => void onPick(opt)}
-                style={[
-                  styles.option,
-                  feedback === "ok" && opt.isCorrect && styles.optionOk,
-                  feedback === "try" && !opt.isCorrect && styles.optionDim,
-                ]}
-              >
-                <Text style={styles.optionEmoji}>{opt.emoji}</Text>
-                <Text style={styles.optionText}>{opt.text}</Text>
-              </Pressable>
-            ))}
+            <View style={styles.optionGrid}>
+              {question.listenOptions.map((opt, i) => (
+                <Pressable
+                  key={opt.key}
+                  disabled={feedback === "ok" || saving}
+                  onPress={() => void onPick(opt)}
+                  accessibilityRole="button"
+                  accessibilityLabel={opt.text}
+                  style={({ pressed }) => [
+                    styles.option,
+                    { backgroundColor: OPTION_TINTS[i % OPTION_TINTS.length] },
+                    shadow.soft,
+                    feedback === "ok" && opt.isCorrect && styles.optionOk,
+                    feedback === "try" && !opt.isCorrect && styles.optionDim,
+                    { transform: [{ scale: pressed ? 0.97 : 1 }] },
+                  ]}
+                >
+                  <Text style={styles.optionEmoji}>{opt.emoji}</Text>
+                  <Text style={styles.optionText} numberOfLines={2}>
+                    {opt.text}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
 
             {feedback === "ok" ? (
-              <SoftButton label={saving ? "Saving…" : "Next"} onPress={() => void onNext()} />
+              <View style={styles.okBar}>
+                <Text style={styles.okText}>🎉 Correct! Well done!</Text>
+                <KidsButton label={saving ? "Saving…" : "Next Question"} onPress={() => void onNext()} />
+              </View>
             ) : null}
             {feedback === "try" ? (
-              <Text style={styles.tryAgain}>Try another answer</Text>
+              <Text style={styles.tryAgain}>💪 Nice try! Pick another answer.</Text>
             ) : null}
           </ScrollView>
         ) : null}
       </SafeAreaView>
+      </SkyBackground>
     </AuthGate>
   );
 }
 
+const OPTION_TINTS = [colors.cream, colors.pinkSoft, colors.skySoft, colors.greenSoft];
+
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: colors.bg },
-  content: { padding: 20, gap: 12, paddingBottom: 40 },
+  safe: { flex: 1, paddingHorizontal: 4, width: "100%", maxWidth: 720, alignSelf: "center" },
+  content: { padding: 14, gap: 14, paddingBottom: 40 },
   center: { padding: 40, alignItems: "center" },
-  muted: { color: colors.textMuted, fontWeight: "600", textAlign: "center" },
-  progress: { fontWeight: "800", color: colors.primaryDark },
-  promptCard: { alignItems: "center", gap: 8, paddingVertical: 18 },
-  emoji: { fontSize: 48 },
-  prompt: { fontWeight: "700", color: colors.textMuted },
+  progressRow: { flexDirection: "row", alignItems: "center", gap: 10 },
+  progress: { fontWeight: "900", color: colors.text, fontSize: 14 },
+  promptCard: {
+    alignItems: "center",
+    gap: 6,
+    paddingVertical: 18,
+    paddingHorizontal: 16,
+    backgroundColor: "#fff",
+    borderRadius: radii.xl,
+  },
+  quizArt: { position: "absolute", top: 8, right: 8, width: 54, height: 54, opacity: 0.9 },
+  emoji: { fontSize: 64 },
+  prompt: { fontWeight: "800", color: colors.textMuted, fontSize: 15 },
   meaning: {
-    fontSize: 18,
-    fontWeight: "800",
+    fontSize: 21,
+    fontWeight: "900",
     color: colors.text,
     textAlign: "center",
-    lineHeight: 26,
+    lineHeight: 28,
   },
+  optionGrid: { flexDirection: "row", flexWrap: "wrap", gap: 12 },
   option: {
-    flexDirection: "row",
+    flexBasis: "46%",
+    flexGrow: 1,
     alignItems: "center",
-    gap: 12,
-    backgroundColor: "#fff",
-    borderRadius: radii.md,
+    justifyContent: "center",
+    gap: 6,
+    borderRadius: radii.xl,
+    paddingVertical: 18,
+    paddingHorizontal: 10,
+    minHeight: 120,
+    borderWidth: 3,
+    borderColor: "#fff",
+  },
+  optionOk: { borderColor: colors.green, backgroundColor: colors.greenSoft },
+  optionDim: { opacity: 0.55 },
+  optionEmoji: { fontSize: 44 },
+  optionText: { fontWeight: "900", fontSize: 18, color: colors.text, textAlign: "center" },
+  okBar: {
+    gap: 10,
+    backgroundColor: colors.greenSoft,
+    borderRadius: radii.lg,
     padding: 14,
     borderWidth: 2,
-    borderColor: "#E8E4F8",
-    ...shadow.soft,
+    borderColor: colors.green,
   },
-  optionOk: { borderColor: colors.mint, backgroundColor: colors.mintSoft },
-  optionDim: { opacity: 0.7 },
-  optionEmoji: { fontSize: 26 },
-  optionText: { fontWeight: "800", fontSize: 16, color: colors.text },
-  tryAgain: { color: colors.accent, fontWeight: "800", textAlign: "center" },
+  okText: { fontWeight: "900", fontSize: 18, color: "#15803D", textAlign: "center" },
+  tryAgain: { color: "#C2410C", fontWeight: "900", fontSize: 16, textAlign: "center" },
+  resultsArt: { width: 140, height: 140 },
+  resultsTitle: { color: "#fff", fontSize: 24, fontWeight: "900", textAlign: "center" },
+  resultsSub: { color: "#F3EEFF", fontWeight: "800", textAlign: "center", fontSize: 15 },
   scorePill: {
     backgroundColor: "#fff",
     borderRadius: radii.pill,

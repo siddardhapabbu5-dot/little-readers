@@ -99,7 +99,7 @@ export default function ReceiptScreen() {
 
   async function share() {
     if (!receipt) return;
-    const text = ["LEARN WISE – Payment Receipt", ...rows.map(([k, v]) => `${k}: ${v}`)].join("\n");
+    const text = ["Learn Wise – Payment Receipt", ...rows.map(([k, v]) => `${k}: ${v}`)].join("\n");
     await Share.share({ message: text, title: `Receipt ${receipt.receiptNumber}` }).catch(
       () => undefined
     );
@@ -117,7 +117,7 @@ export default function ReceiptScreen() {
               <View style={styles.hero}>
                 <Ionicons name="checkmark-circle" size={56} color={colors.success} />
                 <Title>Payment successful</Title>
-                <Text style={styles.meta}>Verified by LEARN WISE. Your subscription is active.</Text>
+                <Text style={styles.meta}>Verified by Learn Wise. Your subscription is active.</Text>
               </View>
               <Card style={{ gap: 10 }}>
                 {rows.map(([k, v]) =>

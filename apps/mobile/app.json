@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "LEARN WISE",
+    "name": "Learn Wise",
     "slug": "little-readers",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -17,11 +17,11 @@
       "bundleIdentifier": "com.littlereaders.app",
       "buildNumber": "10",
       "infoPlist": {
-        "CFBundleDisplayName": "LEARN WISE",
+        "CFBundleDisplayName": "Learn Wise",
         "ITSAppUsesNonExemptEncryption": false,
         "LSApplicationQueriesSchemes": ["mailto", "https", "http"],
-        "NSPhotoLibraryUsageDescription": "LEARN WISE accesses photos only when you choose a profile photo or a file to upload.",
-        "NSCameraUsageDescription": "LEARN WISE uses the camera only when you choose to take a profile photo.",
+        "NSPhotoLibraryUsageDescription": "Learn Wise accesses photos only when you choose a profile photo or a file to upload.",
+        "NSCameraUsageDescription": "Learn Wise uses the camera only when you choose to take a profile photo.",
         "UIBackgroundModes": []
       },
       "config": {
@@ -80,8 +80,8 @@
       [
         "expo-image-picker",
         {
-          "photosPermission": "LEARN WISE accesses photos only when you choose a profile photo.",
-          "cameraPermission": "LEARN WISE uses the camera only when you choose to take a profile photo.",
+          "photosPermission": "Learn Wise accesses photos only when you choose a profile photo.",
+          "cameraPermission": "Learn Wise uses the camera only when you choose to take a profile photo.",
           "microphonePermission": false
         }
       ],

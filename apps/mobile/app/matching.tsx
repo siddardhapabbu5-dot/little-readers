@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
+  Image,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -9,8 +10,9 @@ import {
 } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Card, ErrorText, SoftButton, Title } from "../components/ui";
-import { IconButton, KidsHeader } from "../components/kids";
+import { Card, ErrorText, ProgressBar, SoftButton } from "../components/ui";
+import { IconButton, KidsHeader, SkyBackground } from "../components/kids";
+import { art } from "../components/illustrations";
 import { AuthGate } from "../components/AuthGate";
 import { CertificateEarned, type EarnedCertificate } from "../components/CertificateEarned";
 import { ChallengePointsEarned, type ChallengeResult } from "../components/ChallengePointsEarned";
@@ -245,6 +247,7 @@ export default function MatchingScreen() {
 
   return (
     <AuthGate roles={ROLE_SETS.kidsLearning}>
+      <SkyBackground>
       <SafeAreaView style={styles.safe} edges={["top", "bottom"]}>
         <KidsHeader
           left={<IconButton emoji="←" onPress={() => router.back()} />}
@@ -267,9 +270,9 @@ export default function MatchingScreen() {
         {results ? (
           <ScrollView contentContainerStyle={styles.content}>
             <Card color={colors.primary} style={styles.results}>
-              <Text style={{ fontSize: 56 }}>🧩</Text>
-              <Title>Matching done, {results.childName}!</Title>
-              <Text style={styles.muted}>
+              <Image source={art.trophy} style={styles.resultsArt} resizeMode="contain" />
+              <Text style={styles.resultsTitle}>Matching done, {results.childName}!</Text>
+              <Text style={styles.resultsSub}>
                 {results.correctAnswers}/{results.questionsAttempted} correct ·{" "}
                 {results.points} pts · {results.accuracy}%
               </Text>
@@ -283,10 +286,24 @@ export default function MatchingScreen() {
 
         {!loading && session && !results ? (
           <ScrollView contentContainerStyle={styles.content}>
-            <Text style={styles.help}>
-              Tap a word, then tap its matching picture. Matched pairs stay checked.
-            </Text>
-            {feedback ? <Text style={styles.feedback}>{feedback}</Text> : null}
+            <View style={[styles.helpCard, shadow.soft]}>
+              <Image source={art.match} style={styles.helpArt} resizeMode="contain" />
+              <Text style={styles.help}>Tap a word, then tap its matching picture!</Text>
+            </View>
+            <View style={styles.progressRow}>
+              <View style={{ flex: 1 }}>
+                <ProgressBar value={matched.size} max={Math.max(words.length, 1)} color={colors.green} />
+              </View>
+              <Text style={styles.progressText}>
+                {matched.size}/{words.length}
+              </Text>
+            </View>
+            {feedback ? (
+              <Text style={[styles.feedback, feedback.startsWith("Nice") ? styles.feedbackOk : styles.feedbackTry]}>
+                {feedback.startsWith("Nice") ? "🎉 " : "💪 "}
+                {feedback}
+              </Text>
+            ) : null}
             <View style={styles.board}>
               <View style={styles.col}>
                 {tiles.left.map((t) => (
@@ -294,6 +311,8 @@ export default function MatchingScreen() {
                     key={t.id}
                     disabled={matched.has(t.wordId)}
                     onPress={() => void onTile(t)}
+                    accessibilityRole="button"
+                    accessibilityLabel={t.label}
                     style={[
                       styles.tile,
                       selected?.id === t.id && styles.tileOn,
@@ -301,6 +320,7 @@ export default function MatchingScreen() {
                     ]}
                   >
                     <Text style={styles.tileWord}>{t.label}</Text>
+                    {matched.has(t.wordId) ? <Text style={styles.tick}>✓</Text> : null}
                   </Pressable>
                 ))}
               </View>
@@ -318,16 +338,15 @@ export default function MatchingScreen() {
                     ]}
                   >
                     <Text style={styles.tileEmoji}>{t.label}</Text>
+                    {matched.has(t.wordId) ? <Text style={styles.tick}>✓</Text> : null}
                   </Pressable>
                 ))}
               </View>
             </View>
-            <Text style={styles.muted}>
-              Matched {matched.size}/{words.length}
-            </Text>
           </ScrollView>
         ) : null}
       </SafeAreaView>
+      </SkyBackground>
     </AuthGate>
   );
 }
@@ -342,30 +361,47 @@ function shuffle<T>(items: T[]): T[] {
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: colors.bg },
-  content: { padding: 20, gap: 12, paddingBottom: 40 },
+  safe: { flex: 1, paddingHorizontal: 4, width: "100%", maxWidth: 720, alignSelf: "center" },
+  content: { padding: 14, gap: 12, paddingBottom: 40 },
   center: { padding: 40, alignItems: "center", gap: 10 },
   muted: { color: colors.textMuted, fontWeight: "600", textAlign: "center" },
-  help: { color: colors.text, fontWeight: "700", fontSize: 15, lineHeight: 22 },
-  feedback: { color: colors.primaryDark, fontWeight: "800", textAlign: "center" },
+  helpCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    backgroundColor: "#fff",
+    borderRadius: radii.lg,
+    padding: 10,
+  },
+  helpArt: { width: 52, height: 52 },
+  help: { flex: 1, color: colors.text, fontWeight: "900", fontSize: 16, lineHeight: 22 },
+  progressRow: { flexDirection: "row", alignItems: "center", gap: 10 },
+  progressText: { fontWeight: "900", color: colors.text, fontSize: 14 },
+  feedback: { fontWeight: "900", textAlign: "center", fontSize: 16, borderRadius: radii.md, padding: 8 },
+  feedbackOk: { color: "#15803D", backgroundColor: colors.greenSoft },
+  feedbackTry: { color: "#C2410C", backgroundColor: colors.orangeSoft },
   board: { flexDirection: "row", gap: 12 },
   col: { flex: 1, gap: 10 },
   tile: {
     backgroundColor: "#fff",
-    borderRadius: radii.md,
-    minHeight: 56,
+    borderRadius: radii.lg,
+    minHeight: 64,
     alignItems: "center",
     justifyContent: "center",
     padding: 10,
-    borderWidth: 2,
-    borderColor: "#E8E4F8",
+    borderWidth: 3,
+    borderColor: "#fff",
     ...shadow.soft,
   },
-  emojiTile: { minHeight: 64 },
+  emojiTile: { minHeight: 64, backgroundColor: colors.cream },
   tileOn: { borderColor: colors.primary, backgroundColor: colors.primarySoft },
-  tileDone: { opacity: 0.45, borderColor: colors.mint },
-  tileWord: { fontWeight: "800", color: colors.text, fontSize: 15, textAlign: "center" },
-  tileEmoji: { fontSize: 28 },
+  tileDone: { opacity: 0.6, borderColor: colors.green, backgroundColor: colors.greenSoft },
+  tileWord: { fontWeight: "900", color: colors.text, fontSize: 18, textAlign: "center" },
+  tileEmoji: { fontSize: 36 },
+  tick: { position: "absolute", top: 4, right: 8, color: colors.green, fontWeight: "900", fontSize: 16 },
+  resultsArt: { width: 140, height: 140 },
+  resultsTitle: { color: "#fff", fontSize: 24, fontWeight: "900", textAlign: "center" },
+  resultsSub: { color: "#F3EEFF", fontWeight: "800", textAlign: "center", fontSize: 15 },
   scorePill: {
     backgroundColor: "#fff",
     borderRadius: radii.pill,

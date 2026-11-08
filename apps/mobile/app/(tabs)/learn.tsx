@@ -13,12 +13,15 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import Constants from "expo-constants";
 import { ErrorText, SoftButton } from "../../components/ui";
 import {
-  CategoryCard,
+  CategoryTile,
   FilterPills,
   IconButton,
   KidsHeader,
   LearningBanner,
+  SkyBackground,
 } from "../../components/kids";
+import { art, categoryTheme } from "../../components/illustrations";
+import { displayEmoji } from "../../services/emoji";
 import { apiRequest, ApiError } from "../../services/api";
 import {
   getActiveChild,
@@ -58,24 +61,6 @@ type LessonRow = {
   description: string | null;
   playStatus: "NOT_STARTED" | "IN_PROGRESS" | "COMPLETED";
   wordCount: number;
-};
-
-const DESCRIPTIONS: Record<string, string> = {
-  "ABC Learning": "Letters A–Z with picture words",
-  Fruits: "Yummy fruit words A–Z",
-  Colours: "Colour words with bright pictures",
-  Shapes: "Triangles, circles and more",
-  Numbers: "Numbers 1 to 10",
-  Animals: "Roar, hop and learn animal names",
-  Birds: "Friendly bird names",
-  "Body Parts": "Point, name and smile",
-  Vegetables: "Garden vegetable words",
-  "Household Objects": "Things we see at home",
-  "Action Words": "Jump, clap and move!",
-  "Food and Drinks": "Snack-time vocabulary",
-  Clothes: "Things we wear",
-  Feelings: "Happy, sad and more feelings",
-  "Daily Conversations": "Polite everyday phrases",
 };
 
 export default function LearnTab() {
@@ -206,6 +191,7 @@ export default function LearnTab() {
   }, [filter, groups, filteredGroups]);
 
   return (
+    <SkyBackground>
     <SafeAreaView style={styles.safe} edges={["top"]}>
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <KidsHeader
@@ -294,7 +280,8 @@ export default function LearnTab() {
               : "Level structure is ready. Vocabulary will be added by the owner — nothing invented here."
           }
           emoji={contentReady ? "📚" : "🚧"}
-          color={contentReady ? colors.bannerTeal : colors.yellowSoft}
+          image={contentReady ? art.heroKids : null}
+          color={contentReady ? "#FFFFFF" : colors.yellowSoft}
         />
 
         {contentReady ? (
@@ -316,28 +303,36 @@ export default function LearnTab() {
           ? displayGroups.map((group) => (
               <View key={group.id} style={{ gap: 10 }}>
                 <Text style={styles.groupLabel}>{group.label}</Text>
-                {group.categories.map((cat) => (
-                  <CategoryCard
-                    key={cat.id}
-                    emoji={cat.emoji}
-                    title={cat.label}
-                    description={DESCRIPTIONS[cat.label] ?? "Learn new words with pictures"}
-                    learned={cat.progress?.wordsLearned ?? 0}
-                    total={cat.wordCount}
-                    locked={!cat.unlocked}
-                    onPress={() =>
-                      router.push({
-                        pathname: "/category-play",
-                        params: {
-                          categoryId: cat.id,
-                          childId: child?.id ?? "",
-                          title: cat.label,
-                          emoji: cat.emoji,
-                        },
-                      })
-                    }
-                  />
-                ))}
+                <View style={styles.tileGrid}>
+                  {group.categories.map((cat, i) => {
+                    const theme = categoryTheme(cat.label, i);
+                    return (
+                      <CategoryTile
+                        key={cat.id}
+                        emoji={displayEmoji(cat.emoji)}
+                        title={cat.label}
+                        image={theme.image}
+                        tint={theme.tint}
+                        learned={cat.progress?.wordsLearned ?? 0}
+                        total={cat.wordCount}
+                        stars={cat.progress?.stars ?? 0}
+                        locked={!cat.unlocked}
+                        completed={cat.progress?.completed}
+                        onPress={() =>
+                          router.push({
+                            pathname: "/category-play",
+                            params: {
+                              categoryId: cat.id,
+                              childId: child?.id ?? "",
+                              title: cat.label,
+                              emoji: cat.emoji,
+                            },
+                          })
+                        }
+                      />
+                    );
+                  })}
+                </View>
               </View>
             ))
           : !loading ? (
@@ -354,12 +349,14 @@ export default function LearnTab() {
         <SoftButton label="Device / transfer" onPress={() => router.push("/devices")} />
       </ScrollView>
     </SafeAreaView>
+    </SkyBackground>
   );
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: colors.bg },
-  content: { padding: 20, gap: 14, paddingBottom: 30 },
+  safe: { flex: 1 },
+  content: { padding: 18, gap: 14, paddingBottom: 30, width: "100%", maxWidth: 720, alignSelf: "center" },
+  tileGrid: { flexDirection: "row", flexWrap: "wrap", gap: 12 },
   lessonsBlock: { gap: 8, marginBottom: 4 },
   lessonsTitle: { fontWeight: "900", fontSize: 18, color: colors.text },
   lessonsHint: { color: colors.textMuted, fontSize: 12, marginBottom: 4 },
@@ -372,7 +369,7 @@ const styles = StyleSheet.create({
   },
   lessonName: { fontWeight: "800", fontSize: 16, color: colors.text },
   lessonMeta: { color: colors.textMuted, fontSize: 13, marginTop: 4 },
-  groupLabel: { fontWeight: "800", fontSize: 16, color: colors.text, marginTop: 4 },
+  groupLabel: { fontWeight: "900", fontSize: 19, color: colors.text, marginTop: 4 },
   levelRow: { gap: 8, paddingVertical: 2 },
   levelChip: {
     paddingHorizontal: 14,

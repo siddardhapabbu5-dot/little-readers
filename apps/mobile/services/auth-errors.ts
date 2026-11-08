@@ -22,7 +22,7 @@ export function friendlyAuthError(err: unknown): string {
 
   if (err instanceof Error) {
     if (/failed to fetch|network request failed/i.test(err.message)) {
-      return "We couldn't reach LEARN WISE right now. Check your connection and try again.";
+      return "We couldn't reach Learn Wise right now. Check your connection and try again.";
     }
   }
 

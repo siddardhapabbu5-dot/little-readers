@@ -127,7 +127,7 @@ async function uploadWithProgress(
       else reject(new ApiError(body.error ?? "Upload failed", xhr.status));
     };
     xhr.onerror = () =>
-      reject(new ApiError("We couldn't reach LEARN WISE. Check your connection and try again.", 0));
+      reject(new ApiError("We couldn't reach Learn Wise. Check your connection and try again.", 0));
     xhr.send(form);
   });
 }
@@ -484,7 +484,7 @@ export function PolicyDocumentsSection() {
             Policy Documents
           </Text>
           <Text style={styles.subheading}>
-            Manage, update and publish LEARN WISE legal and privacy documents.
+            Manage, update and publish Learn Wise legal and privacy documents.
           </Text>
         </View>
       </View>

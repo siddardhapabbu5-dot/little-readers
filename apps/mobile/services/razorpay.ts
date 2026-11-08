@@ -27,7 +27,7 @@ export async function openRazorpayCheckout(opts: CheckoutOptions): Promise<Check
       order_id: opts.orderId,
       amount: opts.amountPaise,
       currency: opts.currency,
-      name: "LEARN WISE",
+      name: "Learn Wise",
       description: opts.description,
       prefill: { email: opts.email ?? "", name: opts.name ?? "" },
       theme: { color: opts.themeColor },

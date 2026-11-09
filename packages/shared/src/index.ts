@@ -97,7 +97,8 @@ export const TERMS_OF_SERVICE: {
       paragraphs: [
         "Any paid features, prices, billing periods, taxes, renewal terms, cancellation rules and refund conditions will be shown before purchase in the applicable offer or checkout.",
         "Payment processing may be handled by a third-party payment provider. We may receive transaction references and subscription status, but payment credentials are handled by the provider.",
-        "Paid plans are not currently on sale. Subscription, renewal, cancellation, refund and tax terms will be published before paid plans launch.",
+        "Paid plans are one-time prepaid payments in Indian Rupees (INR) and do not renew automatically. Current prices are listed at https://siwiapp.shop/pricing.",
+        "Cancellations and refunds are handled under our Refund & Cancellation Policy at https://siwiapp.shop/refund-policy. The service is delivered digitally as described in our Shipping & Delivery Policy at https://siwiapp.shop/shipping-policy.",
       ],
     },
     {

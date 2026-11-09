@@ -21,6 +21,15 @@ paymentsRouter.get("/plans", requireAuth, async (req, res, next) => {
   }
 });
 
+/** Public price list for the website pricing page (published plans only, no gateway keys). */
+paymentsRouter.get("/public-plans", async (_req, res, next) => {
+  try {
+    res.json({ data: await paymentService.getPublicPriceList() });
+  } catch (e) {
+    next(e);
+  }
+});
+
 paymentsRouter.post(
   "/orders",
   requireAuth,

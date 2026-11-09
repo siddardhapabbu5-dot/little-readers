@@ -77,6 +77,22 @@ function publicPlanLabel(name: string, durationMonths: number) {
   return looksTechnical ? durationLabel(durationMonths) : stripped;
 }
 
+export async function getPublicPriceList() {
+  const dbPlans = await listPublishedPlans();
+  return {
+    currency: dbPlans[0]?.currency ?? "INR",
+    plans: dbPlans.map((p) => ({
+      code: p.code,
+      label: publicPlanLabel(p.name, p.durationMonths),
+      durationMonths: p.durationMonths,
+      amountPaise: p.amountPaise,
+      taxPaise: p.taxPaise,
+      totalPaise: p.totalPaise,
+      currency: p.currency,
+    })),
+  };
+}
+
 export async function getPlansCatalog(levelId?: string) {
   const dbPlans = await listPublishedPlans(levelId);
   const envPlans = listConfiguredPlans().filter((p) => p.purpose === "EXTRA_SEATS");

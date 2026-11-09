@@ -1,36 +1,10 @@
-"use client";
-
-import {
-  FormEvent,
-  useEffect,
-  useState,
-  type CSSProperties,
-} from "react";
+import type { Metadata } from "next";
 import { MarketingPage } from "@/components/MarketingPage";
-import { apiRequest, ApiClientError } from "@/lib/api";
+import { PrivacyRequestForm } from "@/components/PrivacyRequestForm";
+import { getPublicPolicy } from "@/lib/public-data";
 
-type PublicPolicy = {
-  published: boolean;
-  message: string | null;
-  policy: {
-    version: string;
-    title: string;
-    content: string;
-    effectiveDate?: string | null;
-    legalBusinessName?: string | null;
-    businessAddress?: string | null;
-    country?: string | null;
-    supportEmail?: string | null;
-    supportPhone?: string | null;
-    dataRetentionInfo?: string | null;
-    deletionRequestContact?: string | null;
-    parentalConsentExplanation?: string | null;
-    childDataDisclosure?: string | null;
-    learningDataDisclosure?: string | null;
-    deviceDataDisclosure?: string | null;
-    thirdPartyDisclosure?: string | null;
-  } | null;
-};
+export const metadata: Metadata = { title: "Privacy Policy – LEARN WISE" };
+export const revalidate = 300;
 
 function Block({ title, body }: { title: string; body?: string | null }) {
   if (!body?.trim()) return null;
@@ -42,65 +16,16 @@ function Block({ title, body }: { title: string; body?: string | null }) {
   );
 }
 
-export default function PrivacyPage() {
-  const [data, setData] = useState<PublicPolicy | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [reqMsg, setReqMsg] = useState("");
-  const [reqEmail, setReqEmail] = useState("");
-  const [reqName, setReqName] = useState("");
-  const [reqStatus, setReqStatus] = useState<string | null>(null);
-  const [reqError, setReqError] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
-
-  useEffect(() => {
-    void apiRequest<PublicPolicy>("/privacy/policy")
-      .then(setData)
-      .catch((e) =>
-        setError(
-          e instanceof ApiClientError
-            ? e.message
-            : "Could not load privacy policy"
-        )
-      );
-  }, []);
-
-  async function onRequest(e: FormEvent) {
-    e.preventDefault();
-    setReqError(null);
-    setReqStatus(null);
-    setBusy(true);
-    try {
-      const res = await apiRequest<{ message?: string }>("/privacy/requests", {
-        method: "POST",
-        body: JSON.stringify({
-          requesterEmail: reqEmail.trim(),
-          requesterName: reqName.trim() || undefined,
-          requestType: "ACCOUNT_DELETION",
-          message: reqMsg.trim(),
-        }),
-      });
-      setReqStatus(
-        res.message ??
-          "Request received for administrator review. Nothing was deleted automatically."
-      );
-      setReqMsg("");
-    } catch (err) {
-      setReqError(
-        err instanceof ApiClientError ? err.message : "Could not submit request"
-      );
-    } finally {
-      setBusy(false);
-    }
-  }
-
+export default async function PrivacyPage() {
+  const data = await getPublicPolicy();
   const policy = data?.policy;
 
   return (
     <MarketingPage title={policy?.title?.trim() || "Privacy Policy"}>
-      {error ? <p style={{ color: "#B91C1C" }}>{error}</p> : null}
-
       {!data ? (
-        <p className="muted">Loading…</p>
+        <p style={{ color: "#B91C1C" }}>
+          Could not load the privacy policy right now. Please refresh the page.
+        </p>
       ) : !data.published || !policy ? (
         <div
           style={{
@@ -121,7 +46,7 @@ export default function PrivacyPage() {
           <p style={{ marginTop: 0 }}>
             <strong>Version:</strong> {policy.version}
             {policy.effectiveDate
-              ? ` · Effective ${new Date(policy.effectiveDate).toLocaleDateString()}`
+              ? ` · Effective ${new Date(policy.effectiveDate).toLocaleDateString("en-IN")}`
               : null}
           </p>
 
@@ -198,84 +123,7 @@ export default function PrivacyPage() {
         </>
       )}
 
-      <section
-        style={{
-          marginTop: 36,
-          paddingTop: 24,
-          borderTop: "1px solid #D9E4F5",
-        }}
-      >
-        <h2 style={{ fontSize: "1.15rem", marginBottom: 8 }}>
-          Submit a privacy request
-        </h2>
-        <p style={{ marginTop: 0 }}>
-          Use this form to request account or data deletion review. Submission
-          records a request only — no automatic deletion.
-        </p>
-        <form
-          onSubmit={onRequest}
-          style={{ display: "grid", gap: 10, maxWidth: 480 }}
-        >
-          <label style={{ display: "grid", gap: 4 }}>
-            <span>Your name</span>
-            <input
-              value={reqName}
-              onChange={(e) => setReqName(e.target.value)}
-              style={inputStyle}
-            />
-          </label>
-          <label style={{ display: "grid", gap: 4 }}>
-            <span>Email</span>
-            <input
-              type="email"
-              required
-              value={reqEmail}
-              onChange={(e) => setReqEmail(e.target.value)}
-              style={inputStyle}
-            />
-          </label>
-          <label style={{ display: "grid", gap: 4 }}>
-            <span>Message</span>
-            <textarea
-              required
-              minLength={10}
-              rows={4}
-              value={reqMsg}
-              onChange={(e) => setReqMsg(e.target.value)}
-              style={{ ...inputStyle, resize: "vertical" }}
-            />
-          </label>
-          {reqError ? <p style={{ color: "#B91C1C", margin: 0 }}>{reqError}</p> : null}
-          {reqStatus ? (
-            <p style={{ color: "#047857", margin: 0, fontWeight: 600 }}>
-              {reqStatus}
-            </p>
-          ) : null}
-          <button
-            type="submit"
-            disabled={busy}
-            style={{
-              justifySelf: "start",
-              background: "#1677E8",
-              color: "#fff",
-              border: "none",
-              borderRadius: 999,
-              padding: "10px 18px",
-              fontWeight: 700,
-              cursor: "pointer",
-            }}
-          >
-            {busy ? "Submitting…" : "Submit request"}
-          </button>
-        </form>
-      </section>
+      <PrivacyRequestForm />
     </MarketingPage>
   );
 }
-
-const inputStyle: CSSProperties = {
-  border: "1px solid #C5D4EA",
-  borderRadius: 8,
-  padding: "10px 12px",
-  fontSize: 15,
-};

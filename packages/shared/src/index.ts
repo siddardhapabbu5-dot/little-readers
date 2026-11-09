@@ -53,7 +53,7 @@ export const TERMS_OF_SERVICE: {
       heading: "1. About these Terms",
       paragraphs: [
         "These Terms of Service (“Terms”) govern access to and use of LEARN WISE, a parent-guided learning application operated by SIWI (“LEARN WISE”, “we”, “us” or “our”).",
-        "Business address: India\nSupport: littlereaders.otp@gmail.com\nWebsite: https://siwiapp.shop",
+        "Business address: G2 Royal Krishna, Nandanavanam colony,Bhachupally,Hederabad,Telanagana , Pincode-500090, India\nPhone: +91 9154318335\nSupport: littlereaders.otp@gmail.com\nWebsite: https://siwiapp.shop",
       ],
     },
     {

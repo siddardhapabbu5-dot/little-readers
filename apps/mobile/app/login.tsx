@@ -213,51 +213,6 @@ export default function LoginScreen() {
               <View style={styles.ruleLine} />
             </View>
 
-            {process.env.EXPO_PUBLIC_ENABLE_DEMO === "1" ||
-            (__DEV__ && process.env.EXPO_PUBLIC_ENABLE_DEMO !== "0") ? (
-              <View style={styles.devRow} accessibilityLabel="Demo quick login">
-                <Text style={styles.devLabel}>Demo (tap to fill)</Text>
-                <View style={styles.devBtns}>
-                  <Pressable
-                    accessibilityRole="button"
-                    accessibilityLabel="Fill parent demo login"
-                    onPress={() => {
-                      setEmail("parent@littlereaders.test");
-                      setPassword("ParentDemo1");
-                      clearMessages();
-                    }}
-                    style={styles.devBtn}
-                  >
-                    <Text style={styles.devBtnText}>Parent</Text>
-                  </Pressable>
-                  <Pressable
-                    accessibilityRole="button"
-                    accessibilityLabel="Fill admin demo login"
-                    onPress={() => {
-                      setEmail("admin@littlereaders.test");
-                      setPassword("AdminDemo1");
-                      clearMessages();
-                    }}
-                    style={styles.devBtn}
-                  >
-                    <Text style={styles.devBtnText}>Admin</Text>
-                  </Pressable>
-                  <Pressable
-                    accessibilityRole="button"
-                    accessibilityLabel="Fill super admin demo login"
-                    onPress={() => {
-                      setEmail("superadmin@littlereaders.test");
-                      setPassword("SuperDemo1");
-                      clearMessages();
-                    }}
-                    style={styles.devBtn}
-                  >
-                    <Text style={styles.devBtnText}>Super</Text>
-                  </Pressable>
-                </View>
-              </View>
-            ) : null}
-
             <>
                 <View
                   style={styles.inputRow}
@@ -530,35 +485,6 @@ const styles = StyleSheet.create({
   },
   ruleLine: { flex: 1, height: 1, backgroundColor: "#E5E0F5" },
   star: { color: "#F5C542", fontSize: 11 },
-  devRow: {
-    gap: 4,
-    marginBottom: 2,
-  },
-  devLabel: {
-    fontSize: 11,
-    fontWeight: "600",
-    color: "#7C6BB5",
-    textAlign: "center",
-  },
-  devBtns: {
-    flexDirection: "row",
-    justifyContent: "center",
-    gap: 8,
-  },
-  devBtn: {
-    backgroundColor: "#F0EBFF",
-    borderWidth: 1,
-    borderColor: "#D4CBF5",
-    borderRadius: 999,
-    paddingHorizontal: 14,
-    paddingVertical: 6,
-    alignSelf: "center",
-  },
-  devBtnText: {
-    color: colors.primaryDark,
-    fontWeight: "700",
-    fontSize: 12,
-  },
   inputRow: {
     flexDirection: "row",
     alignItems: "center",

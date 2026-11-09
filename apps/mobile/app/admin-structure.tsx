@@ -265,6 +265,7 @@ export default function AdminStructureScreen() {
       label: c.label,
       code: c.code,
       emoji: c.emoji ?? "📚",
+      fillStarters: false,
     });
     setPanel({ kind: "edit-category", id: c.id });
   }

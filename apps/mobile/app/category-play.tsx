@@ -58,7 +58,7 @@ export default function CategoryPlayScreen() {
   return (
     <AuthGate roles={ROLE_SETS.kidsLearning}>
       <SkyBackground>
-        <SafeAreaView style={styles.safe} edges={["top"]}>
+        <SafeAreaView style={styles.safe} edges={["top", "bottom"]}>
           <View style={styles.headerPad}>
             <KidsHeader left={<IconButton emoji="←" onPress={() => router.back()} />} title={title} />
           </View>

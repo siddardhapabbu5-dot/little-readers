@@ -8,7 +8,7 @@ import {
   TextInput,
   View,
 } from "react-native";
-import { useFocusEffect } from "expo-router";
+import { useFocusEffect, useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { parsePhoneNumberFromString, type CountryCode } from "libphonenumber-js";
@@ -69,6 +69,7 @@ function fmt(iso: string | null | undefined) {
 }
 
 export default function AdminParentDevicesScreen() {
+  const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [rows, setRows] = useState<ParentRow[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -187,7 +188,7 @@ export default function AdminParentDevicesScreen() {
     <AuthGate roles={ROLE_SETS.admin}>
       <SafeAreaView style={styles.safe} edges={["top"]}>
         <View style={styles.header}>
-          <Pressable onPress={() => goAdminBack()} hitSlop={10} style={styles.back}>
+          <Pressable onPress={() => goAdminBack(router)} hitSlop={10} style={styles.back}>
             <Ionicons name="chevron-back" size={22} color={adminColors.text} />
           </Pressable>
           <View style={{ flex: 1 }}>

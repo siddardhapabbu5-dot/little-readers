@@ -7,7 +7,7 @@
 | Application ID | `com.littlereaders.app` (permanent once published — do not change) |
 | Display name | Learn Wise |
 | version | `1.0.0` |
-| versionCode | `21` (increment for every Play upload; `appVersionSource: local` reads `app.json`) |
+| versionCode | `22` (increment for every Play upload; `appVersionSource: local` reads `app.json`) |
 | Icon | `apps/mobile/assets/icon.png` + adaptive `adaptive-icon.png` |
 | Splash | `apps/mobile/assets/splash.png` (`#F3E8FF`) |
 | Expo SDK / React Native | 54 / 0.81.5 (New Architecture, Hermes) |

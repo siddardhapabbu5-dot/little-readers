@@ -1,6 +1,7 @@
 import type { Prisma, Subscription, SubscriptionStatus } from "@prisma/client";
 import { AppError } from "../lib/errors.js";
 import { prisma } from "../lib/prisma.js";
+import { recordSubscriptionAudit } from "./audit.js";
 
 /** Paid / recovering access only — no free TRIALING for client builds. */
 const ELIGIBLE: SubscriptionStatus[] = [
@@ -44,12 +45,27 @@ export function seatCapacity(
   return Math.max(0, (sub.includedSeats ?? BASE_INCLUDED_SEATS) + (sub.extraSeats ?? 0));
 }
 
-async function latestSubscription(userId: string, tx: Prisma.TransactionClient | typeof prisma = prisma) {
-  return tx.subscription.findFirst({
+/**
+ * The subscription row that currently decides a parent's access, across all providers
+ * (google_play, razorpay, manual_admin): the eligible row that runs longest, else the newest row.
+ */
+export async function entitlementSubscription(
+  userId: string,
+  tx: Prisma.TransactionClient | typeof prisma = prisma
+) {
+  const rows = await tx.subscription.findMany({
     where: { userId },
     orderBy: { createdAt: "desc" },
+    take: 25,
   });
+  if (!rows.length) return null;
+  const now = new Date();
+  const eligible = rows.filter((r) => isSubscriptionRecordEligible(r, now));
+  if (!eligible.length) return rows[0];
+  return eligible.reduce((best, r) => (r.expiresAt > best.expiresAt ? r : best));
 }
+
+const latestSubscription = entitlementSubscription;
 
 export async function getSeatSnapshot(parentId: string, tx: Prisma.TransactionClient | typeof prisma = prisma) {
   const subscription = await latestSubscription(parentId, tx);
@@ -211,34 +227,62 @@ export async function assertChildHasLearningSeat(parentId: string, childId: stri
   );
 }
 
-/** Mark ACTIVE/CANCELLED rows EXPIRED when past expiresAt (and grace). Idempotent. */
+/** Mark ACTIVE/CANCELLED/GRACE rows EXPIRED when past expiresAt (and grace). Idempotent. */
 export async function syncSubscriptionExpiry(userId: string) {
-  const subscription = await latestSubscription(userId);
-  if (!subscription) return null;
   const now = new Date();
-  if (subscription.expiresAt > now) return subscription;
-  if (subscription.graceEndsAt && subscription.graceEndsAt > now) {
-    return subscription;
-  }
-  if (
-    subscription.status === "EXPIRED" ||
-    subscription.status === "SUSPENDED"
-  ) {
-    return subscription;
-  }
-  return prisma.subscription.update({
-    where: { id: subscription.id },
+  await prisma.subscription.updateMany({
+    where: {
+      userId,
+      status: { in: ["ACTIVE", "CANCELLED", "GRACE", "PAST_DUE", "TRIALING"] },
+      expiresAt: { lte: now },
+      OR: [{ graceEndsAt: null }, { graceEndsAt: { lte: now } }],
+    },
     data: { status: "EXPIRED" },
   });
+  return latestSubscription(userId);
+}
+
+export function providerManagement(provider: string | null | undefined) {
+  if (provider === "google_play") {
+    return {
+      provider: "google_play",
+      label: "Google Play",
+      canCancelHere: false,
+      instructions:
+        "Managed by Google Play. To cancel or change, open Google Play → Profile → Payments & subscriptions → Subscriptions.",
+    };
+  }
+  if (provider === "razorpay") {
+    return {
+      provider: "razorpay",
+      label: "Website (Razorpay)",
+      canCancelHere: false,
+      instructions:
+        "Prepaid plan bought on the LEARN WISE website. It does not renew automatically, so there is nothing to cancel.",
+    };
+  }
+  return {
+    provider: provider ?? "none",
+    label: provider === "manual_admin" ? "Granted by LEARN WISE" : "—",
+    canCancelHere: false,
+    instructions: "Contact LEARN WISE support for changes to this plan.",
+  };
 }
 
 /**
- * Parent cancels renewal. Access continues until expiresAt; then EXPIRED.
+ * Parent cancels renewal. Store-managed (Google Play) subscriptions must be cancelled in the store.
  */
 export async function cancelParentSubscription(userId: string) {
   const subscription = await latestSubscription(userId);
   if (!subscription) {
     throw new AppError("No subscription to cancel", 404);
+  }
+  if (subscription.provider === "google_play") {
+    throw new AppError(
+      "This subscription is managed by Google Play. Cancel it in Google Play → Payments & subscriptions.",
+      409,
+      { code: "MANAGED_BY_GOOGLE_PLAY" }
+    );
   }
   if (subscription.status === "EXPIRED") {
     throw new AppError("Subscription already expired", 400);
@@ -270,18 +314,19 @@ export async function cancelParentSubscription(userId: string) {
 }
 
 export async function getParentSubscription(userId: string) {
-  await syncSubscriptionExpiry(userId);
+  const current = await syncSubscriptionExpiry(userId);
 
-  const subscription = await prisma.subscription.findFirst({
-    where: { userId },
-    orderBy: { createdAt: "desc" },
-    include: {
-      payments: {
-        orderBy: { createdAt: "desc" },
-        take: 5,
-      },
-    },
-  });
+  const subscription = current
+    ? await prisma.subscription.findUnique({
+        where: { id: current.id },
+        include: {
+          payments: {
+            orderBy: { createdAt: "desc" },
+            take: 5,
+          },
+        },
+      })
+    : null;
 
   const seats = await getSeatSnapshot(userId);
 
@@ -313,6 +358,14 @@ export async function getParentSubscription(userId: string) {
       cancelledAt: subscription.cancelledAt,
       graceEndsAt: subscription.graceEndsAt,
       provider: subscription.provider,
+      productId: subscription.productId,
+      autoRenewing: subscription.autoRenewing,
+      verificationStatus: subscription.verificationStatus,
+      renewsAt:
+        subscription.autoRenewing && subscription.status === "ACTIVE"
+          ? subscription.expiresAt
+          : null,
+      management: providerManagement(subscription.provider),
       includedSeats: subscription.includedSeats,
       extraSeats: subscription.extraSeats,
       payments: subscription.payments,
@@ -443,10 +496,15 @@ export async function grantManualSubscription(input: {
   return prisma.$transaction(async (tx) => {
     await tx.$executeRaw`SELECT id FROM "User" WHERE id = ${parent.id} FOR UPDATE`;
     const now = new Date();
-    const existing = await latestSubscription(parent.id, tx);
+    // Manual grants live on their own manual_admin row so gateway-paid rows are never relabelled.
+    const current = await latestSubscription(parent.id, tx);
+    const existing = await tx.subscription.findFirst({
+      where: { userId: parent.id, provider: "manual_admin" },
+      orderBy: { createdAt: "desc" },
+    });
     const base =
-      existing && isSubscriptionRecordEligible(existing, now) && existing.expiresAt > now
-        ? existing.expiresAt
+      current && isSubscriptionRecordEligible(current, now) && current.expiresAt > now
+        ? current.expiresAt
         : now;
     const expiresAt = new Date(base);
     expiresAt.setMonth(expiresAt.getMonth() + months);
@@ -462,8 +520,9 @@ export async function grantManualSubscription(input: {
             expiresAt,
             graceEndsAt: null,
             cancelledAt: null,
-            provider: "manual_admin",
             providerRef,
+            verificationStatus: "MANUAL",
+            verifiedAt: now,
           },
         })
       : await tx.subscription.create({
@@ -475,10 +534,30 @@ export async function grantManualSubscription(input: {
             expiresAt,
             provider: "manual_admin",
             providerRef,
-            includedSeats: BASE_INCLUDED_SEATS,
-            extraSeats: 0,
+            includedSeats: current?.includedSeats ?? BASE_INCLUDED_SEATS,
+            extraSeats: current?.extraSeats ?? 0,
+            verificationStatus: "MANUAL",
+            verifiedAt: now,
           },
         });
+
+    await recordSubscriptionAudit(
+      {
+        userId: parent.id,
+        subscriptionId: subscription.id,
+        provider: "manual_admin",
+        source: "admin",
+        eventType: "MANUAL_GRANT",
+        fromStatus: existing?.status ?? null,
+        toStatus: subscription.status,
+        details: {
+          months,
+          grantedByUserId: input.grantedByUserId,
+          expiresAt: expiresAt.toISOString(),
+        },
+      },
+      tx
+    );
 
     await tx.payment.create({
       data: {
@@ -518,34 +597,136 @@ export async function grantManualSubscription(input: {
   });
 }
 
-export async function listSubscriptionsForAdmin(take = 50) {
+/** Subscription fields safe to show to Admin (never the store purchase token). */
+const ADMIN_SUBSCRIPTION_SELECT = {
+  id: true,
+  userId: true,
+  plan: true,
+  status: true,
+  startedAt: true,
+  expiresAt: true,
+  cancelledAt: true,
+  graceEndsAt: true,
+  provider: true,
+  providerRef: true,
+  productId: true,
+  autoRenewing: true,
+  countryCode: true,
+  verificationStatus: true,
+  verifiedAt: true,
+  acknowledgedAt: true,
+  includedSeats: true,
+  extraSeats: true,
+  createdAt: true,
+  updatedAt: true,
+} satisfies Prisma.SubscriptionSelect;
+
+export async function listSubscriptionsForAdmin(take = 50, query?: string) {
+  const q = query?.trim();
+  const userIds = q
+    ? (
+        await prisma.user.findMany({
+          where: {
+            OR: [
+              { email: { contains: q, mode: "insensitive" } },
+              { name: { contains: q, mode: "insensitive" } },
+              { subscriptions: { some: { providerRef: { contains: q } } } },
+              { payments: { some: { providerRef: { contains: q } } } },
+              { payments: { some: { razorpayPaymentId: { contains: q } } } },
+              { payments: { some: { razorpayOrderId: { contains: q } } } },
+            ],
+          },
+          select: { id: true },
+          take: 100,
+        })
+      ).map((u) => u.id)
+    : null;
+
   const rows = await prisma.subscription.findMany({
-    orderBy: { createdAt: "desc" },
-    take: Math.min(take, 200),
-    include: {
+    where: userIds ? { userId: { in: userIds } } : undefined,
+    orderBy: { updatedAt: "desc" },
+    take: Math.min(take * 3, 500),
+    select: {
+      ...ADMIN_SUBSCRIPTION_SELECT,
       user: { select: { id: true, name: true, email: true, role: true } },
     },
   });
 
-  // Deduplicate to newest sub per parent, attach live seat snapshot
   const seen = new Set<string>();
-  const out: Array<
-    (typeof rows)[number] & {
-      seats: Awaited<ReturnType<typeof getSeatSnapshot>>;
-      eligible: boolean;
-    }
-  > = [];
+  const out = [];
   for (const row of rows) {
-    if (seen.has(row.userId)) continue;
+    if (seen.has(row.userId) || out.length >= Math.min(take, 200)) continue;
     seen.add(row.userId);
+    const current = await entitlementSubscription(row.userId);
+    const shown = current?.id === row.id ? row : rows.find((r) => r.id === current?.id) ?? row;
     const seats = await getSeatSnapshot(row.userId);
     out.push({
-      ...row,
+      ...shown,
       seats,
-      eligible: isSubscriptionRecordEligible(row),
+      eligible: current ? isSubscriptionRecordEligible(current) : false,
+      management: providerManagement(shown.provider),
     });
   }
   return out;
+}
+
+/** Full, safe history for one parent: every subscription row, payment and audit event. */
+export async function getAdminSubscriptionHistory(parentUserId: string) {
+  const user = await prisma.user.findUnique({
+    where: { id: parentUserId },
+    select: { id: true, name: true, email: true, role: true },
+  });
+  if (!user) throw new AppError("Parent not found", 404);
+  const [subscriptions, payments, events, current] = await Promise.all([
+    prisma.subscription.findMany({
+      where: { userId: parentUserId },
+      orderBy: { createdAt: "desc" },
+      select: ADMIN_SUBSCRIPTION_SELECT,
+    }),
+    prisma.payment.findMany({
+      where: { userId: parentUserId },
+      orderBy: { createdAt: "desc" },
+      take: 100,
+      select: {
+        id: true,
+        subscriptionId: true,
+        amountCents: true,
+        currency: true,
+        status: true,
+        provider: true,
+        providerRef: true,
+        purpose: true,
+        planCode: true,
+        seatsPurchased: true,
+        razorpayOrderId: true,
+        razorpayPaymentId: true,
+        receiptNumber: true,
+        paidAt: true,
+        createdAt: true,
+      },
+    }),
+    prisma.subscriptionAuditEvent.findMany({
+      where: { userId: parentUserId },
+      orderBy: { createdAt: "desc" },
+      take: 200,
+    }),
+    entitlementSubscription(parentUserId),
+  ]);
+  return {
+    user,
+    currentSubscriptionId: current?.id ?? null,
+    eligible: current ? isSubscriptionRecordEligible(current) : false,
+    subscriptions: subscriptions.map((s) => ({
+      ...s,
+      gatewayPaid: s.provider === "google_play" || s.provider === "razorpay",
+    })),
+    payments,
+    events: events.map((e) => ({
+      ...e,
+      details: e.detailsJson ? (JSON.parse(e.detailsJson) as unknown) : null,
+      detailsJson: undefined,
+    })),
+  };
 }
 
 /**

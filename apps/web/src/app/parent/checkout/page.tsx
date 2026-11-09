@@ -175,17 +175,24 @@ export default function ParentCheckoutPage() {
             razorpay_signature: string;
           }) => {
             try {
-              await apiRequest("/payments/verify", {
-                method: "POST",
-                token,
-                body: JSON.stringify({
-                  orderId: response.razorpay_order_id,
-                  paymentId: response.razorpay_payment_id,
-                  signature: response.razorpay_signature,
-                }),
-              });
+              const verified = await apiRequest<{ processing?: boolean; message?: string }>(
+                "/payments/verify",
+                {
+                  method: "POST",
+                  token,
+                  body: JSON.stringify({
+                    orderId: response.razorpay_order_id,
+                    paymentId: response.razorpay_payment_id,
+                    signature: response.razorpay_signature,
+                  }),
+                }
+              );
               setPhase("success");
-              setMessage("Payment successful and verified. Your subscription / seats are now active.");
+              setMessage(
+                verified?.processing
+                  ? verified.message ?? "Your payment is being confirmed. Access starts automatically once it completes."
+                  : "Payment successful and verified. Your subscription / seats are now active."
+              );
               setPendingOrderId(null);
               resolve();
             } catch (e) {

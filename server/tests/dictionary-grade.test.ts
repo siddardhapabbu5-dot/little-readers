@@ -19,7 +19,9 @@ describe.skipIf(!hasDb)("Four-grade dictionary classification", () => {
     const { seedLevel1Vocabulary } = await import(
       "../prisma/seeds/level1-vocabulary.js"
     );
-    await seedLevel1Vocabulary(prisma, { includeWords: false });
+    await seedLevel1Vocabulary(prisma as unknown as Parameters<typeof seedLevel1Vocabulary>[0], {
+      includeWords: false,
+    });
     await prisma.learningCategory.updateMany({ data: { isPublished: true } });
 
     const login = await request(app).post("/api/auth/login").send({

@@ -1,4 +1,5 @@
 import { env } from "../config/env.js";
+import { razorpayCheckoutFlagOn } from "./flags.js";
 
 export type PlanPurpose =
   | "FAMILY_MONTHLY"
@@ -108,16 +109,11 @@ export function getPlan(purpose: PlanPurpose, seats = 1): CatalogPlan | null {
   };
 }
 
+/** Website Razorpay checkout: PAYMENT_ENABLED + RAZORPAY_ENABLED + keys. */
 export function paymentsEnabled() {
-  const flag =
-    process.env.PAYMENT_ENABLED === "true" ||
-    process.env.PAYMENT_ENABLED === "1" ||
-    env.PAYMENT_ENABLED;
   const keyId = process.env.RAZORPAY_KEY_ID || env.RAZORPAY_KEY_ID;
   const secret = process.env.RAZORPAY_KEY_SECRET || env.RAZORPAY_KEY_SECRET;
-  // Env plan amounts OR published DB catalog (checked at order time) — keys + flag required.
-  // Live stays off until PAYMENT_ENABLED=true is set explicitly.
-  return Boolean(flag && keyId && secret);
+  return Boolean(razorpayCheckoutFlagOn() && keyId && secret);
 }
 
 export function publicKeyId() {

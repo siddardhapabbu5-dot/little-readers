@@ -56,7 +56,10 @@ function formatWhen(value: string | null) {
 }
 
 export default function AgreementsScreen() {
-  const { planId } = useLocalSearchParams<{ planId?: string }>();
+  const params = useLocalSearchParams<{ planId?: string; store?: string }>();
+  // Website checkout runs only in the web preview; the apps return to the store subscription screen.
+  const planId = Platform.OS === "web" ? params.planId : undefined;
+  const storeFlow = params.store === "google_play" || (Platform.OS !== "web" && Boolean(params.planId));
   const router = useRouter();
   const [status, setStatus] = useState<AgreementStatus | null>(null);
   const [checked, setChecked] = useState<Record<string, boolean>>({});
@@ -125,10 +128,14 @@ export default function AgreementsScreen() {
         name: user?.name,
         themeColor: colors.primary,
       });
-      await apiRequest("/payments/verify", {
+      const verified = await apiRequest<{ processing?: boolean; message?: string }>("/payments/verify", {
         method: "POST",
         body: JSON.stringify(result),
       });
+      if (verified?.processing) {
+        setNotice(verified.message ?? "Your payment is being confirmed. Access starts automatically once it completes.");
+        return;
+      }
       router.replace(`/receipt/${order.paymentId}`);
     } catch (err) {
       if (err instanceof CheckoutCancelled && order) {
@@ -162,6 +169,7 @@ export default function AgreementsScreen() {
       setStatus(next);
       setChecked({});
       if (planId) await pay();
+      else if (storeFlow) router.replace("/subscription");
       else router.replace("/parent");
     } catch (err) {
       if (err instanceof ApiError && err.code === "AGREEMENTS_OUTDATED") await load();
@@ -216,6 +224,8 @@ export default function AgreementsScreen() {
                 ))}
                 {planId ? (
                   <PrimaryButton label="Continue to payment" onPress={() => void pay()} loading={paying} />
+                ) : storeFlow ? (
+                  <PrimaryButton label="Back to subscription" onPress={() => router.replace("/subscription")} />
                 ) : (
                   <PrimaryButton label="Done" onPress={() => router.replace("/parent")} />
                 )}

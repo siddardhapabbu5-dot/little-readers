@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Alert, Button } from "@little-readers/ui";
 import { AdminShell } from "@/components/AdminShell";
 import { apiRequest, ApiClientError } from "@/lib/api";
@@ -15,6 +15,11 @@ type AdminSub = {
   includedSeats: number;
   extraSeats: number;
   eligible: boolean;
+  provider: string;
+  productId: string | null;
+  autoRenewing: boolean | null;
+  verificationStatus: string | null;
+  management?: { label: string };
   user: { id: string; name: string; email: string };
   seats: {
     included: number;
@@ -24,6 +29,33 @@ type AdminSub = {
     available: number;
     children: Array<{ id: string; displayName: string; hasLearningSeat: boolean }>;
   };
+};
+
+type History = {
+  user: { email: string; name: string };
+  eligible: boolean;
+  currentSubscriptionId: string | null;
+  subscriptions: Array<{
+    id: string;
+    provider: string;
+    productId: string | null;
+    plan: string;
+    status: string;
+    expiresAt: string;
+    autoRenewing: boolean | null;
+    verificationStatus: string | null;
+    createdAt: string;
+  }>;
+  events: Array<{
+    id: string;
+    provider: string;
+    source: string;
+    eventType: string;
+    fromStatus: string | null;
+    toStatus: string | null;
+    details: Record<string, unknown> | null;
+    createdAt: string;
+  }>;
 };
 
 export default function AdminSubscriptionsPage() {
@@ -48,20 +80,40 @@ export default function AdminSubscriptionsPage() {
       createdAt: string;
       razorpayOrderId: string | null;
       razorpayPaymentId: string | null;
+      providerRef: string | null;
       user: { email: string; name: string };
       subscription: { plan: string; status: string; expiresAt: string } | null;
     }>
   >([]);
+  const [query, setQuery] = useState("");
+  const [history, setHistory] = useState<{ userId: string; data: History } | null>(null);
 
+  const searchRef = useRef("");
   const load = useCallback(async () => {
     if (!token) return;
+    const term = searchRef.current.trim();
+    const q = term ? `q=${encodeURIComponent(term)}` : "";
     const [data, pay] = await Promise.all([
-      apiRequest<AdminSub[]>("/subscriptions/admin", { token }),
-      apiRequest<typeof payments>("/payments/admin?take=80", { token }),
+      apiRequest<AdminSub[]>(`/subscriptions/admin${q ? `?${q}` : ""}`, { token }),
+      apiRequest<typeof payments>(`/payments/admin?take=80${q ? `&${q}` : ""}`, { token }),
     ]);
     setRows(data);
     setPayments(pay);
   }, [token]);
+
+  async function openHistory(userId: string) {
+    if (!token) return;
+    if (history?.userId === userId) {
+      setHistory(null);
+      return;
+    }
+    try {
+      const data = await apiRequest<History>(`/subscriptions/admin/${userId}/history`, { token });
+      setHistory({ userId, data });
+    } catch (e) {
+      setError(e instanceof ApiClientError ? e.message : "Could not load history");
+    }
+  }
 
   useEffect(() => {
     if (token) void load().catch((e) => setError(String(e.message ?? e)));
@@ -174,10 +226,30 @@ export default function AdminSubscriptionsPage() {
       {gateError || error ? <Alert tone="error">{gateError || error}</Alert> : null}
       {message ? <Alert tone="success">{message}</Alert> : null}
       <p style={{ color: "#94a3b8" }}>
-        Manual Admin grants are distinct from Razorpay purchases (provider{" "}
-        <code>manual_admin</code> vs <code>razorpay</code>). Revoke is blocked while seats
-        are occupied beyond remaining capacity. Frontend “success” never grants seats.
+        Providers: <code>google_play</code> (Android app, managed in Google Play),{" "}
+        <code>razorpay</code> (website, prepaid) and <code>manual_admin</code> (free grants).
+        Access is decided only by server-verified records. Revoke is blocked while seats are
+        occupied beyond remaining capacity.
       </p>
+      <form
+        className="panel"
+        style={{ display: "flex", gap: 8, marginBottom: 16 }}
+        onSubmit={(e) => {
+          e.preventDefault();
+          searchRef.current = query;
+          void load().catch((err) => setError(String(err.message ?? err)));
+        }}
+      >
+        <input
+          placeholder="Search email, name, order / payment id"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          style={{ minWidth: 320 }}
+        />
+        <Button type="submit" disabled={busy}>
+          Search
+        </Button>
+      </form>
       <h2 style={{ color: "#e2e8f0", fontSize: 18 }}>Grant free subscription</h2>
       <div
         className="panel"
@@ -232,7 +304,7 @@ export default function AdminSubscriptionsPage() {
                   {p.currency} {(p.amountCents / 100).toFixed(2)}
                 </td>
                 <td style={{ maxWidth: 160, overflow: "hidden", textOverflow: "ellipsis" }}>
-                  {p.razorpayPaymentId ?? p.razorpayOrderId ?? "—"}
+                  {p.razorpayPaymentId ?? p.razorpayOrderId ?? p.providerRef?.replace(/^gp_order:/, "") ?? "—"}
                   {p.subscription
                     ? ` · ${p.subscription.plan} exp ${new Date(p.subscription.expiresAt).toLocaleDateString()}`
                     : ""}
@@ -255,7 +327,14 @@ export default function AdminSubscriptionsPage() {
             {row.user.name} · {row.user.email}
           </strong>
           <span>
-            {row.plan} · {row.status} · eligible {row.eligible ? "yes" : "no"}
+            {row.plan} · {row.status} · eligible {row.eligible ? "yes" : "no"} · until{" "}
+            {new Date(row.expiresAt).toLocaleDateString()}
+          </span>
+          <span style={{ color: "#94a3b8", fontSize: 13 }}>
+            {row.management?.label ?? row.provider}
+            {row.productId ? ` · ${row.productId}` : ""}
+            {row.autoRenewing == null ? "" : row.autoRenewing ? " · auto-renew on" : " · auto-renew off"}
+            {row.verificationStatus ? ` · ${row.verificationStatus}` : ""}
           </span>
           <span>
             Seats {row.seats.assigned}/{row.seats.capacity} (included {row.seats.included} +
@@ -285,7 +364,53 @@ export default function AdminSubscriptionsPage() {
             <Button disabled={busy} onClick={() => void revoke(row.user.id)}>
               Revoke add-on
             </Button>
+            <Button onClick={() => void openHistory(row.user.id)}>
+              {history?.userId === row.user.id ? "Hide history" : "History"}
+            </Button>
           </div>
+          {history?.userId === row.user.id ? (
+            <div style={{ overflowX: "auto", fontSize: 13 }}>
+              <strong>Subscription records</strong>
+              <ul style={{ margin: "4px 0 8px" }}>
+                {history.data.subscriptions.map((s) => (
+                  <li key={s.id}>
+                    {s.id === history.data.currentSubscriptionId ? "▶ " : ""}
+                    {s.provider} · {s.productId ?? s.plan} · {s.status} · until{" "}
+                    {new Date(s.expiresAt).toLocaleDateString()}
+                    {s.verificationStatus ? ` · ${s.verificationStatus}` : ""}
+                  </li>
+                ))}
+              </ul>
+              <strong>Audit events</strong>
+              <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                <thead>
+                  <tr>
+                    <th align="left">When</th>
+                    <th align="left">Source</th>
+                    <th align="left">Event</th>
+                    <th align="left">Status</th>
+                    <th align="left">Details</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {history.data.events.map((e) => (
+                    <tr key={e.id}>
+                      <td>{new Date(e.createdAt).toLocaleString()}</td>
+                      <td>{e.source}</td>
+                      <td>{e.eventType}</td>
+                      <td>
+                        {e.fromStatus ?? "—"} → {e.toStatus ?? "—"}
+                      </td>
+                      <td style={{ maxWidth: 320, wordBreak: "break-word" }}>
+                        {e.details ? JSON.stringify(e.details) : ""}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              {!history.data.events.length ? <p style={{ opacity: 0.7 }}>No events yet.</p> : null}
+            </div>
+          ) : null}
         </div>
       ))}
     </AdminShell>

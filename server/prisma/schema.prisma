@@ -1093,6 +1093,17 @@ model Subscription {
   includedSeats Int              @default(2)
   /// Extra paid child seats activated after verified payment / admin grant.
   extraSeats    Int              @default(0)
+  /// Store product id (Google Play) or plan code (Razorpay).
+  productId          String?
+  /// Store-reported auto-renew state; null for prepaid / manual plans.
+  autoRenewing       Boolean?
+  countryCode        String?
+  /// VERIFIED | VERIFIED_TEST | PENDING | FAILED — set only by server-side verification.
+  verificationStatus String?
+  verifiedAt         DateTime?
+  /// Google Play purchase token (needed to re-query Google). Never returned by any API.
+  providerToken      String?            @db.Text
+  acknowledgedAt     DateTime?
   createdAt   DateTime           @default(now())
   updatedAt   DateTime           @updatedAt
 
@@ -1100,6 +1111,30 @@ model Subscription {
   payments Payment[]
 
   @@index([userId, status])
+  @@index([provider, status])
+}
+
+/// Append-only history of subscription / payment status changes from every provider.
+model SubscriptionAuditEvent {
+  id              String   @id @default(cuid())
+  userId          String?
+  subscriptionId  String?
+  paymentId       String?
+  /// google_play | razorpay | manual_admin | system
+  provider        String
+  /// google_play_verify | google_play_rtdn | razorpay_verify | razorpay_webhook | admin | system
+  source          String
+  eventType       String
+  /// Provider notification / event id — unique so duplicate deliveries are ignored.
+  providerEventId String?  @unique
+  fromStatus      String?
+  toStatus        String?
+  /// Safe, non-secret details only (no tokens, card data or keys).
+  detailsJson     String?
+  createdAt       DateTime @default(now())
+
+  @@index([userId, createdAt])
+  @@index([subscriptionId])
 }
 
 /// One active registered mobile installation per child (student).

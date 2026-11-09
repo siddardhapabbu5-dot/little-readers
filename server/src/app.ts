@@ -44,7 +44,16 @@ export function createApp() {
     })
   );
   app.use(express.json({ limit: "1mb" }));
-  app.use(morgan(env.NODE_ENV === "production" ? "combined" : "dev"));
+  morgan.token("safe-url", (req: express.Request) =>
+    (req.originalUrl || req.url).replace(/([?&]token=)[^&]*/gi, "$1[redacted]")
+  );
+  app.use(
+    morgan(
+      env.NODE_ENV === "production"
+        ? ':remote-addr - :remote-user [:date[clf]] ":method :safe-url HTTP/:http-version" :status :res[content-length] ":referrer" ":user-agent"'
+        : ":method :safe-url :status :response-time ms - :res[content-length]"
+    )
+  );
 
   app.get("/", (_req, res) => {
     res.status(200).json({

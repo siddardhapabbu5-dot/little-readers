@@ -1,6 +1,7 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { env } from "../config/env.js";
 import { AppError } from "../lib/errors.js";
+import { razorpayLiveAllowed } from "./flags.js";
 
 export type RazorpayOrder = {
   id: string;
@@ -62,10 +63,10 @@ function webhookSecret() {
   return process.env.RAZORPAY_WEBHOOK_SECRET || env.RAZORPAY_WEBHOOK_SECRET;
 }
 
-/** Live keys stay blocked until the owner explicitly sets RAZORPAY_ALLOW_LIVE=true. */
+/** Live keys stay blocked until the owner explicitly sets RAZORPAY_LIVE_ENABLED=true. */
 export function liveKeyBlocked() {
   const id = keyId() ?? "";
-  return id.startsWith("rzp_live_") && process.env.RAZORPAY_ALLOW_LIVE !== "true";
+  return id.startsWith("rzp_live_") && !razorpayLiveAllowed();
 }
 
 function assertKeyModeAllowed() {
@@ -157,6 +158,11 @@ export function getRazorpayClient(): RazorpayClient {
   if (override) return override;
   assertKeyModeAllowed();
   if (keyId() === "rzp_test_stub" || process.env.RAZORPAY_USE_STUB === "1") {
+    if (process.env.NODE_ENV === "production") {
+      throw new AppError("Payment stub is not allowed in production", 503, {
+        code: "STUB_NOT_ALLOWED",
+      });
+    }
     return stubClient;
   }
   return liveClient;

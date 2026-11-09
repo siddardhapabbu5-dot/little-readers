@@ -15,6 +15,7 @@ import {
 import {
   assignLearningSeat,
   cancelParentSubscription,
+  getAdminSubscriptionHistory,
   getParentSubscription,
   grantExtraSeats,
   grantManualSubscription,
@@ -251,9 +252,23 @@ subscriptionRouter.post(
 subscriptionRouter.get(
   "/admin",
   requireRoles("ADMIN", "SUPER_ADMIN"),
-  async (_req, res, next) => {
+  async (req, res, next) => {
     try {
-      const data = await listSubscriptionsForAdmin();
+      const q = typeof req.query.q === "string" ? req.query.q.slice(0, 120) : undefined;
+      const data = await listSubscriptionsForAdmin(50, q);
+      res.status(200).json({ data });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+subscriptionRouter.get(
+  "/admin/:userId/history",
+  requireRoles("ADMIN", "SUPER_ADMIN"),
+  async (req, res, next) => {
+    try {
+      const data = await getAdminSubscriptionHistory(String(req.params.userId));
       res.status(200).json({ data });
     } catch (error) {
       next(error);

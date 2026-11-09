@@ -1,7 +1,12 @@
 import type { PaymentPurpose, Prisma } from "@prisma/client";
 import { AppError } from "../lib/errors.js";
 import { prisma } from "../lib/prisma.js";
-import { seatCapacity } from "../subscriptions/subscription.service.js";
+import {
+  entitlementSubscription,
+  isSubscriptionRecordEligible,
+  seatCapacity,
+} from "../subscriptions/subscription.service.js";
+import { recordSubscriptionAudit } from "../subscriptions/audit.js";
 import {
   getPlan,
   listConfiguredPlans,
@@ -122,44 +127,71 @@ export async function getPlansCatalog(levelId?: string) {
   const hasSubscriptionPlans = mapped.length > 0;
   mapped.push(...envPlans);
 
-  const enabled = paymentsEnabled() || mapped.some((p) => p.purpose !== "EXTRA_SEATS");
   const liveBlocked = liveKeyBlocked();
+  const gatewayOn = paymentsEnabled();
+  const enabled = Boolean(gatewayOn && hasSubscriptionPlans && !liveBlocked);
   return {
-    enabled: Boolean(
-      (process.env.PAYMENT_ENABLED === "true" ||
-        process.env.PAYMENT_ENABLED === "1" ||
-        paymentsEnabled()) &&
-        (process.env.RAZORPAY_KEY_ID || publicKeyId()) &&
-        hasSubscriptionPlans &&
-        !liveBlocked
-    ),
+    enabled,
     currency: mapped[0]?.currency ?? "INR",
-    keyId: liveBlocked ? null : publicKeyId(),
+    keyId: enabled ? publicKeyId() : null,
     plans: mapped,
     dbCatalog: dbPlans.length > 0,
-    note: liveBlocked
-      ? "Checkout is paused: live Razorpay keys are not approved yet."
-      : hasSubscriptionPlans
-        ? null
-        : "No published subscription plans yet. Ask Admin to publish plans.",
-    // keep flag for callers that still check paymentsEnabled alone
-    gatewayReady: paymentsEnabled() || enabled,
+    note: !gatewayOn
+      ? "Online payments are not open yet."
+      : liveBlocked
+        ? "Checkout is paused: live Razorpay keys are not approved yet."
+        : hasSubscriptionPlans
+          ? null
+          : "No published subscription plans yet. Ask Admin to publish plans.",
+    gatewayReady: enabled,
   };
+}
+
+const NATIVE_APP_PLATFORMS = new Set(["android", "ios"]);
+const FAMILY_PURPOSES = new Set([
+  "FAMILY_MONTHLY",
+  "FAMILY_YEARLY",
+  "FAMILY_3_MONTH",
+  "FAMILY_6_MONTH",
+]);
+
+/** Razorpay extends only its own row; store-managed and manual rows are never relabelled. */
+async function latestWebSubscription(userId: string, tx: Prisma.TransactionClient) {
+  return tx.subscription.findFirst({
+    where: { userId, provider: "razorpay" },
+    orderBy: { createdAt: "desc" },
+  });
 }
 
 export async function createCheckoutOrder(
   userId: string,
-  input: { purpose?: PlanPurpose; seats?: number; planId?: string }
+  input: { purpose?: PlanPurpose; seats?: number; planId?: string },
+  clientPlatform?: string
 ) {
+  if (clientPlatform && NATIVE_APP_PLATFORMS.has(clientPlatform.toLowerCase())) {
+    throw new AppError(
+      "Website checkout is not available in the mobile app. Use the app store's subscription option.",
+      403,
+      { code: "USE_STORE_BILLING" }
+    );
+  }
   await assertAgreementsAccepted(userId);
-  const gatewayOk =
-    process.env.PAYMENT_ENABLED === "true" ||
-    process.env.PAYMENT_ENABLED === "1" ||
-    paymentsEnabled();
-  if (!gatewayOk || !publicKeyId()) {
+  if (!paymentsEnabled() || !publicKeyId()) {
     throw new AppError("Checkout is not configured", 503, {
       code: "PLAN_PRICES_NOT_CONFIGURED",
     });
+  }
+  const current = await entitlementSubscription(userId);
+  if (
+    current?.provider === "google_play" &&
+    isSubscriptionRecordEligible(current) &&
+    (input.planId || (input.purpose && FAMILY_PURPOSES.has(input.purpose)))
+  ) {
+    throw new AppError(
+      "You already have an active subscription through Google Play. Manage it in Google Play.",
+      409,
+      { code: "MANAGED_BY_GOOGLE_PLAY" }
+    );
   }
 
   let plan: CatalogPlan & {
@@ -317,18 +349,25 @@ async function activateVerifiedPayment(
       throw new AppError("Payment was refunded", 409);
     }
 
-    // Lock subscription if present
-    let subscription = await tx.subscription.findFirst({
-      where: { userId: payment.userId },
-      orderBy: { createdAt: "desc" },
-    });
+    const purpose = payment.purpose as PlanPurpose | "MANUAL_ADMIN";
+    const now = new Date();
+
+    // Family plans extend the website row; add-on seats attach to the row that grants access.
+    let subscription =
+      purpose === "EXTRA_SEATS"
+        ? await entitlementSubscription(payment.userId, tx)
+        : await latestWebSubscription(payment.userId, tx);
     if (subscription) {
       await tx.$executeRaw`SELECT id FROM "Subscription" WHERE id = ${subscription.id} FOR UPDATE`;
       subscription = await tx.subscription.findUnique({ where: { id: subscription.id } });
     }
-
-    const purpose = payment.purpose as PlanPurpose | "MANUAL_ADMIN";
-    const now = new Date();
+    const previousStatus = subscription?.status ?? null;
+    const webRows = await tx.subscription.findMany({
+      where: { userId: payment.userId, provider: { not: "google_play" } },
+    });
+    const latestWebExpiry = webRows
+      .filter((r) => isSubscriptionRecordEligible(r, now) && r.expiresAt > now)
+      .reduce<Date | null>((max, r) => (!max || r.expiresAt > max ? r.expiresAt : max), null);
     let meta: {
       durationMonths?: number;
       planCode?: string;
@@ -352,10 +391,7 @@ async function activateVerifiedPayment(
     ]);
 
     if (familyPurposes.has(purpose)) {
-      const base =
-        subscription?.expiresAt && subscription.expiresAt > now
-          ? subscription.expiresAt
-          : now;
+      const base = latestWebExpiry ?? now;
       const expiresAt = addPeriod(base, purpose, meta.durationMonths);
       // Preserve purchased plan code/label on the subscription row (history).
       const planLabel =
@@ -403,6 +439,10 @@ async function activateVerifiedPayment(
             providerRef: razorpayPaymentId,
             includedSeats,
             startedAt: subscription.startedAt ?? now,
+            productId: payment.planCode,
+            autoRenewing: false,
+            verificationStatus: "VERIFIED",
+            verifiedAt: now,
           },
         });
       } else {
@@ -417,6 +457,10 @@ async function activateVerifiedPayment(
             providerRef: razorpayPaymentId,
             includedSeats,
             extraSeats: 0,
+            productId: payment.planCode,
+            autoRenewing: false,
+            verificationStatus: "VERIFIED",
+            verifiedAt: now,
           },
         });
       }
@@ -443,6 +487,29 @@ async function activateVerifiedPayment(
         metadataJson: JSON.stringify(meta),
       },
     });
+
+    await recordSubscriptionAudit(
+      {
+        userId: payment.userId,
+        subscriptionId: subscription?.id ?? null,
+        paymentId: payment.id,
+        provider: "razorpay",
+        source: opts?.eventId ? "razorpay_webhook" : "razorpay_verify",
+        eventType: purpose === "EXTRA_SEATS" ? "EXTRA_SEATS_PAID" : "PAYMENT_CAPTURED",
+        providerEventId: opts?.eventId ? `razorpay:${opts.eventId}` : null,
+        fromStatus: previousStatus,
+        toStatus: subscription?.status ?? null,
+        details: {
+          orderId: payment.razorpayOrderId,
+          paymentId: razorpayPaymentId,
+          amount: payment.amountCents,
+          currency: payment.currency,
+          planCode: payment.planCode,
+          expiresAt: subscription?.expiresAt?.toISOString() ?? null,
+        },
+      },
+      tx
+    );
 
     return {
       payment: updated,
@@ -484,10 +551,33 @@ export async function verifyAndActivate(
   if (remote.order_id !== input.orderId) {
     throw new AppError("Payment does not match order", 400);
   }
-  if (remote.status !== "captured" && remote.status !== "authorized") {
+  if (remote.status === "authorized") {
+    // Not money yet: access starts when Razorpay reports the capture (payment.captured webhook).
+    await prisma.payment.update({
+      where: { id: payment.id },
+      data: { razorpayPaymentId: input.paymentId },
+    });
+    return {
+      processing: true as const,
+      code: "PAYMENT_PROCESSING",
+      paymentId: payment.id,
+      message:
+        "Your payment is being confirmed by the bank. Access will start automatically once it is captured.",
+    };
+  }
+  if (remote.status !== "captured") {
     await prisma.payment.update({
       where: { id: payment.id },
       data: { status: "FAILED", razorpayPaymentId: input.paymentId },
+    });
+    await recordSubscriptionAudit({
+      userId: payment.userId,
+      paymentId: payment.id,
+      provider: "razorpay",
+      source: "razorpay_verify",
+      eventType: "PAYMENT_FAILED",
+      toStatus: "FAILED",
+      details: { orderId: input.orderId, paymentId: input.paymentId, gatewayStatus: remote.status },
     });
     throw new AppError(`Payment not successful (${remote.status})`, 402);
   }
@@ -519,6 +609,7 @@ export async function handleWebhook(rawBody: string, signature: string | undefin
         entity?: {
           id?: string;
           payment_id?: string;
+          amount?: number;
         };
       };
     };
@@ -527,7 +618,11 @@ export async function handleWebhook(rawBody: string, signature: string | undefin
   const eventId = payload.id ?? `${payload.event}:${payload.payload?.payment?.entity?.id ?? ""}`;
   const event = payload.event ?? "";
 
-  if (event === "payment.captured" || event === "payment.authorized") {
+  if (event === "payment.authorized") {
+    return { ignored: true, reason: "authorized is not captured; waiting for payment.captured" };
+  }
+
+  if (event === "payment.captured") {
     const entity = payload.payload?.payment?.entity;
     if (!entity?.id || !entity.order_id) {
       return { ignored: true, reason: "missing payment entity" };
@@ -545,7 +640,10 @@ export async function handleWebhook(rawBody: string, signature: string | undefin
   if (event === "payment.failed") {
     const entity = payload.payload?.payment?.entity;
     if (!entity?.order_id) return { ignored: true };
-    await prisma.payment.updateMany({
+    const failed = await prisma.payment.findFirst({
+      where: { razorpayOrderId: entity.order_id, provider: "razorpay" },
+    });
+    const updated = await prisma.payment.updateMany({
       where: {
         razorpayOrderId: entity.order_id,
         status: "PENDING",
@@ -556,29 +654,171 @@ export async function handleWebhook(rawBody: string, signature: string | undefin
         rawEventId: eventId,
       },
     });
+    if (failed) {
+      await recordSubscriptionAudit({
+        userId: failed.userId,
+        paymentId: failed.id,
+        provider: "razorpay",
+        source: "razorpay_webhook",
+        eventType: "PAYMENT_FAILED",
+        providerEventId: `razorpay:${eventId}`,
+        fromStatus: failed.status,
+        toStatus: updated.count ? "FAILED" : failed.status,
+        details: { orderId: entity.order_id, paymentId: entity.id ?? null },
+      });
+    }
     return { failed: true };
   }
 
-  if (event === "refund.processed" || event.startsWith("refund.")) {
+  if (event === "refund.processed") {
     const refund = payload.payload?.refund?.entity;
     const paymentId = refund?.payment_id;
     if (!paymentId) return { ignored: true };
-    const payment = await prisma.payment.findFirst({
-      where: { razorpayPaymentId: paymentId },
+    return applyRazorpayRefund({
+      razorpayPaymentId: paymentId,
+      refundAmount: refund?.amount,
+      refundId: refund?.id ?? null,
+      eventId,
     });
-    if (!payment) return { ignored: true, reason: "unknown payment" };
-    if (payment.status === "REFUNDED") {
-      return { payment, alreadyProcessed: true };
-    }
-    await prisma.payment.update({
-      where: { id: payment.id },
-      data: { status: "REFUNDED", rawEventId: eventId },
-    });
-    // Do not auto-revoke seats (may be in use) — Admin revoke remains.
-    return { refunded: true, paymentId: payment.id };
+  }
+
+  if (event.startsWith("refund.")) {
+    return { ignored: true, reason: `refund event ${event} does not change access` };
   }
 
   return { ignored: true, reason: `unhandled event ${event}` };
+}
+
+/**
+ * A processed full refund removes the refunded period from the Razorpay row (access ends now if
+ * nothing else remains). Partial refunds and add-on seat refunds are recorded for Admin review.
+ */
+async function applyRazorpayRefund(input: {
+  razorpayPaymentId: string;
+  refundAmount?: number;
+  refundId: string | null;
+  eventId: string;
+}) {
+  return prisma.$transaction(async (tx) => {
+    const found = await tx.payment.findFirst({
+      where: { razorpayPaymentId: input.razorpayPaymentId, provider: "razorpay" },
+    });
+    if (!found) return { ignored: true as const, reason: "unknown payment" };
+    await tx.$executeRaw`SELECT id FROM "Payment" WHERE id = ${found.id} FOR UPDATE`;
+    const payment = await tx.payment.findUnique({ where: { id: found.id } });
+    if (!payment) return { ignored: true as const, reason: "unknown payment" };
+    if (payment.status === "REFUNDED") {
+      return { payment, alreadyProcessed: true as const };
+    }
+
+    let meta: Record<string, unknown> = {};
+    try {
+      meta = payment.metadataJson ? (JSON.parse(payment.metadataJson) as Record<string, unknown>) : {};
+    } catch {
+      meta = {};
+    }
+    const refunds = Array.isArray(meta.refunds)
+      ? (meta.refunds as Array<{ refundId?: string | null; amount?: number | null }>)
+      : [];
+    if (input.refundId && refunds.some((r) => r.refundId === input.refundId)) {
+      return { payment, alreadyProcessed: true as const };
+    }
+    const refundedSoFar = refunds.reduce((sum, r) => sum + (typeof r.amount === "number" ? r.amount : 0), 0);
+    const isPartial =
+      typeof input.refundAmount === "number" &&
+      refundedSoFar + input.refundAmount < payment.amountCents;
+    meta.refunds = [
+      ...refunds,
+      { refundId: input.refundId, amount: input.refundAmount ?? null, at: new Date().toISOString() },
+    ];
+
+    if (isPartial) {
+      await tx.payment.update({
+        where: { id: payment.id },
+        data: { metadataJson: JSON.stringify(meta) },
+      });
+      await recordSubscriptionAudit(
+        {
+          userId: payment.userId,
+          subscriptionId: payment.subscriptionId,
+          paymentId: payment.id,
+          provider: "razorpay",
+          source: "razorpay_webhook",
+          eventType: "PARTIAL_REFUND",
+          providerEventId: `razorpay:${input.eventId}`,
+          details: { refundAmount: input.refundAmount, paymentAmount: payment.amountCents },
+        },
+        tx
+      );
+      return { refunded: false as const, partial: true as const, paymentId: payment.id };
+    }
+
+    await tx.payment.update({
+      where: { id: payment.id },
+      data: { status: "REFUNDED", rawEventId: input.eventId, metadataJson: JSON.stringify(meta) },
+    });
+
+    let subscriptionChange: { id: string; from: string; to: string; expiresAt: Date } | null = null;
+    const start = typeof meta.periodStartsAt === "string" ? new Date(meta.periodStartsAt) : null;
+    const end = typeof meta.periodEndsAt === "string" ? new Date(meta.periodEndsAt) : null;
+    if (
+      FAMILY_PURPOSES.has(payment.purpose) &&
+      payment.subscriptionId &&
+      payment.status === "SUCCEEDED" &&
+      start &&
+      end &&
+      end > start
+    ) {
+      await tx.$executeRaw`SELECT id FROM "Subscription" WHERE id = ${payment.subscriptionId} FOR UPDATE`;
+      const sub = await tx.subscription.findUnique({ where: { id: payment.subscriptionId } });
+      if (sub && sub.provider === "razorpay") {
+        const now = new Date();
+        const refundedMs = end.getTime() - start.getTime();
+        const nextExpiry = new Date(Math.max(sub.expiresAt.getTime() - refundedMs, now.getTime()));
+        const ended = nextExpiry.getTime() <= now.getTime();
+        const updated = await tx.subscription.update({
+          where: { id: sub.id },
+          data: {
+            expiresAt: nextExpiry,
+            status: ended ? "EXPIRED" : sub.status,
+            graceEndsAt: ended ? null : sub.graceEndsAt,
+          },
+        });
+        subscriptionChange = {
+          id: sub.id,
+          from: sub.status,
+          to: updated.status,
+          expiresAt: updated.expiresAt,
+        };
+      }
+    }
+
+    await recordSubscriptionAudit(
+      {
+        userId: payment.userId,
+        subscriptionId: subscriptionChange?.id ?? payment.subscriptionId,
+        paymentId: payment.id,
+        provider: "razorpay",
+        source: "razorpay_webhook",
+        eventType:
+          payment.purpose === "EXTRA_SEATS" ? "REFUND_EXTRA_SEATS_ADMIN_REVIEW" : "REFUND_PROCESSED",
+        providerEventId: `razorpay:${input.eventId}`,
+        fromStatus: subscriptionChange?.from ?? null,
+        toStatus: subscriptionChange?.to ?? null,
+        details: {
+          refundAmount: input.refundAmount ?? null,
+          expiresAt: subscriptionChange?.expiresAt.toISOString() ?? null,
+        },
+      },
+      tx
+    );
+    return {
+      refunded: true as const,
+      paymentId: payment.id,
+      accessRevoked: subscriptionChange?.to === "EXPIRED",
+      subscriptionExpiresAt: subscriptionChange?.expiresAt ?? null,
+    };
+  });
 }
 
 /** Mark a pending checkout as failed when the user dismisses Razorpay. */
@@ -713,10 +953,29 @@ export async function listMyPayments(userId: string) {
   });
 }
 
-export async function listPaymentsForAdmin(take = 100) {
+export async function listPaymentsForAdmin(
+  take = 100,
+  filter: { q?: string; provider?: string } = {}
+) {
+  const q = filter.q?.trim();
+  const where: Prisma.PaymentWhereInput = {
+    ...(filter.provider ? { provider: filter.provider } : {}),
+    ...(q
+      ? {
+          OR: [
+            { providerRef: { contains: q } },
+            { razorpayOrderId: { contains: q } },
+            { razorpayPaymentId: { contains: q } },
+            { receiptNumber: { contains: q } },
+            { user: { email: { contains: q, mode: "insensitive" } } },
+          ],
+        }
+      : {}),
+  };
   return prisma.payment.findMany({
+    where,
     orderBy: { createdAt: "desc" },
-    take: Math.min(take, 200),
+    take: Math.min(Number.isFinite(take) ? take : 100, 200),
     include: {
       user: { select: { id: true, name: true, email: true } },
       subscription: {

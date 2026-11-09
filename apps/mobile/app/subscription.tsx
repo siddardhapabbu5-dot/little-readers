@@ -12,6 +12,7 @@ import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Card, ErrorText, PrimaryButton, SoftButton, Title } from "../components/ui";
 import { AuthGate } from "../components/AuthGate";
+import { GooglePlaySubscribe } from "../components/GooglePlaySubscribe";
 import { RegistrationSteps } from "../components/RegistrationSteps";
 import { apiRequest, ApiError } from "../services/api";
 import { ROLE_SETS } from "../services/auth-errors";
@@ -62,6 +63,14 @@ function planTitle(p: Plan) {
     /^\d/.test(stripped);
   if (looksTechnical) return durationLabel(p.durationMonths);
   return stripped;
+}
+
+/** Website (Razorpay) checkout only in the web preview; Android uses Google Play, iOS has no purchase. */
+const WEB_CHECKOUT = Platform.OS === "web";
+
+function formatAmount(minor: number, currency: string) {
+  if (!currency || currency === "INR") return formatInr(minor);
+  return `${currency} ${(minor / 100).toFixed(2)}`;
 }
 
 function formatInr(paise: number) {
@@ -118,17 +127,26 @@ export default function SubscriptionScreen() {
   const [error, setError] = useState<string | null>(null);
   const [loadingCatalog, setLoadingCatalog] = useState(false);
 
+  const refreshEntitlement = useCallback(async () => {
+    const [me, history] = await Promise.all([
+      apiRequest("/subscriptions/me"),
+      apiRequest<Pay[]>("/payments/me").catch(() => []),
+    ]);
+    setData(me);
+    setPayments(history);
+  }, []);
+
   useFocusEffect(
     useCallback(() => {
       void (async () => {
         try {
           const me = await apiRequest("/subscriptions/me");
           setData(me);
-          setLoadingCatalog(true);
+          setLoadingCatalog(WEB_CHECKOUT);
           const [pubLevels, history] = await Promise.all([
-            apiRequest<PublishedLevel[]>("/parent/catalog/levels").catch(
-              () => []
-            ),
+            WEB_CHECKOUT
+              ? apiRequest<PublishedLevel[]>("/parent/catalog/levels").catch(() => [])
+              : Promise.resolve([] as PublishedLevel[]),
             apiRequest<Pay[]>("/payments/me").catch(() => []),
           ]);
           setLevels(pubLevels);
@@ -136,9 +154,11 @@ export default function SubscriptionScreen() {
           if (!selectedLevelId && pubLevels[0]?.id) {
             setSelectedLevelId(pubLevels[0].id);
           }
-          const plans = await apiRequest<Catalog>(
-            `/payments/plans${levelId ? `?levelId=${levelId}` : ""}`
-          ).catch(() => null);
+          const plans = WEB_CHECKOUT
+            ? await apiRequest<Catalog>(
+                `/payments/plans${levelId ? `?levelId=${levelId}` : ""}`
+              ).catch(() => null)
+            : null;
           if (plans) {
             setCatalog(plans);
             setSelectedPlanId((cur) =>
@@ -190,8 +210,12 @@ export default function SubscriptionScreen() {
               <>
                 <Row label="Plan" value={sub.plan} />
                 <Row label="Status" value={sub.status} />
+                {sub.management?.label ? <Row label="Billed via" value={sub.management.label} /> : null}
                 <Row label="Started" value={new Date(sub.startedAt).toLocaleDateString()} />
-                <Row label="Expires" value={new Date(sub.expiresAt).toLocaleDateString()} />
+                <Row
+                  label={sub.renewsAt ? "Renews" : "Access until"}
+                  value={new Date(sub.renewsAt ?? sub.expiresAt).toLocaleDateString()}
+                />
                 <Text
                   style={{
                     marginTop: 8,
@@ -231,7 +255,10 @@ export default function SubscriptionScreen() {
             ) : null}
 
             <SoftButton label="Manage children / seats" onPress={() => router.push("/parent")} />
-            {sub && data?.eligible && sub.status !== "CANCELLED" ? (
+            {sub?.management?.instructions ? (
+              <Text style={styles.note}>{sub.management.instructions}</Text>
+            ) : null}
+            {sub && data?.eligible && sub.status !== "CANCELLED" && sub.management?.canCancelHere ? (
               <SoftButton
                 label="Cancel renewal"
                 onPress={() => {
@@ -285,6 +312,24 @@ export default function SubscriptionScreen() {
             ) : null}
           </Card>
 
+          {Platform.OS === "android" ? (
+            <GooglePlaySubscribe
+              currentProductId={sub?.provider === "google_play" ? sub.productId ?? null : null}
+              onEntitlementChanged={refreshEntitlement}
+            />
+          ) : null}
+
+          {Platform.OS === "ios" ? (
+            <Card style={{ gap: 6 }}>
+              <Text style={styles.section}>Subscription</Text>
+              <Text style={styles.note}>
+                Subscriptions can't be purchased in the iPhone app yet. If your family already
+                has a subscription, sign in with the same parent account to use it here.
+              </Text>
+            </Card>
+          ) : null}
+
+          {WEB_CHECKOUT ? (
           <Card style={{ gap: 14 }}>
             <View style={{ gap: 4 }}>
               <Text style={styles.section}>Choose a plan</Text>
@@ -401,7 +446,7 @@ export default function SubscriptionScreen() {
 
             <Text style={styles.checkoutHint}>
               {selectedPlan
-                ? `${planTitle(selectedPlan)} · ${formatInr(selectedPlan.totalPaise)}. Next: review agreements, then pay securely with Razorpay.`
+                ? `${planTitle(selectedPlan)} · ${formatInr(selectedPlan.totalPaise)}. Next: review agreements, then pay securely online.`
                 : "Tap a plan to select it."}
             </Text>
             <PrimaryButton
@@ -413,6 +458,7 @@ export default function SubscriptionScreen() {
               <Text style={styles.checkoutHint}>Online payments are not open yet.</Text>
             ) : null}
           </Card>
+          ) : null}
 
           <Card style={{ gap: 8 }}>
             <Text style={styles.section}>Payment history</Text>
@@ -423,10 +469,11 @@ export default function SubscriptionScreen() {
                 <View key={p.id} style={styles.payRow}>
                   <Text style={{ fontWeight: "700", flex: 1 }}>
                     {new Date(p.paidAt ?? p.createdAt).toLocaleDateString()} · {p.status} ·{" "}
-                    {formatInr(p.amountCents)}
+                    {formatAmount(p.amountCents, p.currency)}
+                    {p.provider === "google_play" ? " · Google Play" : ""}
                     {p.seatsPurchased ? ` · +${p.seatsPurchased} seats` : ""}
                   </Text>
-                  {p.status === "SUCCEEDED" ? (
+                  {p.status === "SUCCEEDED" && p.provider === "razorpay" ? (
                     <SoftButton label="Receipt" onPress={() => router.push(`/receipt/${p.id}`)} />
                   ) : null}
                 </View>

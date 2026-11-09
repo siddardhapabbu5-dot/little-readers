@@ -134,7 +134,8 @@
           }
         }
       ],
-      "./plugins/withLocalReleaseSigning.js"
+      "./plugins/withLocalReleaseSigning.js",
+      "expo-iap"
     ],
     "extra": {
       "eas": {

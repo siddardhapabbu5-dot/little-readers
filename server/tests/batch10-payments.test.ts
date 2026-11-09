@@ -25,6 +25,8 @@ describe.skipIf(!hasDb)("Batch 10 — Razorpay checkout + activation", () => {
     process.env.JWT_SECRET =
       process.env.JWT_SECRET ?? "dev_only_change_me_to_a_long_random_secret_value";
     process.env.PAYMENT_ENABLED = "true";
+    process.env.RAZORPAY_ENABLED = "true";
+    delete process.env.RAZORPAY_LIVE_ENABLED;
     process.env.RAZORPAY_USE_STUB = "1";
     process.env.RAZORPAY_KEY_ID = "rzp_test_stub";
     process.env.RAZORPAY_KEY_SECRET = "stub_secret_for_hmac_tests_only";

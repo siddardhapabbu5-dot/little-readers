@@ -6,9 +6,81 @@ import {
   type AuthenticatedRequest,
 } from "../middleware/auth.js";
 import { validateBody } from "../middleware/validate.js";
+import * as googlePlay from "./google-play.js";
 import * as paymentService from "./payment.service.js";
 
 export const paymentsRouter = Router();
+
+paymentsRouter.get(
+  "/google-play/config",
+  requireAuth,
+  requireRoles("PARENT", "ADMIN", "SUPER_ADMIN"),
+  async (req: AuthenticatedRequest, res, next) => {
+    try {
+      res.json({ data: await googlePlay.getGooglePlayConfig(req.user!.id) });
+    } catch (e) {
+      next(e);
+    }
+  }
+);
+
+const playPurchaseBody = z.object({
+  productId: z.string().min(1).max(100),
+  purchaseToken: z.string().min(10).max(4096),
+});
+
+paymentsRouter.post(
+  "/google-play/verify",
+  requireAuth,
+  requireRoles("PARENT", "ADMIN", "SUPER_ADMIN"),
+  validateBody(playPurchaseBody),
+  async (req: AuthenticatedRequest, res, next) => {
+    try {
+      res.json({ data: await googlePlay.verifyGooglePlayPurchase(req.user!.id, req.body) });
+    } catch (e) {
+      next(e);
+    }
+  }
+);
+
+paymentsRouter.post(
+  "/google-play/restore",
+  requireAuth,
+  requireRoles("PARENT", "ADMIN", "SUPER_ADMIN"),
+  validateBody(z.object({ purchases: z.array(playPurchaseBody).min(1).max(10) })),
+  async (req: AuthenticatedRequest, res, next) => {
+    try {
+      const results = [];
+      for (const p of req.body.purchases as Array<z.infer<typeof playPurchaseBody>>) {
+        try {
+          results.push(
+            await googlePlay.verifyGooglePlayPurchase(req.user!.id, p, "google_play_restore")
+          );
+        } catch (e) {
+          const err = e as { statusCode?: number; details?: { code?: string } };
+          if (!err.statusCode || err.statusCode >= 500 || err.details?.code === "GOOGLE_PLAY_DISABLED") throw e;
+          results.push({ productId: p.productId, error: err.details?.code ?? "NOT_RESTORED" });
+        }
+      }
+      res.json({ data: { results } });
+    } catch (e) {
+      next(e);
+    }
+  }
+);
+
+/** Google Play RTDN (Pub/Sub push). Authenticated by the shared token in the push URL. */
+paymentsRouter.post("/google-play/rtdn", async (req, res, next) => {
+  try {
+    if (!googlePlay.rtdnTokenValid(req.query.token)) {
+      res.status(401).json({ error: "Unauthorized" });
+      return;
+    }
+    res.status(200).json({ data: await googlePlay.handleGooglePlayRtdn(req.body ?? {}) });
+  } catch (e) {
+    next(e);
+  }
+});
 
 paymentsRouter.get("/plans", requireAuth, async (req, res, next) => {
   try {
@@ -53,7 +125,8 @@ paymentsRouter.post(
     try {
       const data = await paymentService.createCheckoutOrder(
         req.user!.id,
-        req.body
+        req.body,
+        req.header("x-client-platform") ?? undefined
       );
       res.status(201).json({ data });
     } catch (e) {
@@ -141,7 +214,10 @@ paymentsRouter.get(
   async (req: AuthenticatedRequest, res, next) => {
     try {
       const take = Number(req.query.take ?? 100);
-      const data = await paymentService.listPaymentsForAdmin(take);
+      const q = typeof req.query.q === "string" ? req.query.q.slice(0, 120) : undefined;
+      const provider =
+        typeof req.query.provider === "string" ? req.query.provider.slice(0, 40) : undefined;
+      const data = await paymentService.listPaymentsForAdmin(take, { q, provider });
       res.json({ data });
     } catch (e) {
       next(e);

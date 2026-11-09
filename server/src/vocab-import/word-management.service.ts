@@ -288,7 +288,7 @@ export async function updateAdminWord(
 
 /** Admin wipe of published kids vocabulary (not dictionary entries). */
 export async function clearAllAdminVocabularyWords() {
-  return clearAllVocabularyWords(prisma);
+  return clearAllVocabularyWords(prisma as unknown as Parameters<typeof clearAllVocabularyWords>[0]);
 }
 
 export async function deactivateAdminWord(id: string) {

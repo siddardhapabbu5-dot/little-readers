@@ -199,6 +199,41 @@ export async function listChildrenForParent(parentId: string) {
   }));
 }
 
+const ADMIN_PRACTICE_NAME = "Practice";
+
+/**
+ * The admin's own Grade 1 test learner. It belongs to the admin account, so it never
+ * appears in parent lists, and it holds a learning seat without a subscription.
+ */
+export async function getOrCreateAdminPracticeChild(adminId: string) {
+  let existing = (await listChildrenForParent(adminId))[0];
+  if (!existing) {
+    const grade1 = await prisma.learningGrade.findFirst({
+      where: { gradeNumber: 1 },
+      select: { id: true },
+    });
+    const input: CreateChildInput = {
+      displayName: ADMIN_PRACTICE_NAME,
+      birthYear: new Date().getFullYear() - 6,
+      level: "LEVEL_1",
+      ...(grade1 ? { gradeId: grade1.id } : {}),
+    };
+    try {
+      await createChild(adminId, input);
+    } catch (err) {
+      if (!(err instanceof AppError) || !input.gradeId) throw err;
+      await createChild(adminId, { ...input, gradeId: undefined });
+    }
+    existing = (await listChildrenForParent(adminId))[0];
+  }
+  if (!existing) throw new AppError("Could not create the practice learner", 500);
+  if (!existing.hasLearningSeat) {
+    await prisma.child.update({ where: { id: existing.id }, data: { hasLearningSeat: true } });
+    existing = { ...existing, hasLearningSeat: true };
+  }
+  return existing;
+}
+
 export async function getChildProfile(userId: string, role: string, childId: string) {
   await assertChildAccess(userId, role, childId);
 

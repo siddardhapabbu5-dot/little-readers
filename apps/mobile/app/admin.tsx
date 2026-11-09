@@ -24,6 +24,7 @@ import { AuthGate } from "../components/AuthGate";
 import { AvatarImage } from "../components/ProfilePhoto";
 import { ErrorText } from "../components/ui";
 import { apiRequest, ApiError } from "../services/api";
+import { selectAdminPracticeLearner } from "../services/admin-nav";
 import { ROLE_SETS } from "../services/auth-errors";
 import { getUser } from "../services/secure";
 
@@ -138,6 +139,21 @@ export default function AdminScreen() {
     lessons: 0,
   });
   const [showAllActions, setShowAllActions] = useState(false);
+  const [practiceBusy, setPracticeBusy] = useState(false);
+  const canPractice = user?.role === "ADMIN" || user?.role === "SUPER_ADMIN";
+
+  async function openPracticeGames() {
+    if (practiceBusy) return;
+    setPracticeBusy(true);
+    try {
+      await selectAdminPracticeLearner();
+      router.push("/(tabs)/games" as never);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Could not open games");
+    } finally {
+      setPracticeBusy(false);
+    }
+  }
   const [showAllActivity, setShowAllActivity] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
 
@@ -614,6 +630,16 @@ export default function AdminScreen() {
               </Pressable>
             </View>
             <View style={styles.actionsStack}>
+              {canPractice ? (
+                <AdminQuickActionCard
+                  title={practiceBusy ? "Opening games…" : "Play games"}
+                  subtitle="Try every activity as your Practice learner (not in reports)"
+                  icon="game-controller"
+                  tint={dash.green}
+                  soft={dash.greenSoft}
+                  onPress={() => void openPracticeGames()}
+                />
+              ) : null}
               {visibleActions.map((a) => (
                 <AdminQuickActionCard
                   key={a.title}

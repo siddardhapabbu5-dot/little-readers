@@ -1117,10 +1117,12 @@ export async function getChildClassroomChallenges(actor: Actor, childId: string,
 export async function getAdminChallengeStats(now = new Date()) {
   await ensureWeeksFinalized(now);
   const weekStart = weekStartOf(now);
+  // Admin Practice learners belong to staff accounts; stats count real families only.
+  const familyOnly = { child: { parent: { role: "PARENT" as const } } };
   const [week, players, optedIn, nicknames, friends, pendingFriends, classChallenges, openReports, history, winners] =
     await Promise.all([
-      prisma.pointsTransaction.aggregate({ where: { weekStart }, _sum: { points: true }, _count: true }),
-      prisma.pointsTransaction.groupBy({ by: ["childId"], where: { weekStart } }),
+      prisma.pointsTransaction.aggregate({ where: { weekStart, ...familyOnly }, _sum: { points: true }, _count: true }),
+      prisma.pointsTransaction.groupBy({ by: ["childId"], where: { weekStart, ...familyOnly } }),
       prisma.child.count({ where: { isActive: true, globalLeaderboardOptIn: true } }),
       prisma.child.count({ where: { leaderboardNickname: { not: null } } }),
       prisma.friendConnection.count({ where: { status: "ACCEPTED" } }),
@@ -1129,6 +1131,7 @@ export async function getAdminChallengeStats(now = new Date()) {
       prisma.leaderboardReport.count({ where: { status: "OPEN" } }),
       prisma.pointsTransaction.groupBy({
         by: ["weekStart"],
+        where: familyOnly,
         _sum: { points: true },
         _count: { childId: true },
         orderBy: { weekStart: "desc" },
@@ -1139,7 +1142,7 @@ export async function getAdminChallengeStats(now = new Date()) {
   const playersByWeek = await Promise.all(
     history.map((h) =>
       prisma.pointsTransaction
-        .groupBy({ by: ["childId"], where: { weekStart: h.weekStart } })
+        .groupBy({ by: ["childId"], where: { weekStart: h.weekStart, ...familyOnly } })
         .then((g) => g.length)
     )
   );

@@ -13,6 +13,7 @@ import {
   ParentGateModal,
   isParentGateUnlocked,
 } from "../../components/ParentGateModal";
+import { selectAdminPracticeLearner } from "../../services/admin-nav";
 import { clearSession, getUser } from "../../services/secure";
 import { colors } from "../../theme";
 import { SkyBackground } from "../../components/kids";
@@ -62,6 +63,18 @@ export default function ProfileTab() {
     role === "SCHOOL_ADMIN";
   const isAdmin = role === "ADMIN" || role === "SUPER_ADMIN" || role === "SCHOOL_ADMIN";
   const isSuperAdmin = role === "SUPER_ADMIN";
+  const canPractice = role === "ADMIN" || role === "SUPER_ADMIN";
+
+  async function openLearn() {
+    if (canPractice) {
+      try {
+        await selectAdminPracticeLearner();
+      } catch {
+        // Learn screens show their own error if no learner can be loaded.
+      }
+    }
+    router.push("/(tabs)/learn");
+  }
   const isTeacher = role === "TEACHER";
   const isStudent = role === "STUDENT";
 
@@ -93,7 +106,7 @@ export default function ProfileTab() {
                 label="Device management"
                 onPress={() => openAdult("/devices")}
               />
-              {role === "PARENT" ? (
+              {role === "PARENT" || canPractice ? (
                 <MenuRow label="Connect a TV" onPress={() => openAdult("/tv-connect")} />
               ) : null}
               <MenuRow
@@ -152,7 +165,7 @@ export default function ProfileTab() {
 
         <PrimaryButton label="Log out" color={colors.accent} onPress={() => void logout()} />
         {isParentFamily || isStudent ? (
-          <SoftButton label="Open Learn" onPress={() => router.push("/(tabs)/learn")} />
+          <SoftButton label="Open Learn" onPress={() => void openLearn()} />
         ) : null}
       </ScrollView>
       <ParentGateModal

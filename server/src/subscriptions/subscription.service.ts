@@ -333,9 +333,18 @@ export async function getParentSubscription(userId: string) {
   };
 }
 
+/** Admins play with their own Admin Practice learner without a paid plan. */
+export async function isStaffLearnerAccount(userId: string) {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { role: true, isActive: true },
+  });
+  return Boolean(user?.isActive && (user.role === "ADMIN" || user.role === "SUPER_ADMIN"));
+}
+
 export async function assertParentSubscriptionEligible(parentId: string) {
   const result = await getParentSubscription(parentId);
-  if (!result.eligible) {
+  if (!result.eligible && !(await isStaffLearnerAccount(parentId))) {
     throw new AppError(
       result.reason ??
         "An active subscription is required to access learning activities",

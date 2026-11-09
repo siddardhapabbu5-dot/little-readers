@@ -15,6 +15,8 @@ const MAX_TVS_PER_PARENT = 5;
 const APPROVE_FAIL_LIMIT = 10;
 const APPROVE_FAIL_WINDOW_MS = 15 * 60 * 1000;
 const LAST_SEEN_THROTTLE_MS = 60 * 1000;
+/** Admins pair TVs only to their own Admin Practice learner. */
+const TV_ACCOUNT_ROLES = new Set(["PARENT", "ADMIN", "SUPER_ADMIN"]);
 
 export type TvSession = {
   id: string;
@@ -190,7 +192,7 @@ export async function authenticateTvToken(token: string): Promise<TvSession> {
     child.parentId !== row.parentId ||
     !child.isActive ||
     !parent.isActive ||
-    parent.role !== "PARENT" ||
+    !TV_ACCOUNT_ROLES.has(parent.role) ||
     passwordReset
   ) {
     await prisma.tvDeviceSession.update({

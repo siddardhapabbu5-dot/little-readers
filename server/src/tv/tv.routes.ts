@@ -68,7 +68,8 @@ async function requireTvSession(req: TvRequest, _res: Response, next: NextFuncti
   }
 }
 
-const parentOnly = [requireAuth, requireRoles("PARENT")];
+/** Admins can connect a TV to their own Admin Practice learner (approve only accepts own children). */
+const parentOnly = [requireAuth, requireRoles("PARENT", "ADMIN", "SUPER_ADMIN")];
 
 export const tvRouter = Router();
 

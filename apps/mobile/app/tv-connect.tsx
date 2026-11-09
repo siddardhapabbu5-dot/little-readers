@@ -16,7 +16,7 @@ import { Card, ErrorText, Field, PrimaryButton, SoftButton, Title } from "../com
 import { AuthGate } from "../components/AuthGate";
 import { RequireParentGate } from "../components/RequireParentGate";
 import { apiRequest, ApiError } from "../services/api";
-import { consumePendingTvCode, savePendingTvCode } from "../services/secure";
+import { consumePendingTvCode, getUser, savePendingTvCode } from "../services/secure";
 import { colors, radii } from "../theme";
 
 type ChildRow = { id: string; displayName: string; hasLearningSeat?: boolean };
@@ -30,7 +30,7 @@ type TvConnection = {
   lastSeenAt: string;
 };
 
-const PARENT_ONLY = ["PARENT"] as const;
+const TV_ROLES = ["PARENT", "ADMIN", "SUPER_ADMIN"] as const;
 
 /** Accepts a scanned QR (".../tv-connect?code=ABCD-EFGH") or a typed code. */
 function extractTvCode(raw: string) {
@@ -71,7 +71,7 @@ export default function TvConnectScreen() {
   }
 
   return (
-    <AuthGate roles={PARENT_ONLY}>
+    <AuthGate roles={TV_ROLES}>
       <RequireParentGate>
         <TvConnectBody />
       </RequireParentGate>
@@ -102,7 +102,11 @@ function TvConnectBody() {
         try {
           const pending = await consumePendingTvCode();
           if (pending) setCode(pending);
-          const kids = await apiRequest<ChildRow[]>("/children");
+          const me = await getUser<{ role: string }>();
+          const kids =
+            me?.role === "ADMIN" || me?.role === "SUPER_ADMIN"
+              ? [await apiRequest<ChildRow>("/children/admin-practice", { method: "POST" })]
+              : await apiRequest<ChildRow[]>("/children");
           setChildren(kids);
           setChildId((current) => current || kids[0]?.id || "");
           await loadConnections();

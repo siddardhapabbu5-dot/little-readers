@@ -4,6 +4,7 @@ import {
   createChild,
   getChildProfile,
   getChildProgress,
+  getOrCreateAdminPracticeChild,
   listChildrenForParent,
   listParentsForAdmin,
   softDeleteChild,
@@ -33,6 +34,19 @@ childrenRouter.get("/", async (req: AuthenticatedRequest, res, next) => {
     next(error);
   }
 });
+
+/** Admin's own practice learner (created on first use) for playing games and TV. */
+childrenRouter.post(
+  "/admin-practice",
+  requireRoles("ADMIN", "SUPER_ADMIN"),
+  async (req: AuthenticatedRequest, res, next) => {
+    try {
+      res.status(200).json({ data: await getOrCreateAdminPracticeChild(req.user!.id) });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
 
 /** Admin directory of parent accounts (not available to PARENT). */
 childrenRouter.get(

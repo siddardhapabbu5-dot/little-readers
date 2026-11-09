@@ -161,6 +161,7 @@ model User {
   adminAlerts         AdminAlert[]
   parentOtpVerifications ParentOtpVerification[]
   parentDeviceSessions   ParentDeviceSession[]
+  tvDeviceSessions       TvDeviceSession[]
   privacyPoliciesCreated   PrivacyPolicy[]      @relation("PrivacyPolicyCreatedBy")
   privacyPoliciesUpdated   PrivacyPolicy[]      @relation("PrivacyPolicyUpdatedBy")
   privacyPoliciesPublished PrivacyPolicy[]      @relation("PrivacyPolicyPublishedBy")
@@ -210,6 +211,27 @@ model ParentDeviceSession {
 
   @@index([parentId, status])
   @@index([deviceId])
+  @@index([expiresAt])
+}
+
+/// Android TV / Google TV browser paired by a parent for one child. Token is stored as SHA-256 only.
+model TvDeviceSession {
+  id            String    @id @default(cuid())
+  parentId      String
+  childId       String
+  deviceLabel   String
+  tokenHash     String    @unique
+  createdAt     DateTime  @default(now())
+  lastSeenAt    DateTime  @default(now())
+  expiresAt     DateTime
+  revokedAt     DateTime?
+  revokedReason String?
+
+  parent User  @relation(fields: [parentId], references: [id], onDelete: Cascade)
+  child  Child @relation(fields: [childId], references: [id], onDelete: Cascade)
+
+  @@index([parentId, revokedAt])
+  @@index([childId])
   @@index([expiresAt])
 }
 
@@ -307,6 +329,7 @@ model Child {
   lessonProgress     ChildLessonProgress[]
   achievements       Achievement[]
   registeredDevice   StudentDevice?
+  tvDeviceSessions   TvDeviceSession[]
   deviceTransfers    DeviceTransferEvent[]
   classroomEnrollments ClassroomEnrollment[]
   pointsTransactions PointsTransaction[]

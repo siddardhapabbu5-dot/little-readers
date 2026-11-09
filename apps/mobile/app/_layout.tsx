@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 import {
   AppState,
+  Platform,
   Pressable,
   Text,
   View,
@@ -16,6 +17,7 @@ import { probeApiReachable } from "../services/network";
 import { clearSession, ensureClientFreshStart } from "../services/secure";
 import { setUnauthorizedHandler } from "../services/session";
 import { colors } from "../theme";
+import { TvRoot } from "../tv/TvRoot";
 
 /** Shows JS crash details instead of a silent close on release APKs. */
 export function ErrorBoundary({ error, retry }: ErrorBoundaryProps) {
@@ -51,6 +53,17 @@ export function ErrorBoundary({ error, retry }: ErrorBoundaryProps) {
 }
 
 export default function RootLayout() {
+  if (Platform.isTV) {
+    return (
+      <SafeAreaProvider>
+        <TvRoot />
+      </SafeAreaProvider>
+    );
+  }
+  return <PhoneLayout />;
+}
+
+function PhoneLayout() {
   const router = useRouter();
   const appState = useRef(AppState.currentState);
 

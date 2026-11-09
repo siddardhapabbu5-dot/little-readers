@@ -49,7 +49,9 @@ export function RequireParentGate({ children }: { children: ReactNode }) {
         <Text style={styles.hint}>Parent PIN required for family tools.</Text>
         <ParentGateModal
           visible
-          onClose={() => router.replace("/(tabs)/home")}
+          onClose={() => {
+            if (!isParentGateUnlocked()) router.replace("/(tabs)/home");
+          }}
           onUnlocked={() => setUnlocked(true)}
         />
       </View>

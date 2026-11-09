@@ -16,13 +16,13 @@ export async function listPlatformUsers(
     throw new AppError("Insufficient permissions", 403);
   }
 
-  const allowedRoles =
+  const allowedRoles: readonly string[] =
     actor.role === "SUPER_ADMIN"
       ? (["PARENT", "TEACHER", "SCHOOL_ADMIN", "ADMIN"] as const)
       : (["PARENT", "TEACHER"] as const);
 
   const roleFilter = filters?.role
-    ? allowedRoles.includes(filters.role as (typeof allowedRoles)[number])
+    ? allowedRoles.includes(filters.role)
       ? [filters.role]
       : []
     : [...allowedRoles];

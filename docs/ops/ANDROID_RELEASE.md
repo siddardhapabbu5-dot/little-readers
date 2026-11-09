@@ -7,12 +7,13 @@
 | Application ID | `com.littlereaders.app` (permanent once published — do not change) |
 | Display name | Learn Wise |
 | version | `1.0.0` |
-| versionCode | `19` (increment for every Play upload; `appVersionSource: local` reads `app.json`) |
+| versionCode | `20` (increment for every Play upload; `appVersionSource: local` reads `app.json`) |
 | Icon | `apps/mobile/assets/icon.png` + adaptive `adaptive-icon.png` |
 | Splash | `apps/mobile/assets/splash.png` (`#F3E8FF`) |
 | Expo SDK / React Native | 54 / 0.81.5 (New Architecture, Hermes) |
 | Min / target / compile SDK | 24 / 36 / 36 |
 | Edge-to-edge | Always on (Android 15+ requirement); screens use `react-native-safe-area-context` insets |
+| Android TV | Same package (from v20): `plugins/withAndroidTv.js` adds LEANBACK_LAUNCHER, `tv-banner.png`, optional touchscreen/camera/portrait; TV runs landscape, phones portrait. See `ANDROID_TV_TESTING.md` |
 | Predictive back | Opted out (`predictiveBackGestureEnabled: false`) so hardware back keeps working |
 
 ## Permissions

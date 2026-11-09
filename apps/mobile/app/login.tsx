@@ -24,6 +24,7 @@ import {
 import {
   consumeSessionRevokedMessage,
   getOrCreateInstallationId,
+  hasPendingTvCode,
   saveRefreshToken,
   saveToken,
   saveUser,
@@ -112,6 +113,10 @@ export default function LoginScreen() {
         await saveRefreshToken(data.tokens.refreshToken);
       }
       await saveUser(data.user);
+      if (data.user.role === "PARENT" && (await hasPendingTvCode())) {
+        router.replace("/tv-connect");
+        return;
+      }
       router.replace(routeForRole(data.user.role) as never);
     } catch (err) {
       setError(friendlyAuthError(err));

@@ -23,6 +23,7 @@ type GateTarget =
   | "/parent"
   | "/subscription"
   | "/devices"
+  | "/tv-connect"
   | "/privacy-request"
   | "/change-password";
 
@@ -92,6 +93,9 @@ export default function ProfileTab() {
                 label="Device management"
                 onPress={() => openAdult("/devices")}
               />
+              {role === "PARENT" ? (
+                <MenuRow label="Connect a TV" onPress={() => openAdult("/tv-connect")} />
+              ) : null}
               <MenuRow
                 label="Privacy & data requests"
                 onPress={() => openAdult("/privacy-request")}

@@ -27,6 +27,7 @@ import {
 } from "../payments/payment.routes.js";
 import { agreementsRouter } from "../agreements/agreements.routes.js";
 import { challengesRouter } from "../challenges/challenges.routes.js";
+import { tvRouter } from "../tv/tv.routes.js";
 import { getChildLearningOverview } from "../learning/learning.service.js";
 import {
   requireAuth,
@@ -78,6 +79,7 @@ apiRouter.use("/devices", deviceRouter);
 apiRouter.use("/subscriptions", subscriptionRouter);
 apiRouter.use("/agreements", agreementsRouter);
 apiRouter.use("/payments", paymentsRouter);
+apiRouter.use("/tv", tvRouter);
 apiRouter.post("/payments/webhook", paymentsWebhookHandler);
 
 apiRouter.get(

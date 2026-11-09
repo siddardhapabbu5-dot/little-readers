@@ -1,0 +1,12 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.littlereaders.app",
+      "sha256_cert_fingerprints": [
+        "6D:28:3C:94:1D:EB:3A:28:23:EA:1C:11:D9:DD:5C:2E:7B:8B:A9:E0:44:DB:AF:0D:E0:0E:87:8C:32:E2:70:7A"
+      ]
+    }
+  }
+]

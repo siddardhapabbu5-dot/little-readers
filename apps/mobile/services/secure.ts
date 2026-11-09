@@ -191,6 +191,54 @@ export async function clearActiveChild() {
   await deleteItem(CHILD_KEY);
 }
 
+const TV_CODE_KEY = "lr_pending_tv_code";
+const TV_CODE_TTL_MS = 5 * 60 * 1000;
+
+/** Remembers a scanned TV code across the login screen (TV codes expire after 5 minutes). */
+export async function savePendingTvCode(code: string) {
+  await setItem(TV_CODE_KEY, JSON.stringify({ code, at: Date.now() }));
+}
+
+export async function consumePendingTvCode(): Promise<string | null> {
+  const raw = await getItem(TV_CODE_KEY);
+  if (!raw) return null;
+  await deleteItem(TV_CODE_KEY);
+  try {
+    const { code, at } = JSON.parse(raw) as { code: string; at: number };
+    return Date.now() - at < TV_CODE_TTL_MS ? code : null;
+  } catch {
+    return null;
+  }
+}
+
+export async function hasPendingTvCode() {
+  return Boolean(await getItem(TV_CODE_KEY));
+}
+
+/** Android TV build: opaque TV access token from parent approval (not a parent login). */
+const TV_ACCESS_KEY = "lr_tv_access";
+const TV_SOUND_KEY = "lr_tv_sound";
+
+export function getTvAccessToken() {
+  return getItem(TV_ACCESS_KEY);
+}
+
+export function saveTvAccessToken(token: string) {
+  return setItem(TV_ACCESS_KEY, token);
+}
+
+export function clearTvAccessToken() {
+  return deleteItem(TV_ACCESS_KEY);
+}
+
+export async function getTvSoundOn() {
+  return (await getItem(TV_SOUND_KEY)) !== "off";
+}
+
+export function saveTvSoundOn(on: boolean) {
+  return setItem(TV_SOUND_KEY, on ? "on" : "off");
+}
+
 export async function clearSession() {
   await clearToken();
   await clearRefreshToken();

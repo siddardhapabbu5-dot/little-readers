@@ -172,7 +172,7 @@ export async function uploadPolicyDocumentFile(
       fileName: safeOriginalName(file.originalname, def.downloadName),
       fileSize: file.size,
       fileSha256: createHash("sha256").update(file.buffer).digest("hex"),
-      fileData: file.buffer,
+      fileData: new Uint8Array(file.buffer),
       uploadedAt: new Date(),
       uploadedByUserId: userId,
       updatedByUserId: userId,

@@ -298,3 +298,21 @@ Tests use a mocked Google API (`setGooglePlayApiForTests`) and the Razorpay test
 - [ ] Separately, owner approves website payments → `RAZORPAY_ENABLED=true` (+ `RAZORPAY_LIVE_ENABLED=true` only after Razorpay activation).
 - [ ] Monitor `SubscriptionAuditEvent` and Admin → Subscriptions for the first real purchases.
 - [ ] Promote the Android build to production only after the above passes.
+
+## 13. Cashfree (third gateway, website only) — added 09 Nov 2026, local only
+
+**Where:** the website checkout (`/parent/checkout`) and the phone web app (`/app` agreements step). Never inside the Android/iOS app (`X-Client-Platform: android|ios` gets `USE_STORE_BILLING`; the native build has a stub that refuses).
+
+**Flags (all default off):** `PAYMENT_ENABLED` + `CASHFREE_ENABLED` + `CASHFREE_APP_ID` / `CASHFREE_SECRET_KEY`. `CASHFREE_ENV=sandbox` by default; `CASHFREE_ENV=production` is refused unless `CASHFREE_LIVE_ENABLED=true`.
+
+**Flow:**
+1. `POST /api/payments/cashfree/orders` — same plan/agreement/Google-Play-conflict checks as Razorpay; creates a Cashfree order (order id `lw_…`) and a `PENDING` Payment row (`provider=cashfree`, `providerRef=<order id>`). Cashfree requires a 10-digit mobile: the account's number is used, otherwise the parent is asked (`PHONE_REQUIRED`).
+2. Browser opens Cashfree JS SDK v3 (`_modal`). Redirect methods return to `/parent/checkout?cf_order_id=…` or `/app/payment-return?cf_order_id=…` (https only).
+3. `POST /api/payments/cashfree/verify` — server reads the order and its payments **from Cashfree**; access only on a `SUCCESS` payment with the exact amount. `PENDING` → "processing"; failed / dropped → `PAYMENT_NOT_COMPLETED`.
+4. `POST /api/payments/cashfree/webhook` — signature `base64(HMAC-SHA256(x-webhook-timestamp + rawBody, secret key))`, constant-time compare. Handles `PAYMENT_SUCCESS_WEBHOOK`, `PAYMENT_FAILED_WEBHOOK`, `PAYMENT_USER_DROPPED_WEBHOOK`, `REFUND_STATUS_WEBHOOK` (only `SUCCESS` refunds change access; partial refunds are cumulative).
+
+**Shared logic:** activation, period stacking and refunds reuse the Razorpay code (`activateVerifiedPayment`, `applyGatewayRefund`). Razorpay and Cashfree extend the same website subscription row. **No database migration** is needed.
+
+**Tests:** `server/tests/cashfree.test.ts` — 8 tests (flags / live block, native refusal + phone, verify-only activation + idempotency + receipt + ownership, amount mismatch, signed webhooks + duplicates, failed payments, refunds, stacking with Razorpay). Full suite: 182 passed, 8 pre-existing unrelated failures.
+
+**Not yet done (needs owner):** a real sandbox run needs Cashfree **test** App ID/Secret (dashboard → Switch to Test → Developers → API Keys) placed in the local `.env`. Production needs written approval, then: `PAYMENT_ENABLED=true`, `CASHFREE_ENABLED=true`, `CASHFREE_ENV=production`, `CASHFREE_LIVE_ENABLED=true`, live keys on the server only, and the webhook URL `https://api.siwiapp.shop/api/payments/cashfree/webhook` added in the Cashfree dashboard.

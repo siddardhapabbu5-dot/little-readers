@@ -252,10 +252,10 @@ export function providerManagement(provider: string | null | undefined) {
         "Managed by Google Play. To cancel or change, open Google Play → Profile → Payments & subscriptions → Subscriptions.",
     };
   }
-  if (provider === "razorpay") {
+  if (provider === "razorpay" || provider === "cashfree") {
     return {
-      provider: "razorpay",
-      label: "Website (Razorpay)",
+      provider,
+      label: provider === "cashfree" ? "Website (Cashfree)" : "Website (Razorpay)",
       canCancelHere: false,
       instructions:
         "Prepaid plan bought on the LEARN WISE website. It does not renew automatically, so there is nothing to cancel.",
@@ -718,7 +718,7 @@ export async function getAdminSubscriptionHistory(parentUserId: string) {
     eligible: current ? isSubscriptionRecordEligible(current) : false,
     subscriptions: subscriptions.map((s) => ({
       ...s,
-      gatewayPaid: s.provider === "google_play" || s.provider === "razorpay",
+      gatewayPaid: s.provider === "google_play" || s.provider === "razorpay" || s.provider === "cashfree",
     })),
     payments,
     events: events.map((e) => ({

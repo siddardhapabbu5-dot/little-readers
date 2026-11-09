@@ -12,12 +12,13 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Card, ErrorText, PrimaryButton, SoftButton, Title } from "../components/ui";
+import { Card, ErrorText, Field, PrimaryButton, SoftButton, Title } from "../components/ui";
 import { AuthGate } from "../components/AuthGate";
 import { RequireParentGate } from "../components/RequireParentGate";
 import { RegistrationSteps } from "../components/RegistrationSteps";
 import { API_URL, apiRequest, ApiError } from "../services/api";
 import { ROLE_SETS } from "../services/auth-errors";
+import { openCashfreeCheckout } from "../services/cashfree";
 import { CheckoutCancelled, openRazorpayCheckout } from "../services/razorpay";
 import { getUser } from "../services/secure";
 import { colors, radii } from "../theme";
@@ -50,6 +51,15 @@ type Order = {
   plan?: { label?: string; name?: string; durationMonths?: number };
 };
 
+type Gateways = { razorpay: boolean; cashfree: boolean };
+
+type CashfreeOrder = {
+  paymentId: string;
+  orderId: string;
+  paymentSessionId: string;
+  mode: "sandbox" | "production";
+};
+
 function formatWhen(value: string | null) {
   if (!value) return "";
   return new Date(value).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
@@ -68,6 +78,9 @@ export default function AgreementsScreen() {
   const [notice, setNotice] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [paying, setPaying] = useState(false);
+  const [gateways, setGateways] = useState<Gateways>({ razorpay: true, cashfree: false });
+  const [needPhone, setNeedPhone] = useState(false);
+  const [phone, setPhone] = useState("");
 
   const load = useCallback(async () => {
     try {
@@ -79,7 +92,55 @@ export default function AgreementsScreen() {
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Could not load agreements");
     }
-  }, []);
+    if (planId) {
+      const catalog = await apiRequest<{ keyId: string | null; gateways?: Gateways }>("/payments/plans").catch(
+        () => null
+      );
+      if (catalog) setGateways(catalog.gateways ?? { razorpay: Boolean(catalog.keyId), cashfree: false });
+    }
+  }, [planId]);
+
+  async function payWithCashfree() {
+    if (!planId) return;
+    setPaying(true);
+    setError(null);
+    setNotice(null);
+    try {
+      const order = await apiRequest<CashfreeOrder>("/payments/cashfree/orders", {
+        method: "POST",
+        body: JSON.stringify({ planId, phone: phone.trim() || undefined, returnTo: "app" }),
+      });
+      setNeedPhone(false);
+      const { redirected } = await openCashfreeCheckout({
+        paymentSessionId: order.paymentSessionId,
+        mode: order.mode,
+      });
+      if (redirected) return;
+      // Whatever the window reported, only Cashfree's own record (checked by the server) grants access.
+      const verified = await apiRequest<{ processing?: boolean; message?: string }>("/payments/cashfree/verify", {
+        method: "POST",
+        body: JSON.stringify({ orderId: order.orderId }),
+      });
+      if (verified?.processing) {
+        setNotice(verified.message ?? "Your payment is being confirmed. Access starts automatically once it completes.");
+        return;
+      }
+      router.replace(`/receipt/${order.paymentId}`);
+    } catch (err) {
+      if (err instanceof ApiError && err.code === "PHONE_REQUIRED") {
+        setNeedPhone(true);
+        setError("Cashfree needs a 10-digit mobile number. Enter it below and tap Pay again.");
+      } else if (err instanceof ApiError && err.code === "PAYMENT_NOT_COMPLETED") {
+        setNotice("Payment was not completed. You have not been charged. You can try again.");
+      } else if (err instanceof ApiError && err.code === "PLAN_PRICES_NOT_CONFIGURED") {
+        setError("Online payments are not open yet. Your agreements are saved — please try again later.");
+      } else {
+        setError(err instanceof Error ? err.message : "Payment failed");
+      }
+    } finally {
+      setPaying(false);
+    }
+  }
 
   useFocusEffect(
     useCallback(() => {
@@ -168,8 +229,10 @@ export default function AgreementsScreen() {
       });
       setStatus(next);
       setChecked({});
-      if (planId) await pay();
-      else if (storeFlow) router.replace("/subscription");
+      // With two gateways the parent picks one on the accepted card below.
+      if (planId && !(gateways.razorpay && gateways.cashfree)) {
+        await (gateways.cashfree && !gateways.razorpay ? payWithCashfree() : pay());
+      } else if (storeFlow) router.replace("/subscription");
       else router.replace("/parent");
     } catch (err) {
       if (err instanceof ApiError && err.code === "AGREEMENTS_OUTDATED") await load();
@@ -223,7 +286,34 @@ export default function AgreementsScreen() {
                   </View>
                 ))}
                 {planId ? (
-                  <PrimaryButton label="Continue to payment" onPress={() => void pay()} loading={paying} />
+                  <View style={{ gap: 8 }}>
+                    {needPhone ? (
+                      <Field
+                        label="Mobile number for Cashfree"
+                        value={phone}
+                        onChangeText={setPhone}
+                        keyboardType="phone-pad"
+                        maxLength={13}
+                        placeholder="10-digit mobile"
+                      />
+                    ) : null}
+                    {gateways.razorpay && gateways.cashfree ? (
+                      <>
+                        <PrimaryButton label="Pay with Razorpay" onPress={() => void pay()} loading={paying} />
+                        <PrimaryButton
+                          label="Pay with Cashfree (UPI, cards, net banking)"
+                          onPress={() => void payWithCashfree()}
+                          loading={paying}
+                        />
+                      </>
+                    ) : (
+                      <PrimaryButton
+                        label="Continue to payment"
+                        onPress={() => void (gateways.cashfree && !gateways.razorpay ? payWithCashfree() : pay())}
+                        loading={paying}
+                      />
+                    )}
+                  </View>
                 ) : storeFlow ? (
                   <PrimaryButton label="Back to subscription" onPress={() => router.replace("/subscription")} />
                 ) : (

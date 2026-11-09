@@ -31,8 +31,18 @@ type Plan = {
 type Catalog = {
   enabled: boolean;
   keyId: string | null;
+  gateways?: { razorpay: boolean; cashfree: boolean };
+  cashfreeMode?: "sandbox" | "production" | null;
   plans: Plan[];
   note: string | null;
+};
+
+type Gateway = "razorpay" | "cashfree";
+
+type CashfreeCheckoutResult = {
+  error?: { message?: string };
+  redirect?: boolean;
+  paymentDetails?: { paymentMessage?: string };
 };
 
 function formatMoney(paise: number, currency: string) {
@@ -48,7 +58,27 @@ declare global {
         cb: (resp: { error?: { description?: string; reason?: string } }) => void
       ) => void;
     };
+    Cashfree?: (opts: { mode: "sandbox" | "production" }) => {
+      checkout: (opts: {
+        paymentSessionId: string;
+        redirectTarget?: "_modal" | "_self";
+      }) => Promise<CashfreeCheckoutResult>;
+    };
   }
+}
+
+function loadCashfreeScript(): Promise<void> {
+  return new Promise((resolve, reject) => {
+    if (window.Cashfree) {
+      resolve();
+      return;
+    }
+    const s = document.createElement("script");
+    s.src = "https://sdk.cashfree.com/js/v3/cashfree.js";
+    s.onload = () => resolve();
+    s.onerror = () => reject(new Error("Failed to load Cashfree Checkout"));
+    document.body.appendChild(s);
+  });
 }
 
 function loadRazorpayScript(): Promise<void> {
@@ -78,6 +108,8 @@ export default function ParentCheckoutPage() {
     "pick"
   );
   const [pendingOrderId, setPendingOrderId] = useState<string | null>(null);
+  const [gateway, setGateway] = useState<Gateway>("razorpay");
+  const [phone, setPhone] = useState("");
 
   const load = useCallback(async (t: string) => {
     const data = await apiRequest<Catalog>("/payments/plans", { token: t });
@@ -85,6 +117,34 @@ export default function ParentCheckoutPage() {
     const first = data.plans[0];
     if (first) {
       setSelectedKey(first.planId ?? first.code ?? first.purpose);
+    }
+    const gw = data.gateways ?? { razorpay: Boolean(data.keyId), cashfree: false };
+    if (!gw.razorpay && gw.cashfree) setGateway("cashfree");
+  }, []);
+
+  const confirmCashfree = useCallback(async (t: string, orderId: string) => {
+    setBusy(true);
+    setPhase("pending");
+    setError(null);
+    try {
+      const verified = await apiRequest<{ processing?: boolean; message?: string }>(
+        "/payments/cashfree/verify",
+        { method: "POST", token: t, body: JSON.stringify({ orderId }) }
+      );
+      setPhase("success");
+      setMessage(
+        verified?.processing
+          ? verified.message ?? "Your payment is being confirmed. Access starts automatically once it completes."
+          : "Payment successful and verified. Your subscription / seats are now active."
+      );
+    } catch (e) {
+      setPhase("failure");
+      setError(
+        e instanceof ApiClientError ? e.message : "Verification failed — access was not granted"
+      );
+    } finally {
+      setPendingOrderId(null);
+      setBusy(false);
     }
   }, []);
 
@@ -96,8 +156,66 @@ export default function ParentCheckoutPage() {
     }
     setToken(t);
     void load(t).catch((e) => setError(String(e.message ?? e)));
-  }, [router, load]);
+    // Cashfree redirect-based methods (net banking, some UPI apps) return here with the order id.
+    const returned = new URLSearchParams(window.location.search).get("cf_order_id");
+    if (returned) {
+      window.history.replaceState(null, "", window.location.pathname);
+      void confirmCashfree(t, returned);
+    }
+  }, [router, load, confirmCashfree]);
 
+  async function startCashfreeCheckout() {
+    if (!token || !plan || !catalog) return;
+    setBusy(true);
+    setError(null);
+    setMessage(null);
+    setPhase("pending");
+    let orderId: string | null = null;
+    try {
+      const order = await apiRequest<{
+        orderId: string;
+        paymentSessionId: string;
+        mode: "sandbox" | "production";
+      }>("/payments/cashfree/orders", {
+        method: "POST",
+        token,
+        body: JSON.stringify({
+          planId: plan.planId,
+          purpose: plan.planId ? undefined : plan.purpose,
+          seats: plan.purpose === "EXTRA_SEATS" ? extraSeats : undefined,
+          phone: phone.trim() || undefined,
+          returnTo: "web",
+        }),
+      });
+      orderId = order.orderId;
+      setPendingOrderId(order.orderId);
+      await loadCashfreeScript();
+      if (!window.Cashfree) throw new Error("Cashfree Checkout unavailable");
+      const result = await window.Cashfree({ mode: order.mode }).checkout({
+        paymentSessionId: order.paymentSessionId,
+        redirectTarget: "_modal",
+      });
+      if (result.redirect) return;
+      // Closing the window or a failed attempt still asks the server: only Cashfree's record decides.
+      await confirmCashfree(token, order.orderId);
+    } catch (e) {
+      setPhase("failure");
+      setError(e instanceof ApiClientError ? e.message : String(e));
+      if (orderId) {
+        void apiRequest("/payments/cancel", {
+          method: "POST",
+          token,
+          body: JSON.stringify({ orderId }),
+        }).catch(() => undefined);
+      }
+      setBusy(false);
+    }
+  }
+
+  const gateways = catalog?.gateways ?? {
+    razorpay: Boolean(catalog?.keyId),
+    cashfree: false,
+  };
   const plan =
     catalog?.plans.find(
       (p) => (p.planId ?? p.code ?? p.purpose) === selectedKey
@@ -271,13 +389,15 @@ export default function ParentCheckoutPage() {
       {phase === "success" ? (
         <div className="panel">
           <strong>Payment successful</strong>
-          <p>Entitlements update only after server verification with Razorpay.</p>
+          <p>Entitlements update only after the server verifies the payment with the gateway.</p>
           <Link href="/parent">Back to parent dashboard</Link>
         </div>
       ) : null}
 
       {phase === "pending" && busy ? (
-        <Alert tone="info">Opening secure Razorpay checkout…</Alert>
+        <Alert tone="info">
+          {gateway === "cashfree" ? "Opening secure Cashfree checkout…" : "Opening secure Razorpay checkout…"}
+        </Alert>
       ) : null}
 
       {phase === "failure" && !busy ? (
@@ -360,15 +480,57 @@ export default function ParentCheckoutPage() {
                 {plan ? formatMoney(previewTotal, plan.currency) : "—"}
               </strong>
             </p>
+            {gateways.razorpay && gateways.cashfree ? (
+              <fieldset style={{ border: "1px solid #e5e7eb", borderRadius: 10, padding: 10, margin: "8px 0" }}>
+                <legend style={{ fontWeight: 700, fontSize: 14 }}>Pay with</legend>
+                <label style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                  <input
+                    type="radio"
+                    name="gateway"
+                    checked={gateway === "razorpay"}
+                    onChange={() => setGateway("razorpay")}
+                  />
+                  Razorpay
+                </label>
+                <label style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                  <input
+                    type="radio"
+                    name="gateway"
+                    checked={gateway === "cashfree"}
+                    onChange={() => setGateway("cashfree")}
+                  />
+                  Cashfree (UPI, cards, net banking, wallets)
+                </label>
+              </fieldset>
+            ) : null}
+            {gateway === "cashfree" ? (
+              <label style={{ display: "grid", gap: 4, fontSize: 14, margin: "8px 0" }}>
+                Mobile number (needed by Cashfree if not on your account)
+                <input
+                  type="tel"
+                  inputMode="numeric"
+                  maxLength={13}
+                  placeholder="10-digit mobile"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  style={{ padding: 8, borderRadius: 8, border: "1px solid #d1d5db" }}
+                />
+              </label>
+            ) : null}
             <p style={{ fontSize: 13, opacity: 0.75 }}>
-              Subscription activates only after server-side Razorpay verification.
-              Live payments stay disabled until production approval.
+              Subscription activates only after the server confirms the payment with{" "}
+              {gateway === "cashfree" ? "Cashfree" : "Razorpay"}.
+              {gateway === "cashfree" && catalog.cashfreeMode === "sandbox"
+                ? " Cashfree is in test mode — no real money is charged."
+                : ""}
             </p>
             <Button
               disabled={busy || !plan || !catalog.enabled}
-              onClick={() => void startCheckout()}
+              onClick={() =>
+                void (gateway === "cashfree" ? startCashfreeCheckout() : startCheckout())
+              }
             >
-              Pay securely with Razorpay
+              {gateway === "cashfree" ? "Pay securely with Cashfree" : "Pay securely with Razorpay"}
             </Button>
           </div>
         </>

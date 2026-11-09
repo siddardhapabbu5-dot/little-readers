@@ -473,7 +473,7 @@ export default function SubscriptionScreen() {
                     {p.provider === "google_play" ? " · Google Play" : ""}
                     {p.seatsPurchased ? ` · +${p.seatsPurchased} seats` : ""}
                   </Text>
-                  {p.status === "SUCCEEDED" && p.provider === "razorpay" ? (
+                  {p.status === "SUCCEEDED" && (p.provider === "razorpay" || p.provider === "cashfree") ? (
                     <SoftButton label="Receipt" onPress={() => router.push(`/receipt/${p.id}`)} />
                   ) : null}
                 </View>

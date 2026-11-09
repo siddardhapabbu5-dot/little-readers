@@ -23,6 +23,9 @@ type Receipt = {
   taxPaise: number;
   totalPaise: number;
   currency: string;
+  provider?: string;
+  gatewayOrderId?: string | null;
+  gatewayPaymentId?: string | null;
   razorpayOrderId: string | null;
   razorpayPaymentId: string | null;
   subscriptionStartsAt?: string | null;
@@ -92,8 +95,11 @@ export default function ReceiptScreen() {
           ? ([["Tax", money(receipt.taxPaise, receipt.currency)]] as [string, string][])
           : []),
         ["Total paid", money(receipt.totalPaise, receipt.currency)],
-        ["Payment ID", receipt.razorpayPaymentId ?? "—"],
-        ["Order ID", receipt.razorpayOrderId ?? "—"],
+        ...(receipt.provider === "cashfree"
+          ? ([["Paid via", "Cashfree"]] as [string, string][])
+          : []),
+        ["Payment ID", receipt.gatewayPaymentId ?? receipt.razorpayPaymentId ?? "—"],
+        ["Order ID", receipt.gatewayOrderId ?? receipt.razorpayOrderId ?? "—"],
       ]
     : [];
 

@@ -6,6 +6,7 @@ import {
   type AuthenticatedRequest,
 } from "../middleware/auth.js";
 import { validateBody } from "../middleware/validate.js";
+import * as cashfreeService from "./cashfree.service.js";
 import * as googlePlay from "./google-play.js";
 import * as paymentService from "./payment.service.js";
 
@@ -129,6 +130,69 @@ paymentsRouter.post(
         req.header("x-client-platform") ?? undefined
       );
       res.status(201).json({ data });
+    } catch (e) {
+      next(e);
+    }
+  }
+);
+
+const checkoutPurpose = z
+  .enum(["FAMILY_MONTHLY", "FAMILY_YEARLY", "FAMILY_3_MONTH", "FAMILY_6_MONTH", "EXTRA_SEATS"])
+  .optional();
+
+paymentsRouter.post(
+  "/cashfree/orders",
+  requireAuth,
+  requireRoles("PARENT", "ADMIN", "SUPER_ADMIN"),
+  validateBody(
+    z.object({
+      purpose: checkoutPurpose,
+      planId: z.string().min(1).optional(),
+      seats: z.number().int().min(1).max(20).optional(),
+      phone: z.string().min(10).max(16).optional(),
+      returnTo: z.enum(["web", "app"]).optional(),
+    })
+  ),
+  async (req: AuthenticatedRequest, res, next) => {
+    try {
+      const data = await cashfreeService.createCashfreeOrder(
+        req.user!.id,
+        req.body,
+        req.header("x-client-platform") ?? undefined
+      );
+      res.status(201).json({ data });
+    } catch (e) {
+      next(e);
+    }
+  }
+);
+
+paymentsRouter.post(
+  "/cashfree/verify",
+  requireAuth,
+  requireRoles("PARENT", "ADMIN", "SUPER_ADMIN"),
+  validateBody(z.object({ orderId: z.string().min(3).max(64) })),
+  async (req: AuthenticatedRequest, res, next) => {
+    try {
+      res.json({ data: await cashfreeService.verifyCashfreeOrder(req.user!.id, req.body.orderId) });
+    } catch (e) {
+      next(e);
+    }
+  }
+);
+
+/** Cashfree webhooks — signed over the raw body (captured in app.ts for this path). */
+paymentsRouter.post(
+  "/cashfree/webhook",
+  async (req: AuthenticatedRequest & { rawBody?: string }, res, next) => {
+    try {
+      const raw = typeof req.rawBody === "string" ? req.rawBody : JSON.stringify(req.body ?? {});
+      const data = await cashfreeService.handleCashfreeWebhook(
+        raw,
+        req.header("x-webhook-signature") ?? undefined,
+        req.header("x-webhook-timestamp") ?? undefined
+      );
+      res.status(200).json({ data });
     } catch (e) {
       next(e);
     }

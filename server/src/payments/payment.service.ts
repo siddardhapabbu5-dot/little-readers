@@ -21,6 +21,7 @@ import {
   purposeForDuration,
 } from "../academic/subscription-plan.service.js";
 import { assertAgreementsAccepted } from "../agreements/agreements.service.js";
+import { cashfreeEnabled, cashfreeMode } from "./cashfree.js";
 import {
   getRazorpayClient,
   liveKeyBlocked,
@@ -128,21 +129,28 @@ export async function getPlansCatalog(levelId?: string) {
   mapped.push(...envPlans);
 
   const liveBlocked = liveKeyBlocked();
-  const gatewayOn = paymentsEnabled();
-  const enabled = Boolean(gatewayOn && hasSubscriptionPlans && !liveBlocked);
+  const razorpayOn = Boolean(paymentsEnabled() && !liveBlocked);
+  const cashfreeOn = cashfreeEnabled();
+  const gatewayOn = razorpayOn || cashfreeOn;
+  const enabled = Boolean(gatewayOn && hasSubscriptionPlans);
   return {
     enabled,
     currency: mapped[0]?.currency ?? "INR",
-    keyId: enabled ? publicKeyId() : null,
+    keyId: enabled && razorpayOn ? publicKeyId() : null,
+    gateways: {
+      razorpay: enabled && razorpayOn,
+      cashfree: enabled && cashfreeOn,
+    },
+    cashfreeMode: enabled && cashfreeOn ? cashfreeMode() : null,
     plans: mapped,
     dbCatalog: dbPlans.length > 0,
     note: !gatewayOn
-      ? "Online payments are not open yet."
-      : liveBlocked
+      ? liveBlocked && paymentsEnabled()
         ? "Checkout is paused: live Razorpay keys are not approved yet."
-        : hasSubscriptionPlans
-          ? null
-          : "No published subscription plans yet. Ask Admin to publish plans.",
+        : "Online payments are not open yet."
+      : hasSubscriptionPlans
+        ? null
+        : "No published subscription plans yet. Ask Admin to publish plans.",
     gatewayReady: enabled,
   };
 }
@@ -155,18 +163,24 @@ const FAMILY_PURPOSES = new Set([
   "FAMILY_6_MONTH",
 ]);
 
-/** Razorpay extends only its own row; store-managed and manual rows are never relabelled. */
+/** Website gateways share one prepaid row; store-managed and manual rows are never relabelled. */
+export const WEB_PAYMENT_PROVIDERS = new Set(["razorpay", "cashfree"]);
+
 async function latestWebSubscription(userId: string, tx: Prisma.TransactionClient) {
   return tx.subscription.findFirst({
-    where: { userId, provider: "razorpay" },
+    where: { userId, provider: { in: [...WEB_PAYMENT_PROVIDERS] } },
     orderBy: { createdAt: "desc" },
   });
 }
 
-export async function createCheckoutOrder(
+export type CheckoutInput = { purpose?: PlanPurpose; seats?: number; planId?: string };
+
+/** Shared website-checkout guards and price lookup; the caller creates the gateway order. */
+export async function resolveCheckoutPlan(
   userId: string,
-  input: { purpose?: PlanPurpose; seats?: number; planId?: string },
-  clientPlatform?: string
+  input: CheckoutInput,
+  clientPlatform: string | undefined,
+  gatewayReady: boolean
 ) {
   if (clientPlatform && NATIVE_APP_PLATFORMS.has(clientPlatform.toLowerCase())) {
     throw new AppError(
@@ -176,7 +190,7 @@ export async function createCheckoutOrder(
     );
   }
   await assertAgreementsAccepted(userId);
-  if (!paymentsEnabled() || !publicKeyId()) {
+  if (!gatewayReady) {
     throw new AppError("Checkout is not configured", 503, {
       code: "PLAN_PRICES_NOT_CONFIGURED",
     });
@@ -274,6 +288,21 @@ export async function createCheckoutOrder(
     }
   }
 
+  return { plan, durationMonths, snapshot };
+}
+
+export async function createCheckoutOrder(
+  userId: string,
+  input: CheckoutInput,
+  clientPlatform?: string
+) {
+  const { plan, durationMonths, snapshot } = await resolveCheckoutPlan(
+    userId,
+    input,
+    clientPlatform,
+    Boolean(paymentsEnabled() && publicKeyId())
+  );
+
   const receipt = `lr_${userId.slice(-6)}_${Date.now()}`.slice(0, 40);
   const client = getRazorpayClient();
   const order = await client.createOrder({
@@ -322,9 +351,10 @@ export async function createCheckoutOrder(
   };
 }
 
-async function activateVerifiedPayment(
+/** Grants access for a gateway-verified website payment (Razorpay or Cashfree). Idempotent. */
+export async function activateVerifiedPayment(
   paymentRowId: string,
-  razorpayPaymentId: string,
+  gatewayPaymentId: string,
   opts?: { eventId?: string }
 ) {
   return prisma.$transaction(async (tx) => {
@@ -350,6 +380,8 @@ async function activateVerifiedPayment(
     }
 
     const purpose = payment.purpose as PlanPurpose | "MANUAL_ADMIN";
+    const provider = payment.provider;
+    const isRazorpay = provider === "razorpay";
     const now = new Date();
 
     // Family plans extend the website row; add-on seats attach to the row that grants access.
@@ -435,8 +467,8 @@ async function activateVerifiedPayment(
             expiresAt,
             graceEndsAt: null,
             cancelledAt: null,
-            provider: "razorpay",
-            providerRef: razorpayPaymentId,
+            provider,
+            providerRef: gatewayPaymentId,
             includedSeats,
             startedAt: subscription.startedAt ?? now,
             productId: payment.planCode,
@@ -453,8 +485,8 @@ async function activateVerifiedPayment(
             status: "ACTIVE",
             startedAt: now,
             expiresAt,
-            provider: "razorpay",
-            providerRef: razorpayPaymentId,
+            provider,
+            providerRef: gatewayPaymentId,
             includedSeats,
             extraSeats: 0,
             productId: payment.planCode,
@@ -475,12 +507,13 @@ async function activateVerifiedPayment(
       });
     }
 
+    if (!isRazorpay) meta.gatewayPaymentId = gatewayPaymentId;
     const updated = await tx.payment.update({
       where: { id: payment.id },
       data: {
         status: "SUCCEEDED",
         paidAt: now,
-        razorpayPaymentId,
+        ...(isRazorpay ? { razorpayPaymentId: gatewayPaymentId } : {}),
         receiptNumber: payment.receiptNumber ?? receiptNumberFor(payment.id, now),
         subscriptionId: subscription?.id ?? payment.subscriptionId,
         rawEventId: opts?.eventId ?? payment.rawEventId,
@@ -493,15 +526,15 @@ async function activateVerifiedPayment(
         userId: payment.userId,
         subscriptionId: subscription?.id ?? null,
         paymentId: payment.id,
-        provider: "razorpay",
-        source: opts?.eventId ? "razorpay_webhook" : "razorpay_verify",
+        provider,
+        source: opts?.eventId ? `${provider}_webhook` : `${provider}_verify`,
         eventType: purpose === "EXTRA_SEATS" ? "EXTRA_SEATS_PAID" : "PAYMENT_CAPTURED",
-        providerEventId: opts?.eventId ? `razorpay:${opts.eventId}` : null,
+        providerEventId: opts?.eventId ? `${provider}:${opts.eventId}` : null,
         fromStatus: previousStatus,
         toStatus: subscription?.status ?? null,
         details: {
-          orderId: payment.razorpayOrderId,
-          paymentId: razorpayPaymentId,
+          orderId: payment.razorpayOrderId ?? payment.providerRef,
+          paymentId: gatewayPaymentId,
           amount: payment.amountCents,
           currency: payment.currency,
           planCode: payment.planCode,
@@ -674,8 +707,9 @@ export async function handleWebhook(rawBody: string, signature: string | undefin
     const refund = payload.payload?.refund?.entity;
     const paymentId = refund?.payment_id;
     if (!paymentId) return { ignored: true };
-    return applyRazorpayRefund({
-      razorpayPaymentId: paymentId,
+    return applyGatewayRefund({
+      provider: "razorpay",
+      paymentWhere: { razorpayPaymentId: paymentId, provider: "razorpay" },
       refundAmount: refund?.amount,
       refundId: refund?.id ?? null,
       eventId,
@@ -690,19 +724,20 @@ export async function handleWebhook(rawBody: string, signature: string | undefin
 }
 
 /**
- * A processed full refund removes the refunded period from the Razorpay row (access ends now if
+ * A processed full refund removes the refunded period from the website row (access ends now if
  * nothing else remains). Partial refunds and add-on seat refunds are recorded for Admin review.
  */
-async function applyRazorpayRefund(input: {
-  razorpayPaymentId: string;
+export async function applyGatewayRefund(input: {
+  provider: "razorpay" | "cashfree";
+  paymentWhere: Prisma.PaymentWhereInput;
+  /** Paise. */
   refundAmount?: number;
   refundId: string | null;
   eventId: string;
 }) {
+  const provider = input.provider;
   return prisma.$transaction(async (tx) => {
-    const found = await tx.payment.findFirst({
-      where: { razorpayPaymentId: input.razorpayPaymentId, provider: "razorpay" },
-    });
+    const found = await tx.payment.findFirst({ where: input.paymentWhere });
     if (!found) return { ignored: true as const, reason: "unknown payment" };
     await tx.$executeRaw`SELECT id FROM "Payment" WHERE id = ${found.id} FOR UPDATE`;
     const payment = await tx.payment.findUnique({ where: { id: found.id } });
@@ -742,10 +777,10 @@ async function applyRazorpayRefund(input: {
           userId: payment.userId,
           subscriptionId: payment.subscriptionId,
           paymentId: payment.id,
-          provider: "razorpay",
-          source: "razorpay_webhook",
+          provider,
+          source: `${provider}_webhook`,
           eventType: "PARTIAL_REFUND",
-          providerEventId: `razorpay:${input.eventId}`,
+          providerEventId: `${provider}:${input.eventId}`,
           details: { refundAmount: input.refundAmount, paymentAmount: payment.amountCents },
         },
         tx
@@ -771,7 +806,7 @@ async function applyRazorpayRefund(input: {
     ) {
       await tx.$executeRaw`SELECT id FROM "Subscription" WHERE id = ${payment.subscriptionId} FOR UPDATE`;
       const sub = await tx.subscription.findUnique({ where: { id: payment.subscriptionId } });
-      if (sub && sub.provider === "razorpay") {
+      if (sub && WEB_PAYMENT_PROVIDERS.has(sub.provider ?? "")) {
         const now = new Date();
         const refundedMs = end.getTime() - start.getTime();
         const nextExpiry = new Date(Math.max(sub.expiresAt.getTime() - refundedMs, now.getTime()));
@@ -798,11 +833,11 @@ async function applyRazorpayRefund(input: {
         userId: payment.userId,
         subscriptionId: subscriptionChange?.id ?? payment.subscriptionId,
         paymentId: payment.id,
-        provider: "razorpay",
-        source: "razorpay_webhook",
+        provider,
+        source: `${provider}_webhook`,
         eventType:
           payment.purpose === "EXTRA_SEATS" ? "REFUND_EXTRA_SEATS_ADMIN_REVIEW" : "REFUND_PROCESSED",
-        providerEventId: `razorpay:${input.eventId}`,
+        providerEventId: `${provider}:${input.eventId}`,
         fromStatus: subscriptionChange?.from ?? null,
         toStatus: subscriptionChange?.to ?? null,
         details: {
@@ -832,7 +867,10 @@ export async function cancelPendingPayment(
   const payment = await prisma.payment.findFirst({
     where: input.paymentId
       ? { id: input.paymentId, userId }
-      : { razorpayOrderId: input.orderId!, userId },
+      : {
+          userId,
+          OR: [{ razorpayOrderId: input.orderId! }, { providerRef: input.orderId!, provider: "cashfree" }],
+        },
   });
   if (!payment) throw new AppError("Payment not found", 404);
   if (payment.status === "SUCCEEDED") {
@@ -905,6 +943,7 @@ export async function getPaymentReceipt(userId: string, paymentId: string) {
     periodStartsAt?: string;
     periodEndsAt?: string;
     childNames?: string[];
+    gatewayPaymentId?: string;
   } = {};
   try {
     meta = payment.metadataJson ? JSON.parse(payment.metadataJson) : {};
@@ -937,6 +976,9 @@ export async function getPaymentReceipt(userId: string, paymentId: string) {
     taxPaise: tax,
     totalPaise: total,
     currency: payment.currency,
+    provider: payment.provider,
+    gatewayOrderId: payment.razorpayOrderId ?? payment.providerRef,
+    gatewayPaymentId: payment.razorpayPaymentId ?? meta.gatewayPaymentId ?? null,
     razorpayOrderId: payment.razorpayOrderId,
     razorpayPaymentId: payment.razorpayPaymentId,
     subscriptionStartsAt: startsAt,

@@ -227,7 +227,8 @@ export default function AdminSubscriptionsPage() {
       {message ? <Alert tone="success">{message}</Alert> : null}
       <p style={{ color: "#94a3b8" }}>
         Providers: <code>google_play</code> (Android app, managed in Google Play),{" "}
-        <code>razorpay</code> (website, prepaid) and <code>manual_admin</code> (free grants).
+        <code>razorpay</code> and <code>cashfree</code> (website, prepaid) and{" "}
+        <code>manual_admin</code> (free grants).
         Access is decided only by server-verified records. Revoke is blocked while seats are
         occupied beyond remaining capacity.
       </p>

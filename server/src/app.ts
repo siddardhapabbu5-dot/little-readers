@@ -33,9 +33,9 @@ export function createApp() {
       credentials: true,
     })
   );
-  // Capture raw body for Razorpay webhook HMAC (must run before general JSON parser).
+  // Capture raw body for Razorpay / Cashfree webhook HMAC (must run before general JSON parser).
   app.use(
-    "/api/payments/webhook",
+    ["/api/payments/webhook", "/api/payments/cashfree/webhook"],
     express.json({
       limit: "1mb",
       verify: (req, _res, buf) => {

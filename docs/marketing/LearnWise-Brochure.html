@@ -1,0 +1,286 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>LEARN WISE – Grade 1 Reading & Spelling App</title>
+<style>
+  @page { size: A4; margin: 0; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    font-family: "Segoe UI", "Nunito", Arial, sans-serif;
+    color: #1e1b4b;
+    -webkit-print-color-adjust: exact; print-color-adjust: exact;
+  }
+  .page {
+    width: 210mm; height: 297mm; position: relative; overflow: hidden;
+    page-break-after: always; padding: 16mm 15mm;
+  }
+  .page:last-child { page-break-after: auto; }
+  h1, h2, h3 { margin: 0; font-weight: 900; letter-spacing: -0.3px; }
+  p { margin: 0; line-height: 1.5; }
+  .ill { image-rendering: auto; }
+  img { display: block; }
+
+  /* ---------- Cover ---------- */
+  .cover {
+    background:
+      radial-gradient(circle at 15% 12%, #fff7c2 0 14%, transparent 15%),
+      radial-gradient(circle at 92% 30%, #ffd9e8 0 10%, transparent 11%),
+      linear-gradient(165deg, #fff3e6 0%, #ffe1c7 45%, #ffc9a3 100%);
+    text-align: center; padding-top: 20mm;
+  }
+  .brand-pill {
+    display: inline-block; background: #1e1b4b; color: #fff; font-weight: 800;
+    padding: 6px 16px; border-radius: 999px; font-size: 12px; letter-spacing: 2px;
+  }
+  .cover h1 {
+    font-size: 64px; margin-top: 10mm; line-height: 1;
+    background: linear-gradient(90deg, #ff5a36, #ff9a1f);
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+  }
+  .tagline { font-size: 18px; font-weight: 800; color: #c2410c; margin-top: 4mm; letter-spacing: 3px; }
+  .cover .lead { font-size: 18px; max-width: 150mm; margin: 6mm auto 0; color: #3b2f63; }
+  .cover .hero { width: 150mm; margin: 6mm auto 0; filter: drop-shadow(0 12px 18px rgba(194,65,12,.25)); }
+  .stats { display: flex; gap: 5mm; justify-content: center; margin-top: 4mm; }
+  .stat {
+    background: #fff; border-radius: 18px; padding: 4mm 6mm; min-width: 40mm;
+    box-shadow: 0 6px 16px rgba(194,65,12,.15);
+  }
+  .stat b { display: block; font-size: 28px; color: #ff5a36; }
+  .stat span { font-size: 12px; font-weight: 700; color: #4b4473; }
+  .cover-foot {
+    position: absolute; left: 0; right: 0; bottom: 12mm; font-weight: 800; font-size: 16px; color: #1e1b4b;
+  }
+  .cover-foot small { display: block; font-weight: 600; font-size: 12px; color: #6b5f8f; margin-top: 1mm; }
+
+  /* ---------- Shared section bits ---------- */
+  .eyebrow { font-size: 12px; font-weight: 800; letter-spacing: 2px; color: #ff5a36; text-transform: uppercase; }
+  .title { font-size: 34px; margin-top: 2mm; }
+  .sub { font-size: 14px; color: #4b4473; margin-top: 2mm; max-width: 165mm; }
+
+  /* ---------- Page 2: activities + topics ---------- */
+  .p2 { background: linear-gradient(180deg, #f0f7ff 0%, #ffffff 60%); }
+  .acts { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4mm; margin-top: 7mm; }
+  .act {
+    background: #fff; border-radius: 18px; padding: 4mm; text-align: center;
+    border: 2px solid #dbeafe; box-shadow: 0 4px 12px rgba(30,64,175,.08);
+  }
+  .act img { width: 26mm; height: 26mm; object-fit: contain; margin: 0 auto 2mm; }
+  .act h3 { font-size: 15px; }
+  .act p { font-size: 11.5px; color: #4b4473; margin-top: 1mm; }
+  .topics { display: grid; grid-template-columns: repeat(5, 1fr); gap: 3mm; margin-top: 6mm; }
+  .topic {
+    background: #fff7ed; border-radius: 14px; padding: 3mm 2mm; text-align: center;
+    border: 2px solid #fed7aa;
+  }
+  .topic img { width: 18mm; height: 18mm; object-fit: contain; margin: 0 auto 1mm; }
+  .topic span { font-size: 11.5px; font-weight: 800; }
+
+  /* ---------- Page 3: parents, safety, schools ---------- */
+  .p3 { background: linear-gradient(180deg, #fff 0%, #fdf4ff 100%); }
+  .split { margin-top: 6mm; }
+  .checks {
+    list-style: none; padding: 0; margin: 0;
+    display: grid; grid-template-columns: 1fr 1fr; column-gap: 8mm;
+  }
+  .checks li {
+    position: relative; padding: 3mm 0 3mm 10mm; font-size: 13.5px; border-bottom: 1px dashed #e9d5ff;
+  }
+  .checks li::before {
+    content: "✓"; position: absolute; left: 0; top: 2mm; width: 7mm; height: 7mm; border-radius: 50%;
+    background: #22c55e; color: #fff; font-weight: 900; font-size: 13px; text-align: center; line-height: 7mm;
+  }
+  .checks b { color: #1e1b4b; }
+  .reward-art {
+    display: flex; gap: 10mm; justify-content: center; align-items: flex-end; margin-top: 6mm;
+    background: radial-gradient(ellipse at center, #fef3c7 0%, transparent 70%); padding: 4mm 0;
+  }
+  .reward-art img { width: 38mm; filter: drop-shadow(0 8px 12px rgba(126,34,206,.2)); }
+  .reward-art img.big { width: 52mm; }
+  .safety {
+    margin-top: 8mm; background: #1e1b4b; color: #fff; border-radius: 20px; padding: 6mm 7mm;
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 5mm;
+  }
+  .safety h3 { font-size: 15px; color: #fde68a; }
+  .safety p { font-size: 12px; color: #e0e7ff; margin-top: 1mm; }
+  .schools {
+    margin-top: 8mm; border-radius: 20px; padding: 6mm 7mm;
+    background: linear-gradient(135deg, #dcfce7, #e0f2fe); border: 2px solid #bbf7d0;
+  }
+  .schools h2 { font-size: 22px; }
+  .schools .row { display: flex; gap: 3mm; flex-wrap: wrap; margin-top: 3mm; }
+  .chip { background: #fff; border-radius: 999px; padding: 2mm 4mm; font-size: 12px; font-weight: 800; color: #065f46; }
+
+  /* ---------- Page 4: pricing + CTA ---------- */
+  .p4 { background: linear-gradient(170deg, #1e1b4b 0%, #3b1d78 55%, #6d28d9 100%); color: #fff; }
+  .p4 .eyebrow { color: #fdba74; }
+  .p4 .sub { color: #ddd6fe; }
+  .plans { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4mm; margin-top: 8mm; }
+  .plan {
+    background: #fff; color: #1e1b4b; border-radius: 20px; padding: 6mm 3mm; text-align: center; position: relative;
+  }
+  .plan .name { font-size: 14px; font-weight: 800; color: #6b5f8f; }
+  .plan .price { font-size: 34px; font-weight: 900; margin-top: 2mm; color: #1e1b4b; }
+  .plan .per { font-size: 11.5px; color: #6b5f8f; margin-top: 1mm; }
+  .plan.best { background: linear-gradient(160deg, #fff7ed, #ffedd5); outline: 3px solid #ff9a1f; }
+  .badge {
+    position: absolute; top: -3.5mm; left: 50%; transform: translateX(-50%);
+    background: #ff5a36; color: #fff; font-size: 10.5px; font-weight: 900; padding: 1.2mm 3mm; border-radius: 999px;
+    white-space: nowrap; letter-spacing: .5px;
+  }
+  .fine { margin-top: 4mm; font-size: 12px; color: #c4b5fd; text-align: center; }
+  .steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4mm; margin-top: 9mm; }
+  .step { background: rgba(255,255,255,.1); border: 1px solid rgba(255,255,255,.2); border-radius: 18px; padding: 5mm; }
+  .step .n {
+    width: 9mm; height: 9mm; border-radius: 50%; background: #ff9a1f; color: #1e1b4b; font-weight: 900;
+    text-align: center; line-height: 9mm; font-size: 16px;
+  }
+  .step h3 { font-size: 15px; margin-top: 2mm; }
+  .step p { font-size: 12px; color: #ddd6fe; margin-top: 1mm; }
+  .cta {
+    margin-top: 9mm; background: #fff; color: #1e1b4b; border-radius: 22px; padding: 6mm 7mm;
+    display: grid; grid-template-columns: 1fr 38mm; gap: 6mm; align-items: center;
+  }
+  .cta h2 { font-size: 26px; }
+  .cta .url { font-size: 22px; font-weight: 900; color: #ff5a36; margin-top: 2mm; }
+  .cta p { font-size: 12.5px; color: #4b4473; margin-top: 2mm; }
+  .cta img { width: 38mm; height: 38mm; }
+  .contact { position: absolute; left: 15mm; right: 15mm; bottom: 14mm; font-size: 12px; color: #ddd6fe; line-height: 1.7; text-align: center; }
+  .contact b { color: #fff; }
+</style>
+</head>
+<body>
+
+<!-- ================= PAGE 1: COVER ================= -->
+<section class="page cover">
+  <span class="brand-pill">GRADE 1 · READING & SPELLING</span>
+  <h1>LEARN WISE</h1>
+  <div class="tagline">READ • SPELL • LEARN • SUCCEED</div>
+  <p class="lead">A fun, parent-guided app that helps Grade 1 children learn
+    <b>750 everyday English words</b> through listening, spelling, quizzes and games –
+    at home, at their own pace.</p>
+  <img class="hero ill" src="../../apps/mobile/assets/illustrations/hero-kids.png" alt="" />
+  <div class="stats">
+    <div class="stat"><b>750</b><span>Everyday words</span></div>
+    <div class="stat"><b>10</b><span>Fun topics</span></div>
+    <div class="stat"><b>6</b><span>Activity types</span></div>
+    <div class="stat"><b>3</b><span>Web · Android · TV</span></div>
+  </div>
+  <div class="cover-foot">siwiapp.shop<small>by SIWI · Made in India for young learners</small></div>
+</section>
+
+<!-- ================= PAGE 2: HOW IT WORKS ================= -->
+<section class="page p2">
+  <div class="eyebrow">How children learn</div>
+  <h2 class="title">Short, colourful activities that build real skills</h2>
+  <p class="sub">Every word is learnt the same proven way – hear it, see it, spell it and practise it again –
+    so reading and spelling confidence grows day by day.</p>
+
+  <div class="acts">
+    <div class="act"><img src="../../apps/mobile/assets/illustrations/act-listen.png" alt="" />
+      <h3>🎧 Listen &amp; Choose</h3><p>Hear a word and pick the right picture.</p></div>
+    <div class="act"><img src="../../apps/mobile/assets/illustrations/act-spell.png" alt="" />
+      <h3>✏️ Spell It</h3><p>Build spelling confidence letter by letter.</p></div>
+    <div class="act"><img src="../../apps/mobile/assets/illustrations/act-quiz.png" alt="" />
+      <h3>❓ Quiz</h3><p>Quick checks that reinforce every word.</p></div>
+    <div class="act"><img src="../../apps/mobile/assets/illustrations/act-match.png" alt="" />
+      <h3>🧩 Matching</h3><p>Match words and pictures to lock in meaning.</p></div>
+    <div class="act"><img src="../../apps/mobile/assets/illustrations/act-revision.png" alt="" />
+      <h3>🔁 Revision</h3><p>Revisit tricky words until they stick.</p></div>
+    <div class="act"><img src="../../apps/mobile/assets/illustrations/act-surprise.png" alt="" />
+      <h3>🎁 Surprise Games</h3><p>Playful rounds that keep learning exciting.</p></div>
+  </div>
+
+  <div class="eyebrow" style="margin-top:9mm">10 topics from a child's world</div>
+  <div class="topics">
+    <div class="topic"><img src="../../apps/mobile/assets/illustrations/cat-animals.png" alt="" /><span>Animals</span></div>
+    <div class="topic"><img src="../../apps/mobile/assets/illustrations/cat-fruits.png" alt="" /><span>Fruits</span></div>
+    <div class="topic"><img src="../../apps/mobile/assets/illustrations/cat-food.png" alt="" /><span>Food</span></div>
+    <div class="topic"><img src="../../apps/mobile/assets/illustrations/cat-colors.png" alt="" /><span>Colours</span></div>
+    <div class="topic"><img src="../../apps/mobile/assets/illustrations/cat-body.png" alt="" /><span>My Body</span></div>
+    <div class="topic"><img src="../../apps/mobile/assets/illustrations/cat-family.png" alt="" /><span>Family</span></div>
+    <div class="topic"><img src="../../apps/mobile/assets/illustrations/cat-household.png" alt="" /><span>Home</span></div>
+    <div class="topic"><img src="../../apps/mobile/assets/illustrations/cat-school.png" alt="" /><span>School</span></div>
+    <div class="topic"><img src="../../apps/mobile/assets/illustrations/cat-nature.png" alt="" /><span>Nature</span></div>
+    <div class="topic"><img src="../../apps/mobile/assets/illustrations/cat-action.png" alt="" /><span>Action Words</span></div>
+  </div>
+</section>
+
+<!-- ================= PAGE 3: PARENTS, SAFETY, SCHOOLS ================= -->
+<section class="page p3">
+  <div class="eyebrow">For parents</div>
+  <h2 class="title">You stay in control. They have fun.</h2>
+
+  <div class="split">
+    <ul class="checks">
+      <li><b>Parent dashboard</b> – follow reading, spelling and learning progress from home.</li>
+      <li><b>Multiple child profiles</b> – each child learns at their own pace.</li>
+      <li><b>Parent PIN</b> – protects settings and payments from little fingers.</li>
+      <li><b>Stars, achievements &amp; certificates</b> – celebrate every milestone.</li>
+      <li><b>Learn anywhere</b> – website, Android phone or tablet, and Android TV.</li>
+      <li><b>Hear every word</b> – clear audio helps children connect sounds and spelling.</li>
+    </ul>
+    <div class="reward-art">
+      <img src="../../apps/mobile/assets/illustrations/star-goal.png" alt="" />
+      <img class="big" src="../../apps/mobile/assets/illustrations/trophy.png" alt="" />
+      <img src="../../apps/mobile/assets/illustrations/certificate.png" alt="" />
+    </div>
+  </div>
+
+  <div class="safety">
+    <div><h3>🛡️ Child-safe by design</h3><p>No chat and no social features – children only see learning.</p></div>
+    <div><h3>👨‍👩‍👧 Parent-guided</h3><p>Accounts are created and managed by parents with consent.</p></div>
+    <div><h3>🔒 Secure payments</h3><p>Payments happen in the parent area, behind the parent PIN.</p></div>
+  </div>
+
+  <div class="schools">
+    <div class="eyebrow" style="color:#047857">For schools</div>
+    <h2>Bring LEARN WISE to your Grade 1 classrooms</h2>
+    <p class="sub" style="color:#065f46">Annual school subscriptions with dedicated school-admin and teacher portals.</p>
+    <div class="row">
+      <span class="chip">🏫 Multi-school support</span>
+      <span class="chip">👩‍🏫 Teacher portal</span>
+      <span class="chip">📚 Classes &amp; assignments</span>
+      <span class="chip">📊 Progress reports</span>
+    </div>
+  </div>
+</section>
+
+<!-- ================= PAGE 4: PRICING + CTA ================= -->
+<section class="page p4">
+  <div class="eyebrow">Simple, prepaid plans</div>
+  <h2 class="title">One payment. Full Grade 1 programme.</h2>
+  <p class="sub">Every plan unlocks all activities, all 10 topics, rewards and certificates on the website and Android app.</p>
+
+  <div class="plans">
+    <div class="plan"><div class="name">Monthly</div><div class="price">₹149</div><div class="per">1 month access</div></div>
+    <div class="plan"><div class="name">3 Months</div><div class="price">₹249</div><div class="per">3 months access</div></div>
+    <div class="plan"><div class="name">6 Months</div><div class="price">₹449</div><div class="per">6 months access</div></div>
+    <div class="plan best"><span class="badge">BEST VALUE · SAVE 55%</span><div class="name">1 Year</div><div class="price">₹799</div><div class="per">12 months access</div></div>
+  </div>
+  <p class="fine">Prices in INR, inclusive of applicable taxes · One-time prepaid payment · No automatic renewal</p>
+
+  <div class="steps">
+    <div class="step"><div class="n">1</div><h3>Create a parent account</h3><p>Sign up free at siwiapp.shop with your email.</p></div>
+    <div class="step"><div class="n">2</div><h3>Add your child</h3><p>Create a child profile and choose a plan.</p></div>
+    <div class="step"><div class="n">3</div><h3>Start learning</h3><p>Listen, spell, play and collect stars every day.</p></div>
+  </div>
+
+  <div class="cta">
+    <div>
+      <h2>Give your child a head start in reading</h2>
+      <div class="url">siwiapp.shop</div>
+      <p>Scan the code to visit the website and create your parent account.</p>
+    </div>
+    <img src="qr-siwiapp.svg" alt="QR code to siwiapp.shop" />
+  </div>
+
+  <div class="contact">
+    <b>SIWI</b> (operator of LEARN WISE) · G2 Royal Krishna, Nandanavanam Colony, Bachupally, Hyderabad, Telangana 500090, India<br />
+    📧 littlereaders.otp@gmail.com · 📞 +91 91543 18335 · Mon–Sat, 10 AM – 6 PM IST
+  </div>
+</section>
+
+</body>
+</html>

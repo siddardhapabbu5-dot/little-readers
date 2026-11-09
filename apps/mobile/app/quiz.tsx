@@ -232,7 +232,7 @@ export default function QuizScreen() {
         ) : null}
 
         {!loading && question && !results ? (
-          <ScrollView contentContainerStyle={styles.content}>
+          <View style={styles.playArea}>
             <View style={styles.progressRow}>
               <View style={{ flex: 1 }}>
                 <ProgressBar value={qIndex + 1} max={Math.max(session?.questions.length ?? 1, 1)} color={colors.orange} />
@@ -243,46 +243,56 @@ export default function QuizScreen() {
             </View>
             <View style={[styles.promptCard, shadow.card]}>
               <Image source={art.quiz} style={styles.quizArt} resizeMode="contain" />
-              <Text style={styles.emoji}>{question.word.emoji}</Text>
-              <Text style={styles.prompt}>What word matches this meaning?</Text>
-              <Text style={styles.meaning}>{question.word.meaning}</Text>
+              {/* The answer's picture is revealed only after a correct pick. */}
+              <Text style={styles.emoji}>{feedback === "ok" ? question.word.emoji : "🤔"}</Text>
+              {feedback === "ok" ? (
+                <Text style={styles.okText}>🎉 Correct! Well done!</Text>
+              ) : feedback === "try" ? (
+                <Text style={styles.tryAgain}>💪 Nice try! Pick another answer.</Text>
+              ) : (
+                <Text style={styles.prompt}>What word matches this meaning?</Text>
+              )}
+              <Text style={styles.meaning} numberOfLines={3}>
+                {question.word.meaning}
+              </Text>
             </View>
 
             <View style={styles.optionGrid}>
-              {question.listenOptions.map((opt, i) => (
-                <Pressable
-                  key={opt.key}
-                  disabled={feedback === "ok" || saving}
-                  onPress={() => void onPick(opt)}
-                  accessibilityRole="button"
-                  accessibilityLabel={opt.text}
-                  style={({ pressed }) => [
-                    styles.option,
-                    { backgroundColor: OPTION_TINTS[i % OPTION_TINTS.length] },
-                    shadow.soft,
-                    feedback === "ok" && opt.isCorrect && styles.optionOk,
-                    feedback === "try" && !opt.isCorrect && styles.optionDim,
-                    { transform: [{ scale: pressed ? 0.97 : 1 }] },
-                  ]}
-                >
-                  <Text style={styles.optionEmoji}>{opt.emoji}</Text>
-                  <Text style={styles.optionText} numberOfLines={2}>
-                    {opt.text}
-                  </Text>
-                </Pressable>
+              {pairs(question.listenOptions).map((row, r) => (
+                <View key={r} style={styles.optionRow}>
+                  {row.map((opt, c) => {
+                    const i = r * 2 + c;
+                    return (
+                      <Pressable
+                        key={opt.key}
+                        disabled={feedback === "ok" || saving}
+                        onPress={() => void onPick(opt)}
+                        accessibilityRole="button"
+                        accessibilityLabel={opt.text}
+                        style={({ pressed }) => [
+                          styles.option,
+                          { backgroundColor: OPTION_TINTS[i % OPTION_TINTS.length] },
+                          shadow.soft,
+                          feedback === "ok" && opt.isCorrect && styles.optionOk,
+                          feedback === "try" && !opt.isCorrect && styles.optionDim,
+                          { transform: [{ scale: pressed ? 0.97 : 1 }] },
+                        ]}
+                      >
+                        <Text style={styles.optionEmoji}>{opt.emoji}</Text>
+                        <Text style={styles.optionText} numberOfLines={2}>
+                          {opt.text}
+                        </Text>
+                      </Pressable>
+                    );
+                  })}
+                </View>
               ))}
             </View>
 
             {feedback === "ok" ? (
-              <View style={styles.okBar}>
-                <Text style={styles.okText}>🎉 Correct! Well done!</Text>
-                <KidsButton label={saving ? "Saving…" : "Next Question"} onPress={() => void onNext()} />
-              </View>
+              <KidsButton label={saving ? "Saving…" : "Next Question"} onPress={() => void onNext()} />
             ) : null}
-            {feedback === "try" ? (
-              <Text style={styles.tryAgain}>💪 Nice try! Pick another answer.</Text>
-            ) : null}
-          </ScrollView>
+          </View>
         ) : null}
       </SafeAreaView>
       </SkyBackground>
@@ -292,58 +302,57 @@ export default function QuizScreen() {
 
 const OPTION_TINTS = [colors.cream, colors.pinkSoft, colors.skySoft, colors.greenSoft];
 
+function pairs<T>(items: T[]): T[][] {
+  const rows: T[][] = [];
+  for (let i = 0; i < items.length; i += 2) rows.push(items.slice(i, i + 2));
+  return rows;
+}
+
 const styles = StyleSheet.create({
   safe: { flex: 1, paddingHorizontal: 4, width: "100%", maxWidth: 720, alignSelf: "center" },
   content: { padding: 14, gap: 14, paddingBottom: 40 },
   center: { padding: 40, alignItems: "center" },
+  playArea: { flex: 1, padding: 14, paddingBottom: 10, gap: 12 },
   progressRow: { flexDirection: "row", alignItems: "center", gap: 10 },
   progress: { fontWeight: "900", color: colors.text, fontSize: 14 },
   promptCard: {
     alignItems: "center",
-    gap: 6,
-    paddingVertical: 18,
+    gap: 4,
+    paddingVertical: 12,
     paddingHorizontal: 16,
     backgroundColor: "#fff",
     borderRadius: radii.xl,
   },
-  quizArt: { position: "absolute", top: 8, right: 8, width: 54, height: 54, opacity: 0.9 },
-  emoji: { fontSize: 64 },
-  prompt: { fontWeight: "800", color: colors.textMuted, fontSize: 15 },
+  quizArt: { position: "absolute", top: 6, right: 6, width: 44, height: 44, opacity: 0.9 },
+  emoji: { fontSize: 46 },
+  prompt: { fontWeight: "800", color: colors.textMuted, fontSize: 15, textAlign: "center" },
   meaning: {
-    fontSize: 21,
+    fontSize: 20,
     fontWeight: "900",
     color: colors.text,
     textAlign: "center",
-    lineHeight: 28,
+    lineHeight: 26,
   },
-  optionGrid: { flexDirection: "row", flexWrap: "wrap", gap: 12 },
+  optionGrid: { flex: 1, gap: 12, minHeight: 0 },
+  optionRow: { flex: 1, flexDirection: "row", gap: 12, minHeight: 0 },
   option: {
-    flexBasis: "46%",
-    flexGrow: 1,
+    flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    gap: 6,
+    gap: 4,
     borderRadius: radii.xl,
-    paddingVertical: 18,
-    paddingHorizontal: 10,
-    minHeight: 120,
+    paddingVertical: 8,
+    paddingHorizontal: 8,
+    minHeight: 0,
     borderWidth: 3,
     borderColor: "#fff",
   },
   optionOk: { borderColor: colors.green, backgroundColor: colors.greenSoft },
   optionDim: { opacity: 0.55 },
-  optionEmoji: { fontSize: 44 },
+  optionEmoji: { fontSize: 40 },
   optionText: { fontWeight: "900", fontSize: 18, color: colors.text, textAlign: "center" },
-  okBar: {
-    gap: 10,
-    backgroundColor: colors.greenSoft,
-    borderRadius: radii.lg,
-    padding: 14,
-    borderWidth: 2,
-    borderColor: colors.green,
-  },
-  okText: { fontWeight: "900", fontSize: 18, color: "#15803D", textAlign: "center" },
-  tryAgain: { color: "#C2410C", fontWeight: "900", fontSize: 16, textAlign: "center" },
+  okText: { fontWeight: "900", fontSize: 16, color: "#15803D", textAlign: "center" },
+  tryAgain: { color: "#C2410C", fontWeight: "900", fontSize: 15, textAlign: "center" },
   resultsArt: { width: 140, height: 140 },
   resultsTitle: { color: "#fff", fontSize: 24, fontWeight: "900", textAlign: "center" },
   resultsSub: { color: "#F3EEFF", fontWeight: "800", textAlign: "center", fontSize: 15 },

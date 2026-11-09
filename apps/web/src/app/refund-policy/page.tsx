@@ -41,8 +41,9 @@ export default async function RefundPolicyPage() {
       <h2 style={{ fontSize: "1.15rem" }}>3. Refund eligibility</h2>
       <ul>
         <li>
-          <strong>7-day refund:</strong> you may request a full refund within 7
-          days of your first purchase if you are not satisfied with the service.
+          <strong>1-day refund:</strong> you may request a full refund within 1
+          day (24 hours) of your first purchase if you are not satisfied with the
+          service.
         </li>
         <li>
           <strong>Duplicate or failed payments:</strong> if you were charged more
@@ -55,8 +56,9 @@ export default async function RefundPolicyPage() {
           the unused part of your plan.
         </li>
         <li>
-          After 7 days from purchase, payments are non-refundable except in the
-          cases above.
+          After 24 hours from purchase, all payments are final and
+          non-refundable, including for partial use or unused time, except in
+          the cases above.
         </li>
       </ul>
 

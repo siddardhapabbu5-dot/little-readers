@@ -155,7 +155,8 @@ export async function getPlansCatalog(levelId?: string) {
   };
 }
 
-const NATIVE_APP_PLATFORMS = new Set(["android", "ios"]);
+// Android pays through Razorpay / Cashfree; the iOS app has no purchase path.
+const STORE_BILLING_ONLY_PLATFORMS = new Set(["ios"]);
 const FAMILY_PURPOSES = new Set([
   "FAMILY_MONTHLY",
   "FAMILY_YEARLY",
@@ -182,7 +183,7 @@ export async function resolveCheckoutPlan(
   clientPlatform: string | undefined,
   gatewayReady: boolean
 ) {
-  if (clientPlatform && NATIVE_APP_PLATFORMS.has(clientPlatform.toLowerCase())) {
+  if (clientPlatform && STORE_BILLING_ONLY_PLATFORMS.has(clientPlatform.toLowerCase())) {
     throw new AppError(
       "Website checkout is not available in the mobile app. Use the app store's subscription option.",
       403,

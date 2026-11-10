@@ -486,18 +486,21 @@ describe.skipIf(!hasDb)("Dual payment — Google Play Billing + Razorpay website
     expect(history.status).toBe(403);
   });
 
-  // I.16 Razorpay never available to the Android app
-  it("refuses Razorpay checkout from the Android / iOS app", async () => {
+  it("allows Razorpay checkout from Android and refuses it from iOS", async () => {
     const p = await registerParent("native");
-    for (const platform of ["android", "ios"]) {
-      const res = await request(app)
-        .post("/api/payments/orders")
-        .set("Authorization", `Bearer ${p.token}`)
-        .set("X-Client-Platform", platform)
-        .send({ planId });
-      expect(res.status).toBe(403);
-      expect(res.body.code).toBe("USE_STORE_BILLING");
-    }
+    const ios = await request(app)
+      .post("/api/payments/orders")
+      .set("Authorization", `Bearer ${p.token}`)
+      .set("X-Client-Platform", "ios")
+      .send({ planId });
+    expect(ios.status).toBe(403);
+    expect(ios.body.code).toBe("USE_STORE_BILLING");
+    const android = await request(app)
+      .post("/api/payments/orders")
+      .set("Authorization", `Bearer ${p.token}`)
+      .set("X-Client-Platform", "android")
+      .send({ planId });
+    expect(android.status).toBe(201);
     const web = await request(app)
       .post("/api/payments/orders")
       .set("Authorization", `Bearer ${p.token}`)

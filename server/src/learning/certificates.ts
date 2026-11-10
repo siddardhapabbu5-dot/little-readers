@@ -16,10 +16,32 @@ type CertificateView = {
   certificateNo: string;
   title: string;
   childName: string;
+  /** Child photo, else the account profile photo; only inline data:image URLs are returned. */
+  photoUrl: string | null;
   category: { id: string; label: string; emoji: string; wordCount: number } | null;
   issuedAt: Date;
   appName: string;
 };
+
+const CHILD_SELECT = {
+  displayName: true,
+  avatarUrl: true,
+  parentId: true,
+  parent: { select: { avatarUrl: true } },
+} as const;
+
+type CertificateChild = {
+  displayName: string;
+  avatarUrl: string | null;
+  parent: { avatarUrl: string | null };
+};
+
+function photoFor(child: CertificateChild) {
+  const isInlineImage = (u: string | null) => Boolean(u && /^data:image\/(png|jpe?g|webp);base64,/i.test(u));
+  if (isInlineImage(child.avatarUrl)) return child.avatarUrl;
+  if (isInlineImage(child.parent.avatarUrl)) return child.parent.avatarUrl;
+  return null;
+}
 
 async function toViews(
   rows: Array<{
@@ -28,7 +50,7 @@ async function toViews(
     title: string;
     categoryId: string | null;
     issuedAt: Date;
-    child: { displayName: string };
+    child: CertificateChild;
   }>
 ): Promise<CertificateView[]> {
   const ids = rows.map((r) => r.categoryId).filter((id): id is string => Boolean(id));
@@ -49,6 +71,7 @@ async function toViews(
       certificateNo: r.certificateNo ?? r.id,
       title: r.title,
       childName: r.child.displayName,
+      photoUrl: photoFor(r.child),
       category: c ? { id: c.id, label: c.label, emoji: c.emoji, wordCount: c._count.words } : null,
       issuedAt: r.issuedAt,
       appName: APP_NAME,
@@ -98,7 +121,7 @@ export async function issueCertificateIfMastered(childId: string, categoryId: st
           description: `Learned all ${category.words.length} words in ${category.label}`,
           templateCode: "CATEGORY_COMPLETE",
         },
-        include: { child: { select: { displayName: true } } },
+        include: { child: { select: CHILD_SELECT } },
       });
       await prisma.achievement.upsert({
         where: { childId_code: { childId, code: `cert_${category.code}` } },
@@ -139,7 +162,7 @@ export async function listChildCertificates(parentId: string, childId: string, r
   const rows = await prisma.certificate.findMany({
     where: { childId, categoryId: { not: null } },
     orderBy: { issuedAt: "desc" },
-    include: { child: { select: { displayName: true } } },
+    include: { child: { select: CHILD_SELECT } },
   });
   return toViews(rows);
 }
@@ -147,7 +170,7 @@ export async function listChildCertificates(parentId: string, childId: string, r
 export async function getCertificate(parentId: string, certificateId: string, role?: string) {
   const row = await prisma.certificate.findUnique({
     where: { id: certificateId },
-    include: { child: { select: { displayName: true, parentId: true } } },
+    include: { child: { select: CHILD_SELECT } },
   });
   const elevated = role === "ADMIN" || role === "SUPER_ADMIN";
   if (!row || (!elevated && row.child.parentId !== parentId)) {

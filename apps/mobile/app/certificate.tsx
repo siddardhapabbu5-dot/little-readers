@@ -3,8 +3,8 @@ import { ActivityIndicator, Image, ScrollView, StyleSheet, Text, View } from "re
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { ErrorText, SoftButton } from "../components/ui";
+import { LinearGradient } from "expo-linear-gradient";
 import { IconButton, KidsButton, KidsHeader, SkyBackground } from "../components/kids";
-import { art } from "../components/illustrations";
 import { AuthGate } from "../components/AuthGate";
 import { apiRequest, ApiError } from "../services/api";
 import { ROLE_SETS } from "../services/auth-errors";
@@ -16,6 +16,9 @@ import {
   type CertificateData,
 } from "../services/certificate-pdf";
 import { colors, radii, shadow } from "../theme";
+
+const RAINBOW = ["#FF5252", "#FF9800", "#FFD600", "#4CAF50", "#2196F3", "#7C4DFF", "#E040FB"] as const;
+const NAME_COLORS = ["#E53935", "#FB8C00", "#F4B400", "#43A047", "#1E88E5", "#8E24AA", "#D81B60"];
 
 export default function CertificateScreen() {
   const router = useRouter();
@@ -60,33 +63,84 @@ export default function CertificateScreen() {
           {!cert && !error ? <ActivityIndicator color={colors.primary} /> : null}
           {cert ? (
             <>
-              <View style={[styles.frame, shadow.card]}>
-                <View style={styles.inner}>
-                  <Image source={art.certificate} style={styles.badgeArt} resizeMode="contain" />
+              <LinearGradient
+                colors={RAINBOW}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={[styles.frame, shadow.card]}
+              >
+                <LinearGradient
+                  colors={["#FFF8E1", "#FCE4EC", "#E3F2FD", "#E8F5E9"]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={styles.inner}
+                >
+                  <Text style={[styles.corner, { top: 6, left: 10 }]}>🎈</Text>
+                  <Text style={[styles.corner, { top: 6, right: 10 }]}>🌈</Text>
+                  <Text style={[styles.corner, { bottom: 6, left: 10 }]}>🎉</Text>
+                  <Text style={[styles.corner, { bottom: 6, right: 10 }]}>🚀</Text>
+                  <LinearGradient
+                    colors={RAINBOW}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                    style={styles.ring}
+                  >
+                    {cert.photoUrl ? (
+                      <Image source={{ uri: cert.photoUrl }} style={styles.photo} />
+                    ) : (
+                      <View style={[styles.photo, styles.initialBox]}>
+                        <Text style={styles.initial}>
+                          {Array.from(cert.childName.trim())[0]?.toUpperCase() ?? "⭐"}
+                        </Text>
+                      </View>
+                    )}
+                  </LinearGradient>
+                  <Text style={styles.medal}>🏅</Text>
                   <Text style={styles.brand}>{cert.appName}</Text>
-                  <Text style={styles.kind}>CERTIFICATE OF ACHIEVEMENT</Text>
+                  <LinearGradient
+                    colors={["#FF7043", "#EC407A", "#AB47BC"]}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
+                    style={styles.ribbon}
+                  >
+                    <Text style={styles.ribbonText}>🏆 CERTIFICATE OF ACHIEVEMENT 🏆</Text>
+                  </LinearGradient>
                   <Text style={styles.lead}>This certificate is proudly presented to</Text>
-                  <Text style={styles.name}>{cert.childName}</Text>
-                  <View style={styles.line} />
+                  <Text style={styles.name}>
+                    {Array.from(cert.childName).map((ch, i) => (
+                      <Text key={i} style={{ color: NAME_COLORS[i % NAME_COLORS.length] }}>
+                        {ch}
+                      </Text>
+                    ))}
+                  </Text>
+                  <LinearGradient
+                    colors={["#FFD600", "#FF9800", "#FF5252"]}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
+                    style={styles.line}
+                  />
                   <Text style={styles.lead}>
                     for learning all {cert.category?.wordCount} words in
                   </Text>
-                  <Text style={styles.cat}>
-                    {displayEmoji(cert.category?.emoji ?? "🎓")} {cert.category?.label ?? cert.title}
-                  </Text>
-                  <Text style={styles.stars}>⭐ ⭐ ⭐</Text>
+                  <View style={styles.catPill}>
+                    <Text style={styles.cat}>
+                      {displayEmoji(cert.category?.emoji ?? "🎓")} {cert.category?.label ?? cert.title}
+                    </Text>
+                  </View>
+                  <Text style={styles.stars}>⭐⭐⭐</Text>
+                  <Text style={styles.cheer}>Super job! Keep shining! ✨</Text>
                   <View style={styles.foot}>
-                    <View>
+                    <View style={styles.chip}>
                       <Text style={styles.footValue}>{formatCertificateDate(cert.issuedAt)}</Text>
                       <Text style={styles.footLabel}>Date of completion</Text>
                     </View>
-                    <View style={{ alignItems: "flex-end" }}>
+                    <View style={[styles.chip, { alignItems: "flex-end" }]}>
                       <Text style={styles.footValue}>{cert.certificateNo}</Text>
                       <Text style={styles.footLabel}>Certificate No.</Text>
                     </View>
                   </View>
-                </View>
-              </View>
+                </LinearGradient>
+              </LinearGradient>
               <KidsButton
                 label={busy ? "Please wait…" : "⬇️ Download PDF"}
                 loading={busy}
@@ -111,31 +165,48 @@ export default function CertificateScreen() {
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: "transparent", paddingHorizontal: 16 },
   content: { paddingVertical: 12, gap: 12, paddingBottom: 40, width: "100%", maxWidth: 640, alignSelf: "center" },
-  badgeArt: { width: 84, height: 84, marginBottom: 2 },
-  frame: {
-    borderWidth: 5,
-    borderColor: "#6C4CF1",
-    borderRadius: radii.xl,
-    padding: 6,
-    backgroundColor: "#FFF8E1",
-  },
+  frame: { borderRadius: radii.xl, padding: 6 },
   inner: {
-    borderWidth: 2,
-    borderStyle: "dashed",
-    borderColor: "#F5B700",
     borderRadius: radii.lg,
-    padding: 18,
+    paddingVertical: 22,
+    paddingHorizontal: 16,
     alignItems: "center",
     gap: 4,
+    overflow: "hidden",
   },
-  brand: { fontSize: 24, fontWeight: "900", letterSpacing: 4, color: "#6C4CF1" },
-  kind: { fontSize: 13, fontWeight: "800", color: "#F08A00", letterSpacing: 1.5 },
-  lead: { fontSize: 13, color: colors.textMuted, fontWeight: "600", textAlign: "center", marginTop: 8 },
-  name: { fontSize: 30, fontWeight: "900", color: colors.text, textAlign: "center" },
-  line: { width: "60%", borderBottomWidth: 3, borderBottomColor: "#F5B700" },
+  corner: { position: "absolute", fontSize: 26 },
+  ring: { width: 132, height: 132, borderRadius: 66, padding: 5 },
+  photo: { width: "100%", height: "100%", borderRadius: 61, borderWidth: 4, borderColor: "#fff" },
+  initialBox: { backgroundColor: "#7C4DFF", alignItems: "center", justifyContent: "center" },
+  initial: { color: "#fff", fontSize: 56, fontWeight: "900" },
+  medal: { fontSize: 34, marginTop: -18 },
+  brand: { fontSize: 22, fontWeight: "900", letterSpacing: 4, color: "#7C4DFF" },
+  ribbon: { borderRadius: 999, paddingVertical: 6, paddingHorizontal: 14, marginTop: 4 },
+  ribbonText: { color: "#fff", fontSize: 12, fontWeight: "900", letterSpacing: 1 },
+  lead: { fontSize: 13, color: "#5D4037", fontWeight: "700", textAlign: "center", marginTop: 8 },
+  name: { fontSize: 34, fontWeight: "900", textAlign: "center" },
+  line: { width: "70%", height: 5, borderRadius: 3 },
+  catPill: {
+    marginTop: 6,
+    paddingVertical: 6,
+    paddingHorizontal: 16,
+    borderRadius: 16,
+    backgroundColor: "#E8F5E9",
+    borderWidth: 2,
+    borderColor: "#66BB6A",
+  },
   cat: { fontSize: 22, fontWeight: "900", color: "#2E7D32", textAlign: "center" },
-  stars: { fontSize: 20, letterSpacing: 4, marginTop: 4 },
-  foot: { flexDirection: "row", justifyContent: "space-between", alignSelf: "stretch", marginTop: 14 },
-  footValue: { fontWeight: "800", color: colors.text, fontSize: 13 },
+  stars: { fontSize: 24, letterSpacing: 4, marginTop: 6 },
+  cheer: { fontSize: 14, fontWeight: "900", color: "#F57C00" },
+  foot: { flexDirection: "row", justifyContent: "space-between", alignSelf: "stretch", marginTop: 14, gap: 8 },
+  chip: {
+    backgroundColor: "#fff",
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: "#E1D5FF",
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+  },
+  footValue: { fontWeight: "800", color: "#311B92", fontSize: 13 },
   footLabel: { color: colors.textMuted, fontSize: 11, fontWeight: "600" },
 });

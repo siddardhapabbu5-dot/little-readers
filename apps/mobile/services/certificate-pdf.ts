@@ -7,6 +7,8 @@ export type CertificateData = {
   certificateNo: string;
   title: string;
   childName: string;
+  /** data:image URL of the child / profile photo; null shows the child's initial. */
+  photoUrl?: string | null;
   category: { label: string; emoji: string; wordCount: number } | null;
   issuedAt: string;
   appName: string;
@@ -28,43 +30,98 @@ export function formatCertificateDate(iso: string) {
 const escape = (s: string) =>
   s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
 
+const SAFE_PHOTO = /^data:image\/(png|jpe?g|webp);base64,[A-Za-z0-9+/=]+$/i;
+
+/** Rainbow letters for the child's name. */
+const NAME_COLORS = ["#E53935", "#FB8C00", "#F4B400", "#43A047", "#1E88E5", "#8E24AA", "#D81B60"];
+
+function rainbowName(name: string) {
+  return Array.from(name)
+    .map((ch, i) =>
+      ch.trim() ? `<span style="color:${NAME_COLORS[i % NAME_COLORS.length]}">${escape(ch)}</span>` : " "
+    )
+    .join("");
+}
+
 export function certificateHtml(c: CertificateData) {
   const cat = c.category;
+  const photo =
+    c.photoUrl && SAFE_PHOTO.test(c.photoUrl)
+      ? `<img class="photo" src="${c.photoUrl}" alt=""/>`
+      : `<div class="photo initial">${escape(Array.from(c.childName.trim())[0]?.toUpperCase() ?? "⭐")}</div>`;
   return `<!doctype html><html><head><meta charset="utf-8"/>
 <title>${escape(c.appName)} Certificate ${escape(c.certificateNo)}</title>
 <style>
   @page { size: A4 landscape; margin: 0; }
-  * { box-sizing: border-box; }
-  body { margin: 0; font-family: "Trebuchet MS", "Segoe UI", Arial, sans-serif; background: #fff; }
-  .page { width: 297mm; height: 210mm; padding: 12mm; }
-  .frame { height: 100%; border: 6px solid #6C4CF1; border-radius: 18px; padding: 8px;
-           background: linear-gradient(135deg, #FFF8E1 0%, #F3EEFF 55%, #E6F7FF 100%); }
-  .inner { height: 100%; border: 2px dashed #F5B700; border-radius: 12px; display: flex;
-           flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 10mm; }
-  .brand { font-size: 30px; font-weight: 900; letter-spacing: 6px; color: #6C4CF1; }
-  .kind { font-size: 20px; font-weight: 800; color: #F08A00; margin-top: 4px; letter-spacing: 2px; }
-  .lead { font-size: 16px; color: #555; margin-top: 18px; }
-  .name { font-size: 46px; font-weight: 900; color: #222; margin: 6px 0 4px; }
-  .line { width: 50%; border-bottom: 3px solid #F5B700; margin-bottom: 12px; }
-  .for { font-size: 17px; color: #444; }
-  .cat { font-size: 32px; font-weight: 900; color: #2E7D32; margin-top: 6px; }
-  .stars { font-size: 26px; margin-top: 8px; letter-spacing: 6px; }
-  .foot { display: flex; justify-content: space-between; width: 86%; margin-top: 22px; font-size: 14px; color: #333; }
-  .foot b { display: block; font-size: 15px; }
-  .sign { border-top: 2px solid #999; padding-top: 4px; min-width: 160px; }
+  * { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  html, body { margin: 0; background: #fff; }
+  body { font-family: "Comic Sans MS", "Chalkboard SE", "Baloo 2", "Trebuchet MS", "Segoe UI", Arial, sans-serif; }
+  .page { width: 297mm; height: 210mm; padding: 8mm; }
+  .frame { position: relative; height: 100%; border-radius: 26px; padding: 9px;
+           background: linear-gradient(90deg, #FF5252, #FF9800, #FFD600, #4CAF50, #2196F3, #7C4DFF, #E040FB); }
+  .inner { position: relative; height: 100%; border-radius: 19px; overflow: hidden;
+           background:
+             radial-gradient(circle at 8% 18%, #FFE082 0 7px, transparent 8px),
+             radial-gradient(circle at 92% 14%, #80DEEA 0 9px, transparent 10px),
+             radial-gradient(circle at 14% 86%, #F48FB1 0 8px, transparent 9px),
+             radial-gradient(circle at 88% 84%, #A5D6A7 0 10px, transparent 11px),
+             radial-gradient(circle at 50% 6%, #CE93D8 0 5px, transparent 6px),
+             radial-gradient(circle at 30% 94%, #90CAF9 0 6px, transparent 7px),
+             radial-gradient(circle at 72% 95%, #FFCC80 0 6px, transparent 7px),
+             linear-gradient(160deg, #FFF8E1 0%, #FCE4EC 38%, #E3F2FD 72%, #E8F5E9 100%);
+           display: flex; align-items: center; padding: 10mm 14mm; gap: 12mm; }
+  .corner { position: absolute; font-size: 40px; }
+  .tl { top: 10px; left: 16px; } .tr { top: 10px; right: 16px; }
+  .bl { bottom: 8px; left: 16px; } .br { bottom: 8px; right: 16px; }
+  .left { flex: 0 0 74mm; display: flex; flex-direction: column; align-items: center; }
+  .ring { width: 68mm; height: 68mm; border-radius: 50%; padding: 7px;
+          background: conic-gradient(#FF5252, #FF9800, #FFD600, #4CAF50, #2196F3, #7C4DFF, #E040FB, #FF5252);
+          box-shadow: 0 6px 18px rgba(124, 77, 255, 0.25); }
+  .photo { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; border: 6px solid #fff; background: #fff; display: block; }
+  .initial { display: flex; align-items: center; justify-content: center; font-size: 110px; font-weight: 900;
+             color: #fff; background: linear-gradient(135deg, #7C4DFF, #29B6F6); }
+  .medal { font-size: 54px; margin-top: -26px; }
+  .stars { font-size: 30px; letter-spacing: 6px; margin-top: 2px; }
+  .right { flex: 1; display: flex; flex-direction: column; align-items: center; text-align: center; }
+  .brand { font-size: 30px; font-weight: 900; letter-spacing: 6px; color: #7C4DFF; }
+  .ribbon { margin-top: 8px; padding: 9px 34px; border-radius: 999px; color: #fff; font-size: 21px; font-weight: 900;
+            letter-spacing: 2px; background: linear-gradient(90deg, #FF7043, #EC407A, #AB47BC);
+            box-shadow: 0 4px 10px rgba(236, 64, 122, 0.3); }
+  .lead { font-size: 17px; color: #5D4037; margin-top: 16px; font-weight: 700; }
+  .name { font-size: 54px; font-weight: 900; margin: 4px 0 2px; line-height: 1.1; }
+  .line { width: 70%; height: 6px; border-radius: 3px; margin-bottom: 12px;
+          background: linear-gradient(90deg, #FFD600, #FF9800, #FF5252); }
+  .for { font-size: 18px; color: #37474F; font-weight: 700; }
+  .cat { margin-top: 10px; padding: 8px 26px; border-radius: 18px; background: #E8F5E9; border: 3px solid #66BB6A;
+         font-size: 32px; font-weight: 900; color: #2E7D32; }
+  .cheer { margin-top: 10px; font-size: 18px; font-weight: 900; color: #F57C00; }
+  .foot { display: flex; justify-content: space-between; align-items: flex-end; width: 100%; margin-top: 18px; gap: 10px; }
+  .chip { background: #fff; border-radius: 14px; padding: 8px 14px; border: 2px solid #E1D5FF; font-size: 12px; color: #6D6D80; }
+  .chip b { display: block; font-size: 15px; color: #311B92; }
+  .sign { text-align: center; font-size: 12px; color: #6D6D80; }
+  .sign b { display: block; font-size: 15px; color: #311B92; border-top: 2px dashed #B39DDB; padding-top: 4px; min-width: 150px; }
 </style></head><body><div class="page"><div class="frame"><div class="inner">
-  <div class="brand">${escape(c.appName)}</div>
-  <div class="kind">CERTIFICATE OF ACHIEVEMENT</div>
-  <div class="lead">This certificate is proudly presented to</div>
-  <div class="name">${escape(c.childName)}</div>
-  <div class="line"></div>
-  <div class="for">for learning all ${cat?.wordCount ?? ""} words in</div>
-  <div class="cat">${escape(cat?.emoji ?? "")} ${escape(cat?.label ?? c.title)}</div>
-  <div class="stars">⭐ ⭐ ⭐</div>
-  <div class="foot">
-    <div><b>${escape(formatCertificateDate(c.issuedAt))}</b>Date of completion</div>
-    <div class="sign"><b>${escape(c.appName)} Team</b>Kids Learning Academy</div>
-    <div><b>${escape(c.certificateNo)}</b>Certificate No.</div>
+  <div class="corner tl">🎈</div><div class="corner tr">🌈</div>
+  <div class="corner bl">🎉</div><div class="corner br">🚀</div>
+  <div class="left">
+    <div class="ring">${photo}</div>
+    <div class="medal">🏅</div>
+    <div class="stars">⭐⭐⭐</div>
+  </div>
+  <div class="right">
+    <div class="brand">${escape(c.appName)}</div>
+    <div class="ribbon">🏆 CERTIFICATE OF ACHIEVEMENT 🏆</div>
+    <div class="lead">This certificate is proudly presented to</div>
+    <div class="name">${rainbowName(c.childName)}</div>
+    <div class="line"></div>
+    <div class="for">for learning all ${cat?.wordCount ?? ""} words in</div>
+    <div class="cat">${escape(cat?.emoji ?? "🎓")} ${escape(cat?.label ?? c.title)}</div>
+    <div class="cheer">Super job! Keep shining! ✨</div>
+    <div class="foot">
+      <div class="chip"><b>${escape(formatCertificateDate(c.issuedAt))}</b>Date of completion</div>
+      <div class="sign"><b>${escape(c.appName)} Team</b>Kids Learning Academy</div>
+      <div class="chip"><b>${escape(c.certificateNo)}</b>Certificate No.</div>
+    </div>
   </div>
 </div></div></div></body></html>`;
 }

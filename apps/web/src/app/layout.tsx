@@ -43,6 +43,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
               <a href="/privacy">Privacy Policy</a>
               <a href="/terms">Terms &amp; Conditions</a>
               <a href="/refund-policy">Refund &amp; Cancellation</a>
+              <a href="/delete-account">Delete Account</a>
               <a href="/shipping-policy">Shipping &amp; Delivery</a>
             </nav>
             © {new Date().getFullYear()} SIWI · {APP_NAME}. All rights reserved.

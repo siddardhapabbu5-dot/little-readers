@@ -118,7 +118,8 @@ export function GooglePlaySubscribe({
           }
         );
         const ids = cfg.products.map((x) => x.productId);
-        setOffers(await loadPlayOffers(ids));
+        const loaded = await loadPlayOffers(ids);
+        setOffers(loaded.sort((a, b) => ids.indexOf(a.productId) - ids.indexOf(b.productId)));
         // Finish any purchase that completed while the app was closed.
         const owned = await getOwnedPlayPurchases(ids);
         for (const p of owned) {

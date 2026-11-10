@@ -7,6 +7,7 @@ import type {
 } from "@prisma/client";
 import { AppError } from "../lib/errors.js";
 import { prisma } from "../lib/prisma.js";
+import { normalizeMobileE164 } from "../parent-auth/mobile.js";
 
 function newId(prefix: string) {
   return `${prefix}_${randomBytes(12).toString("hex")}`;
@@ -316,6 +317,67 @@ export async function createPrivacyDataRequest(input: {
       status: "SUBMITTED",
     },
   });
+}
+
+/**
+ * Public account-deletion request (siwiapp.shop/delete-account). Records the request for
+ * administrator verification only; nothing is deleted here. The response never reveals
+ * whether the mobile/email belongs to an account.
+ */
+export async function createAccountDeletionRequest(input: {
+  mobile: string;
+  countryCode?: string;
+  email?: string;
+  name?: string;
+  reason?: string;
+}) {
+  const mobileE164 = normalizeMobileE164(input.mobile, input.countryCode);
+  const email = trimOrNull(input.email)?.toLowerCase() ?? null;
+
+  const account = await prisma.user.findFirst({
+    where: { OR: [{ mobileE164 }, ...(email ? [{ email }] : [])] },
+    orderBy: { createdAt: "asc" },
+    select: { id: true, email: true, mobileE164: true },
+  });
+
+  if (account) {
+    const open = await prisma.privacyDataRequest.findFirst({
+      where: {
+        userId: account.id,
+        requestType: "ACCOUNT_DELETION",
+        status: { in: ["SUBMITTED", "UNDER_REVIEW"] },
+      },
+      select: { id: true, status: true, createdAt: true },
+    });
+    if (open) return { ...open, duplicate: true };
+  }
+
+  const matchNote = !account
+    ? "No account matched this mobile number or email."
+    : account.mobileE164 === mobileE164
+      ? "Matched an account by mobile number."
+      : "Matched an account by email only (mobile number differs). Verify carefully.";
+  const message = [
+    "Account deletion request submitted from siwiapp.shop/delete-account.",
+    `Registered mobile: ${mobileE164}`,
+    `Parent email: ${email ?? "not provided"}`,
+    matchNote,
+    `Reason: ${trimOrNull(input.reason) ?? "not provided"}`,
+  ].join("\n");
+
+  const created = await prisma.privacyDataRequest.create({
+    data: {
+      id: newId("preq"),
+      userId: account?.id,
+      requesterEmail: email ?? account?.email ?? "",
+      requesterName: trimOrNull(input.name),
+      requestType: "ACCOUNT_DELETION",
+      message,
+      status: "SUBMITTED",
+    },
+    select: { id: true, status: true, createdAt: true },
+  });
+  return { ...created, duplicate: false };
 }
 
 export async function listPrivacyDataRequests(filters?: {

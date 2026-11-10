@@ -200,7 +200,12 @@ describe.skipIf(!hasDb)("Dual payment — Google Play Billing + Razorpay website
     const p = await registerParent("gp");
     const cfg = await request(app).get("/api/payments/google-play/config").set("Authorization", `Bearer ${p.token}`);
     expect(cfg.body.data).toMatchObject({ enabled: true, canPurchase: true, obfuscatedAccountId: p.id });
-    expect(cfg.body.data.products.map((x: { productId: string }) => x.productId)).toEqual(["learnwise_monthly", "learnwise_yearly"]);
+    expect(cfg.body.data.products.map((x: { productId: string }) => x.productId)).toEqual([
+      "learnwise_monthly",
+      "learnwise_3month",
+      "learnwise_6month",
+      "learnwise_yearly",
+    ]);
 
     const token = `tok_gp_${stamp}_aaaaaaaa`;
     purchases.set(token, playPurchase(p.id, { orderId: `GPA.${stamp}-gp-0` }));
@@ -235,6 +240,22 @@ describe.skipIf(!hasDb)("Dual payment — Google Play Billing + Razorpay website
     const web = await request(app).post("/api/payments/orders").set("Authorization", `Bearer ${p.token}`).send({ planId });
     expect(web.status).toBe(409);
     expect(web.body.code).toBe("MANAGED_BY_GOOGLE_PLAY");
+  });
+
+  it("verifies 3-month and 6-month Google Play products and records the matching payment purpose", async () => {
+    for (const [productId, months, purpose] of [
+      ["learnwise_3month", 3, "FAMILY_3_MONTH"],
+      ["learnwise_6month", 6, "FAMILY_6_MONTH"],
+    ] as const) {
+      const p = await registerParent(`gp${months}m`);
+      const token = `tok_gp${months}m_${stamp}_aaaaaaaa`;
+      purchases.set(token, playPurchase(p.id, { productId, expiry: daysFromNow(months * 30) }));
+      const res = await verify(p.token, productId, token);
+      expect(res.status).toBe(200);
+      expect(res.body.data).toMatchObject({ status: "ACTIVE", eligible: true, productId });
+      const pay = await prisma.payment.findFirst({ where: { userId: p.id, provider: "google_play" } });
+      expect(pay?.purpose).toBe(purpose);
+    }
   });
 
   // I.7 invalid token, wrong product, account mismatch, reused token

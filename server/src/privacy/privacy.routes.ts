@@ -1,4 +1,5 @@
 import { Router, type NextFunction, type Request, type Response } from "express";
+import rateLimit from "express-rate-limit";
 import multer from "multer";
 import { z } from "zod";
 import { AppError } from "../lib/errors.js";
@@ -9,6 +10,7 @@ import {
 } from "../middleware/auth.js";
 import { validateBody } from "../middleware/validate.js";
 import {
+  createAccountDeletionRequest,
   createPrivacyDataRequest,
   getAdminPrivacyWorkspace,
   getPublicPrivacyPolicy,
@@ -123,6 +125,45 @@ privacyPublicRouter.post(
           createdAt: data.createdAt,
           message:
             "Request received. An administrator will review it. No accounts or learning history are deleted automatically.",
+        },
+      });
+    } catch (e) {
+      next(e);
+    }
+  }
+);
+
+const deletionRequestLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: "Too many requests, please try again later" },
+  skip: () => process.env.VITEST === "true" || process.env.NODE_ENV === "test",
+});
+
+const deletionRequestBody = z.object({
+  mobile: z.string().trim().min(6).max(20),
+  countryCode: z.string().trim().max(5).optional(),
+  email: z.union([z.string().trim().email().max(255), z.literal("")]).optional(),
+  name: z.string().trim().max(120).optional(),
+  reason: z.string().trim().max(1000).optional(),
+});
+
+/** Public page siwiapp.shop/delete-account (no login). Review-only; nothing is deleted here. */
+privacyPublicRouter.post(
+  "/deletion-requests",
+  deletionRequestLimiter,
+  validateBody(deletionRequestBody),
+  async (req, res, next) => {
+    try {
+      const data = await createAccountDeletionRequest(req.body);
+      res.status(201).json({
+        data: {
+          reference: data.id,
+          createdAt: data.createdAt,
+          message:
+            "We have received your request. Our team will verify it with the registered mobile number or email before deleting anything.",
         },
       });
     } catch (e) {

@@ -14,7 +14,7 @@ import { googlePlayBillingEnabled } from "./flags.js";
 const ANDROID_PUBLISHER = "https://androidpublisher.googleapis.com/androidpublisher/v3/applications";
 const PUBLISHER_SCOPE = "https://www.googleapis.com/auth/androidpublisher";
 const DEFAULT_PACKAGE = "com.littlereaders.app";
-const DEFAULT_PRODUCTS = "learnwise_monthly:1,learnwise_yearly:12";
+const DEFAULT_PRODUCTS = "learnwise_monthly:1,learnwise_3month:3,learnwise_6month:6,learnwise_yearly:12";
 
 /** Subset of the Play Developer API SubscriptionPurchaseV2 resource used here. */
 export type PlaySubscriptionV2 = {

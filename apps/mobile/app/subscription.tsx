@@ -12,6 +12,7 @@ import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Card, ErrorText, PrimaryButton, SoftButton, Title } from "../components/ui";
 import { AuthGate } from "../components/AuthGate";
+import { GooglePlaySubscribe } from "../components/GooglePlaySubscribe";
 import { RegistrationSteps } from "../components/RegistrationSteps";
 import { apiRequest, ApiError } from "../services/api";
 import { ROLE_SETS } from "../services/auth-errors";
@@ -64,8 +65,11 @@ function planTitle(p: Plan) {
   return stripped;
 }
 
-/** Razorpay / Cashfree checkout on the web and Android; the iPhone app has no purchase path. */
-const WEB_CHECKOUT = Platform.OS !== "ios";
+/**
+ * Razorpay / Cashfree checkout on the website only. Android sells digital subscriptions through
+ * Google Play Billing (Play payments policy); the iPhone app has no purchase path.
+ */
+const WEB_CHECKOUT = Platform.OS === "web";
 
 function formatAmount(minor: number, currency: string) {
   if (!currency || currency === "INR") return formatInr(minor);
@@ -141,6 +145,15 @@ export default function SubscriptionScreen() {
   const [adminList, setAdminList] = useState<any[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loadingCatalog, setLoadingCatalog] = useState(false);
+
+  const refreshEntitlement = useCallback(async () => {
+    const [me, history] = await Promise.all([
+      apiRequest("/subscriptions/me"),
+      apiRequest<Pay[]>("/payments/me").catch(() => []),
+    ]);
+    setData(me);
+    setPayments(history);
+  }, []);
 
   useFocusEffect(
     useCallback(() => {
@@ -324,6 +337,13 @@ export default function SubscriptionScreen() {
               />
             ) : null}
           </Card>
+
+          {Platform.OS === "android" ? (
+            <GooglePlaySubscribe
+              currentProductId={sub?.provider === "google_play" ? sub.productId ?? null : null}
+              onEntitlementChanged={refreshEntitlement}
+            />
+          ) : null}
 
           {Platform.OS === "ios" ? (
             <Card style={{ gap: 6 }}>

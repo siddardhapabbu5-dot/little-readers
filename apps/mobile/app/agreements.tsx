@@ -66,10 +66,11 @@ function formatWhen(value: string | null) {
 
 export default function AgreementsScreen() {
   const params = useLocalSearchParams<{ planId?: string; store?: string; region?: string }>();
-  // Web and Android pay through Razorpay / Cashfree; the iPhone app has no purchase path.
-  const planId = Platform.OS === "ios" ? undefined : params.planId;
+  // Razorpay / Cashfree run only on the website; Android sells through Google Play Billing
+  // (Play payments policy) and the iPhone app has no purchase path.
+  const planId = Platform.OS === "web" ? params.planId : undefined;
   const region = params.region === "PH" ? "PH" : "IN";
-  const storeFlow = params.store === "google_play" || (Platform.OS === "ios" && Boolean(params.planId));
+  const storeFlow = params.store === "google_play" || (Platform.OS !== "web" && Boolean(params.planId));
   const router = useRouter();
   const [status, setStatus] = useState<AgreementStatus | null>(null);
   const [checked, setChecked] = useState<Record<string, boolean>>({});

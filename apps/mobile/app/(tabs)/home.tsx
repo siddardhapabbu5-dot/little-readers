@@ -25,7 +25,7 @@ import {
 } from "../../components/kids";
 import { ACTIVITY_ART, art, categoryTheme } from "../../components/illustrations";
 import { apiRequest, ApiError } from "../../services/api";
-import { openLearningActivity } from "../../services/learning-nav";
+import { openLearningActivity, resolveChildLevel } from "../../services/learning-nav";
 import { isOn, startActivity, useActivities } from "../../services/activities";
 import type { ChallengeOverview } from "../../services/challenges";
 import { displayEmoji } from "../../services/emoji";
@@ -110,7 +110,10 @@ export default function HomeTab() {
           setChild(active);
 
           if (active?.hasLearningSeat !== false && active) {
-            const levelKey = active.level || "LEVEL_1";
+            const catalog = await apiRequest<Parameters<typeof resolveChildLevel>[1]>(
+              "/learning/levels"
+            );
+            const levelKey = resolveChildLevel(active.level, catalog);
             const q = encodeURIComponent(active.id);
             const [p, curriculum, d, w] = await Promise.all([
               apiRequest<ProgressPayload>(`/learning/progress/${active.id}`),

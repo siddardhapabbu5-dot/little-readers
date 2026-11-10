@@ -421,3 +421,52 @@ Observations (not changed):
 - Admin → Schools list at tablet width shows narrow school cards with large gaps (layout, not readability).
 
 Files changed: `apps/mobile/app/play.tsx` (larger Spell keys on screens ≥600 px wide), `apps/mobile/app/certificate.tsx` (no-id error message).
+
+## 11. Remaining issues round (local only, not deployed)
+
+### 11.1 Lesson playthrough — PASS
+
+Local lesson "Family Words (QA)" created through the admin API: Level 1, category Family and People, words mom, dad, baby, brother, sister, Listen + Spell, published. Played with real taps at 768×1024 in the Expo web app:
+
+- Learn lists the lesson → lesson page → Start lesson → `/play?lessonId=<id>` (correct id).
+- Each of the 5 words: Listen (one deliberate wrong pick showed "Nice try", then the right picture) → Spell with a grown-up → typed the word → Okay. All 10 answers accepted.
+- Results: 10 attempted, 10 correct, 90 points, 3 stars, 100 %, 5 words, +15 challenge points. Lesson status NOT_STARTED → COMPLETED; Learn shows "5 words · Completed".
+- Matching (6 pairs, one wrong pair showed "Not a match") completed; Quiz 8/8 completed; Revision 8/8 (alternating Listen and Spell) completed.
+- Progress API before → after: words learned 0 → 17, points 10 → 276, daily goal 5/5 done. Rewards tab shows 276 pts. 0 JavaScript errors.
+
+Lessons are Listen & Spell by design; Matching, Quiz and Revision run per category and were played on the lesson's category.
+
+### 11.2 Learn / Games level sync — PASS
+
+Cause: Learn opened the first level that had words; Games and Home used the child's assigned level. Fix: one resolver, `resolveChildLevel` in `services/learning-nav.ts`, used by Learn, Games and Home (child's level; only when the child has none, the first level with content). Learn no longer has its own level picker. `child/[id].tsx` no longer falls back to a hard-coded `LEVEL_1`. Server: a child with an assigned level no longer sees lessons attached to another level's category (`lesson.service.ts`).
+
+Tested by changing the child's level through the parent API:
+
+| Child level | Learn | Games |
+| --- | --- | --- |
+| LEVEL_2 (no words locally) | "Level 2 – Ages 4–6", "No vocabulary in this level yet", no Level 1 lesson | "No games yet" |
+| LEVEL_1 | "Level 1 – Ages 1–3", 10 categories | Match It → same 10 categories |
+
+Tapping Family and People from Learn and from Games passed the same `categoryId` (the Level 1 group A category).
+
+### 11.3 Local vocabulary cleanup — PASS
+
+New script `server/scripts/restore-local-level1-vocab.ts` (refuses any non-localhost database; dry run unless `--apply`): deletes stamped test words (`playfix_`, `seatfix_`, `wmhist…`, `uploadtest…`, etc.), recreates or reactivates the approved 750-word seed (`server/prisma/data/level1-vocabulary.generated.json`), and unpublishes the stray duplicate Level 1 group B "Family and People" category.
+
+First run: 117 test words deleted, 74 seed words created, 675 reactivated. Result: each of the 10 Level 1 categories has 75 words, 75 active, 0 test words; 0 test words anywhere in the database. The server test suite itself deactivates seed words and adds fixtures again (a later run needed 182 reactivated, 18 deleted), so run the script after tests.
+
+### 11.4 Admin → Schools tablet layout — PASS
+
+Cause: the generic `.panel` style (`margin: 32px auto`) on each list card shrank cards to their content and added 32 px gaps. Fix: `.admin-schools-list` responsive grid (cards at least 320 px wide), cards without the auto margin, Manage as a 44 px button, 44 px form fields, Create form aligned with the list.
+
+| Viewport | Columns | Card width | Gaps | Manage | Overflow |
+| --- | --- | --- | --- | --- | --- |
+| 375×667 | 1 | 343 px (100 %) | 12 px | 89×44 | none |
+| 768×1024 | 2 | 362 px (100 % of row) | 12 px | 89×44 | none |
+| 1024×768 | 2 | 352 px | 12 px | 89×44 | none |
+| 1024×1366 | 2 | 352 px | 12 px | 89×44 | none |
+| 1366×768 | 3 | 340 px | 12 px | 89×44 | none |
+
+Manage opened the school page at every size; Create school and Search were re-tested at 768×1024.
+
+Checks: mobile, web and server type checks pass. Server tests: 181 passed, 9 failed before the test fix below; `batch8-lessons-seats` was updated to use a category in the child's own level (it relied on the cross-level lesson leak) and now passes. The remaining 8 failures are the pre-existing ones listed in section 9.

@@ -22,6 +22,7 @@ import {
 } from "../../components/kids";
 import { art, categoryTheme } from "../../components/illustrations";
 import { displayEmoji } from "../../services/emoji";
+import { resolveChildLevel } from "../../services/learning-nav";
 import { apiRequest, ApiError } from "../../services/api";
 import {
   getActiveChild,
@@ -123,20 +124,9 @@ export default function LearnTab() {
           }
 
           const catalog = await apiRequest<LevelRow[]>("/learning/levels");
-          // Only real levels from API (no hardcoded L1–L4 placeholders).
-          const numbered = [...catalog].sort((a, b) => a.sortOrder - b.sortOrder);
-          setLevels(numbered);
-
-          const activeCode =
-            (selectedLevel && numbered.some((l) => l.code === selectedLevel)
-              ? selectedLevel
-              : null) ??
-            numbered.find((l) => (l.wordCount ?? 0) > 0)?.code ??
-            numbered[0]?.code ??
-            "";
-          if (activeCode && activeCode !== selectedLevel) {
-            setSelectedLevel(activeCode);
-          }
+          setLevels(catalog);
+          const activeCode = resolveChildLevel(active.level, catalog);
+          setSelectedLevel(activeCode);
 
           const lessonList = await apiRequest<LessonRow[]>(
             `/learning/lessons?childId=${encodeURIComponent(active.id)}`
@@ -146,9 +136,8 @@ export default function LearnTab() {
           if (!activeCode) {
             setGroups([]);
           } else {
-            const levelKey = activeCode.replace(/^LEVEL_/i, "");
             const data = await apiRequest<{ groups: Group[] }>(
-              `/learning/levels/${levelKey}/groups?childId=${encodeURIComponent(active.id)}`
+              `/learning/levels/${encodeURIComponent(activeCode)}/groups?childId=${encodeURIComponent(active.id)}`
             );
             setGroups(data.groups);
           }
@@ -158,7 +147,7 @@ export default function LearnTab() {
           setLoading(false);
         }
       })();
-    }, [selectedLevel])
+    }, [])
   );
 
   const activeMeta = levels.find((l) => l.code === selectedLevel);
@@ -222,42 +211,6 @@ export default function LearnTab() {
               </Pressable>
             ))}
           </View>
-        ) : null}
-
-        {levels.length > 1 ? (
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.levelRow}
-          >
-            {levels.map((meta) => {
-              const ready = (meta.wordCount ?? 0) > 0;
-              const selected = selectedLevel === meta.code;
-              const short =
-                meta.code.replace(/^LEVEL_/i, "L") || meta.label.slice(0, 8);
-              return (
-                <Pressable
-                  key={meta.id}
-                  onPress={() => setSelectedLevel(meta.code)}
-                  style={[
-                    styles.levelChip,
-                    selected && styles.levelChipOn,
-                    !ready && styles.levelChipSoon,
-                  ]}
-                >
-                  <Text
-                    style={[
-                      styles.levelChipText,
-                      selected && styles.levelChipTextOn,
-                    ]}
-                  >
-                    {short}
-                    {!ready ? " · Soon" : ""}
-                  </Text>
-                </Pressable>
-              );
-            })}
-          </ScrollView>
         ) : null}
 
         {!loading && child && !child.hasLearningSeat ? (
@@ -370,19 +323,6 @@ const styles = StyleSheet.create({
   lessonName: { fontWeight: "800", fontSize: 16, color: colors.text },
   lessonMeta: { color: colors.textMuted, fontSize: 13, marginTop: 4 },
   groupLabel: { fontWeight: "900", fontSize: 19, color: colors.text, marginTop: 4 },
-  levelRow: { gap: 8, paddingVertical: 2 },
-  levelChip: {
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    borderRadius: radii.pill,
-    backgroundColor: "#fff",
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  levelChipOn: { backgroundColor: colors.primary, borderColor: colors.primary },
-  levelChipSoon: { opacity: 0.85 },
-  levelChipText: { fontWeight: "800", color: colors.text },
-  levelChipTextOn: { color: "#fff" },
   emptyLevel: {
     backgroundColor: "#fff",
     borderRadius: radii.lg,

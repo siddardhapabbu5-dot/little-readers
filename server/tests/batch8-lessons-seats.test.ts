@@ -45,7 +45,10 @@ describe.skipIf(!hasDb)("Batch 8 — kids lessons + seat revoke", () => {
     childB = kids[1]?.id ?? kids[0].id;
 
     const cat = await prisma.learningCategory.findFirst({
-      where: { isPublished: true },
+      where: {
+        isPublished: true,
+        ...(kids[0].levelId ? { group: { levelId: kids[0].levelId } } : {}),
+      },
       include: { group: { include: { level: true } } },
     });
     expect(cat).toBeTruthy();

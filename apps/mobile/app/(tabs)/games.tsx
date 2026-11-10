@@ -19,7 +19,7 @@ import { apiRequest, ApiError } from "../../services/api";
 import { getActiveChild, saveActiveChild } from "../../services/secure";
 import { displayEmoji } from "../../services/emoji";
 import { isOn, startActivity, useActivities } from "../../services/activities";
-import { openLearningActivity } from "../../services/learning-nav";
+import { openLearningActivity, resolveChildLevel } from "../../services/learning-nav";
 import { colors, radii, shadow } from "../../theme";
 
 type ChildRow = {
@@ -65,7 +65,10 @@ export default function GamesTab() {
           setChild(active);
 
           if (active && active.hasLearningSeat !== false) {
-            const levelKey = active.level || "LEVEL_1";
+            const catalog = await apiRequest<Parameters<typeof resolveChildLevel>[1]>(
+              "/learning/levels"
+            );
+            const levelKey = resolveChildLevel(active.level, catalog);
             const [curriculum, dailyStatus] = await Promise.all([
               apiRequest<{ groups: Group[] }>(
                 `/learning/levels/${encodeURIComponent(levelKey)}/groups?childId=${encodeURIComponent(active.id)}`

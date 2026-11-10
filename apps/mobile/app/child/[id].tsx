@@ -220,7 +220,7 @@ export default function ChildDetailScreen() {
           displayName: name.trim(),
           birthYear: updated.birthYear,
           birthDate: updated.birthDate ?? birthDate.trim(),
-          level: updated.level?.code ?? profile?.level?.code ?? "LEVEL_1",
+          level: updated.level?.code ?? profile?.level?.code ?? "",
           levelId: updated.levelId ?? editLevelId,
           gradeId: updated.gradeId ?? editGradeId,
         });
@@ -335,7 +335,7 @@ export default function ChildDetailScreen() {
                             id: profile.id,
                             displayName: profile.displayName,
                             birthYear: profile.birthYear,
-                            level: profile.level?.code ?? "LEVEL_1",
+                            level: profile.level?.code ?? "",
                           })
                         }
                       />
@@ -346,7 +346,7 @@ export default function ChildDetailScreen() {
                             id: profile.id,
                             displayName: profile.displayName,
                             birthYear: profile.birthYear,
-                            level: profile.level?.code ?? "LEVEL_1",
+                            level: profile.level?.code ?? "",
                           }).then(() => router.push("/(tabs)/learn"))
                         }
                       />

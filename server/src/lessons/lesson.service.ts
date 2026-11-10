@@ -502,6 +502,8 @@ export async function listPublishedLessonsForChild(
 
   // Visible if: unscoped, placed on child's level/grade, or attached to a
   // published learning category the child may practice (never unpublished lessons).
+  // A child with an assigned level only sees categories of that level/grade,
+  // so Learn never lists another level's lessons.
   const lessons = await prisma.lesson.findMany({
     where: {
       isPublished: true,
@@ -514,7 +516,7 @@ export async function listPublishedLessonsForChild(
           groupId: null,
           learningCategoryId: null,
         },
-        { learningCategory: { isPublished: true } },
+        ...(levelId ? [] : [{ learningCategory: { isPublished: true } }]),
         ...(gradeId ? [{ gradeId }] : []),
         ...(levelId ? [{ levelId }, { group: { levelId } }] : []),
         ...(levelId

@@ -77,7 +77,7 @@ export default function AdminSchoolsPage() {
       ) : null}
       {message ? <Alert tone="success">{message}</Alert> : null}
 
-      <div className="panel" style={{ marginBottom: 16, display: "grid", gap: 8 }}>
+      <div className="panel admin-schools-form" style={{ marginBottom: 16, display: "grid", gap: 8 }}>
         <strong>Create school</strong>
         <input
           placeholder="School name"
@@ -99,37 +99,37 @@ export default function AdminSchoolsPage() {
         </Button>
       </div>
 
-      <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
+      <div className="admin-schools-form" style={{ display: "flex", gap: 8, marginBottom: 12 }}>
         <input
           placeholder="Search schools"
           value={q}
           onChange={(e) => setQ(e.target.value)}
-          style={{ flex: 1 }}
+          style={{ flex: 1, minWidth: 0 }}
         />
         <Button variant="secondary" onClick={() => void load()}>
           Search
         </Button>
       </div>
 
-      <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "grid", gap: 10 }}>
+      <ul className="admin-schools-list">
         {rows.map((s) => (
           <li key={s.id} className="panel">
-            <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
-              <div>
-                <Link href={`/admin/schools/${s.id}`}>
-                  <strong>{s.name}</strong>
-                </Link>
-                <div style={{ opacity: 0.75, fontSize: 14 }}>
-                  {s.code ? `${s.code} · ` : ""}
-                  {s.isActive ? "Active" : "Inactive"} · {s.teacherCount} teachers ·{" "}
-                  {s.classroomCount} classrooms · {s.studentCount} students
-                </div>
-                {s.contactEmail ? (
-                  <div style={{ fontSize: 13, opacity: 0.7 }}>{s.contactEmail}</div>
-                ) : null}
-              </div>
-              <Link href={`/admin/schools/${s.id}`}>Manage</Link>
+            <div className="admin-schools-head">
+              <Link href={`/admin/schools/${s.id}`} className="admin-schools-name">
+                <strong>{s.name}</strong>
+              </Link>
+              <Link href={`/admin/schools/${s.id}`} className="admin-schools-manage">
+                Manage
+              </Link>
             </div>
+            <div style={{ opacity: 0.75, fontSize: 14 }}>
+              {s.code ? `${s.code} · ` : ""}
+              {s.isActive ? "Active" : "Inactive"} · {s.teacherCount} teachers ·{" "}
+              {s.classroomCount} classrooms · {s.studentCount} students
+            </div>
+            {s.contactEmail ? (
+              <div style={{ fontSize: 13, opacity: 0.7, overflowWrap: "anywhere" }}>{s.contactEmail}</div>
+            ) : null}
           </li>
         ))}
       </ul>

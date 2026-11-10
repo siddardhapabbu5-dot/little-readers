@@ -66,9 +66,9 @@ function formatWhen(value: string | null) {
 
 export default function AgreementsScreen() {
   const params = useLocalSearchParams<{ planId?: string; store?: string }>();
-  // Website checkout runs only in the web preview; the apps return to the store subscription screen.
-  const planId = Platform.OS === "web" ? params.planId : undefined;
-  const storeFlow = params.store === "google_play" || (Platform.OS !== "web" && Boolean(params.planId));
+  // Web and Android pay through Razorpay / Cashfree; the iPhone app has no purchase path.
+  const planId = Platform.OS === "ios" ? undefined : params.planId;
+  const storeFlow = params.store === "google_play" || (Platform.OS === "ios" && Boolean(params.planId));
   const router = useRouter();
   const [status, setStatus] = useState<AgreementStatus | null>(null);
   const [checked, setChecked] = useState<Record<string, boolean>>({});
@@ -107,11 +107,16 @@ export default function AgreementsScreen() {
     try {
       const order = await apiRequest<CashfreeOrder>("/payments/cashfree/orders", {
         method: "POST",
-        body: JSON.stringify({ planId, phone: phone.trim() || undefined, returnTo: "app" }),
+        body: JSON.stringify({
+          planId,
+          phone: phone.trim() || undefined,
+          returnTo: Platform.OS === "web" ? "app" : "sdk",
+        }),
       });
       setNeedPhone(false);
       const { redirected } = await openCashfreeCheckout({
         paymentSessionId: order.paymentSessionId,
+        orderId: order.orderId,
         mode: order.mode,
       });
       if (redirected) return;

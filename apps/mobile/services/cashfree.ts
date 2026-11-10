@@ -21,6 +21,7 @@ function loadScript(): Promise<CashfreeFactory> {
 /** Opens Cashfree's checkout window. Resolves when it closes; the server then decides what happened. */
 export async function openCashfreeCheckout(opts: {
   paymentSessionId: string;
+  orderId: string;
   mode: "sandbox" | "production";
 }): Promise<{ redirected: boolean }> {
   const Cashfree = await loadScript();

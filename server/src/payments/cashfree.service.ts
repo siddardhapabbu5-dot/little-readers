@@ -36,7 +36,9 @@ function httpsUrl(url: string) {
  * Cashfree substitutes {order_id}; it only accepts https return URLs, so local runs rely on the modal
  * result. The phone web app is served under /app on the website origin.
  */
-function returnUrlFor(returnTo: "web" | "app") {
+function returnUrlFor(returnTo: "web" | "app" | "sdk") {
+  // The Android SDK reports the result itself; a return URL would load our website inside its checkout.
+  if (returnTo === "sdk") return undefined;
   const base = (process.env.APP_PUBLIC_URL || env.APP_PUBLIC_URL).replace(/\/$/, "");
   const path = returnTo === "app" ? "/app/payment-return" : "/parent/checkout";
   return httpsUrl(`${base}${path}?cf_order_id={order_id}`);
@@ -44,7 +46,7 @@ function returnUrlFor(returnTo: "web" | "app") {
 
 export async function createCashfreeOrder(
   userId: string,
-  input: CheckoutInput & { phone?: string; returnTo?: "web" | "app" },
+  input: CheckoutInput & { phone?: string; returnTo?: "web" | "app" | "sdk" },
   clientPlatform?: string
 ) {
   const { plan, durationMonths, snapshot } = await resolveCheckoutPlan(

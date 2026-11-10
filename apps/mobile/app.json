@@ -38,7 +38,7 @@
     },
     "android": {
       "package": "com.littlereaders.app",
-      "versionCode": 23,
+      "versionCode": 24,
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
       "adaptiveIcon": {

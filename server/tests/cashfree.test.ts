@@ -133,7 +133,7 @@ describe.skipIf(!hasDb)("Cashfree website checkout", () => {
     expect(await prisma.payment.count({ where: { userId: p.id } })).toBe(0);
   });
 
-  it("refuses Cashfree inside the iOS app and asks for a phone when none is on file", async () => {
+  it("refuses Cashfree in the iOS app, allows Android, and asks for a phone when none is on file", async () => {
     const p = await registerParent("native");
     const res = await request(app)
       .post("/api/payments/cashfree/orders")
@@ -142,6 +142,13 @@ describe.skipIf(!hasDb)("Cashfree website checkout", () => {
       .send({ planId, phone: PHONE });
     expect(res.status).toBe(403);
     expect(res.body.code).toBe("USE_STORE_BILLING");
+    const android = await request(app)
+      .post("/api/payments/cashfree/orders")
+      .set("Authorization", `Bearer ${p.token}`)
+      .set("X-Client-Platform", "android")
+      .send({ planId, phone: PHONE, returnTo: "sdk" });
+    expect(android.status).toBe(201);
+    expect(android.body.data.paymentSessionId).toBeTruthy();
     const noPhone = await order(p.token, { planId });
     expect(noPhone.status).toBe(400);
     expect(noPhone.body.code).toBe("PHONE_REQUIRED");

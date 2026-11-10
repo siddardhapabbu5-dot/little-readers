@@ -150,7 +150,7 @@ paymentsRouter.post(
       planId: z.string().min(1).optional(),
       seats: z.number().int().min(1).max(20).optional(),
       phone: z.string().min(10).max(16).optional(),
-      returnTo: z.enum(["web", "app"]).optional(),
+      returnTo: z.enum(["web", "app", "sdk"]).optional(),
     })
   ),
   async (req: AuthenticatedRequest, res, next) => {

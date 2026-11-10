@@ -1,16 +1,65 @@
-import type { ReactNode } from "react";
+import { forwardRef, type ReactNode } from "react";
 import {
   ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
   View,
+  type ScrollViewProps,
   type StyleProp,
   type TextInputProps,
   type ViewStyle,
 } from "react-native";
 import { colors, radii, shadow } from "../theme";
+
+/**
+ * Vertical page scroller for screens with inputs: lifts content above the keyboard,
+ * keeps taps on buttons working while it is open, and caps line length on tablets.
+ */
+export const KeyboardScroll = forwardRef<ScrollView, ScrollViewProps>(function KeyboardScroll(
+  { style, contentContainerStyle, ...rest },
+  ref
+) {
+  return (
+    <KeyboardAvoidingView
+      style={styles.flex}
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
+    >
+      <ScrollView
+        ref={ref}
+        style={[styles.flex, style]}
+        contentContainerStyle={[styles.scrollContent, contentContainerStyle]}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode={Platform.OS === "ios" ? "interactive" : "on-drag"}
+        automaticallyAdjustKeyboardInsets={Platform.OS === "ios"}
+        {...rest}
+      />
+    </KeyboardAvoidingView>
+  );
+});
+
+/** Refresh spinner that floats over the content below instead of pushing it down. */
+export function LoadingSlot({
+  active,
+  color = colors.primary,
+}: {
+  active: boolean;
+  color?: string;
+}) {
+  return (
+    <View style={styles.loadingSlot} pointerEvents="none">
+      {active ? (
+        <View style={[styles.loadingBubble, shadow.card]}>
+          <ActivityIndicator color={color} />
+        </View>
+      ) : null}
+    </View>
+  );
+}
 
 export function Screen({
   children,
@@ -188,6 +237,30 @@ export function ErrorText({ children }: { children?: string | null }) {
 }
 
 const styles = StyleSheet.create({
+  flex: { flex: 1 },
+  scrollContent: {
+    flexGrow: 1,
+    width: "100%",
+    maxWidth: 760,
+    alignSelf: "center",
+  },
+  loadingSlot: {
+    height: 0,
+    alignItems: "center",
+    zIndex: 10,
+    elevation: 8,
+    overflow: "visible",
+  },
+  loadingBubble: {
+    position: "absolute",
+    top: 0,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: "#fff",
+    alignItems: "center",
+    justifyContent: "center",
+  },
   screen: {
     flex: 1,
     backgroundColor: colors.bg,

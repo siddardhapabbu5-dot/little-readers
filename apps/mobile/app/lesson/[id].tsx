@@ -138,7 +138,7 @@ export default function LessonDetailScreen() {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.bg },
-  content: { padding: 16, gap: 12, paddingBottom: 40 },
+  content: { padding: 16, gap: 12, paddingBottom: 40, width: "100%", maxWidth: 720, alignSelf: "center" },
   status: { fontWeight: "800", color: colors.primary, fontSize: 15 },
   desc: { color: colors.textMuted, fontSize: 14, lineHeight: 20 },
   section: { fontWeight: "800", color: colors.text, fontSize: 16 },

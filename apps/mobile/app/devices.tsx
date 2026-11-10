@@ -1,9 +1,9 @@
 import { useCallback, useState } from "react";
-import { Alert, Platform, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Alert, Platform, Pressable, StyleSheet, Text, View } from "react-native";
 import { useFocusEffect, useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Constants from "expo-constants";
-import { Card, ErrorText, Field, PrimaryButton, SoftButton, Title } from "../components/ui";
+import { Card, ErrorText, Field, KeyboardScroll, PrimaryButton, SoftButton, Title } from "../components/ui";
 import { AuthGate } from "../components/AuthGate";
 import { RequireParentGate } from "../components/RequireParentGate";
 import { apiRequest, ApiError } from "../services/api";
@@ -141,7 +141,7 @@ export default function DevicesScreen() {
     <AuthGate roles={ROLE_SETS.parentFamily}>
       <RequireParentGate>
         <SafeAreaView style={styles.safe}>
-          <ScrollView contentContainerStyle={styles.content}>
+          <KeyboardScroll contentContainerStyle={styles.content}>
             <SoftButton label="← Back" onPress={() => router.back()} />
             <Title>Device management</Title>
             <Text style={styles.note}>
@@ -286,7 +286,7 @@ export default function DevicesScreen() {
                 )}
               </>
             ) : null}
-          </ScrollView>
+          </KeyboardScroll>
         </SafeAreaView>
       </RequireParentGate>
     </AuthGate>

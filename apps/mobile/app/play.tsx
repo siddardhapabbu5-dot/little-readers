@@ -7,6 +7,7 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  useWindowDimensions,
   View,
 } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
@@ -86,6 +87,7 @@ const CHOICE_TINTS: Record<string, string> = {
 
 export default function PlayScreen() {
   const router = useRouter();
+  const wideKeys = useWindowDimensions().width >= 600;
   const params = useLocalSearchParams<{
     categoryId?: string;
     lessonId?: string;
@@ -668,7 +670,7 @@ export default function PlayScreen() {
                         key={letter}
                         accessibilityRole="button"
                         accessibilityLabel={`Type ${letter}`}
-                        style={({ pressed }) => [styles.key, shadow.soft, { opacity: pressed ? 0.7 : 1 }]}
+                        style={({ pressed }) => [styles.key, wideKeys && styles.keyWide, shadow.soft, { opacity: pressed ? 0.7 : 1 }]}
                         disabled={feedback === "ok" || saving}
                         onPress={() =>
                           setSpellValue((v) =>
@@ -676,7 +678,7 @@ export default function PlayScreen() {
                           )
                         }
                       >
-                        <Text style={styles.letter}>{letter}</Text>
+                        <Text style={[styles.letter, wideKeys && styles.letterWide]}>{letter}</Text>
                       </Pressable>
                     ))}
                   </View>
@@ -860,7 +862,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
+  /** Tablets: 13 keys per row still fit the 720 px game column. */
+  keyWide: { width: 46, height: 56 },
   letter: { fontSize: 20, fontWeight: "900", color: colors.primaryDark },
+  letterWide: { fontSize: 23 },
   spellActions: { flexDirection: "row", flexWrap: "wrap", gap: 8, justifyContent: "center" },
   feedbackBarOk: {
     flexDirection: "row",

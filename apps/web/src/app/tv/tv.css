@@ -129,6 +129,7 @@
   border-radius: 1em;
   padding: 0.7em 1.4em;
   min-height: 2.6em;
+  min-height: max(2.6em, 44px);
   box-shadow: 0 0.3em 0 rgba(30, 27, 75, 0.25);
   outline: none;
   cursor: pointer;

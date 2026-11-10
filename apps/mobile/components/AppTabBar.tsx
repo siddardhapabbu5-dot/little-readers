@@ -1,5 +1,5 @@
 import type { BottomTabBarProps } from "@react-navigation/bottom-tabs";
-import { Platform, Pressable, StyleSheet, Text, View } from "react-native";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { colors, shadow } from "../theme";
 
@@ -21,7 +21,7 @@ const TINTS: Record<string, string> = {
 
 export function AppTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
   const insets = useSafeAreaInsets();
-  const bottom = Platform.OS === "web" ? 10 : Math.max(insets.bottom, 10);
+  const bottom = Math.max(insets.bottom, 10);
 
   return (
     <View style={[styles.wrap, { paddingBottom: bottom }, shadow.tab]}>

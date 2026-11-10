@@ -439,7 +439,7 @@ function formatWhen(iso: string) {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: "transparent" },
-  content: { padding: 20, gap: 14, paddingBottom: 36 },
+  content: { padding: 20, gap: 14, paddingBottom: 36, width: "100%", maxWidth: 720, alignSelf: "center" },
   pointsPill: {
     backgroundColor: "#fff",
     borderRadius: radii.pill,

@@ -25,14 +25,14 @@ export function PortalShell({
   const color = tone === "dark" ? "#e2e8f0" : "#1f2937";
 
   return (
-    <div style={{ minHeight: "100vh", background, color, padding: 24 }}>
+    <div style={{ minHeight: "100vh", background, color, padding: "clamp(12px, 4vw, 24px)" }}>
       <div
         style={{
           maxWidth: 920,
-          margin: "32px auto",
+          margin: "clamp(8px, 4vw, 32px) auto",
           background: tone === "dark" ? "#111827" : "rgba(255,255,255,0.95)",
           borderRadius: 18,
-          padding: 28,
+          padding: "clamp(16px, 5vw, 28px)",
           boxShadow: "0 12px 40px rgba(15,23,42,0.12)",
         }}
       >

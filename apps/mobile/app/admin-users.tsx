@@ -1,9 +1,7 @@
 import { useCallback, useState } from "react";
 import {
-  ActivityIndicator,
   Alert,
   Platform,
-  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -11,7 +9,7 @@ import {
 } from "react-native";
 import { useFocusEffect, useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Card, ErrorText, SoftButton, Title } from "../components/ui";
+import { Card, ErrorText, KeyboardScroll, SoftButton, Title, LoadingSlot } from "../components/ui";
 import { AuthGate } from "../components/AuthGate";
 import { apiRequest, ApiError } from "../services/api";
 import { ROLE_SETS } from "../services/auth-errors";
@@ -148,9 +146,9 @@ export default function AdminUsersScreen() {
         </Text>
         <ErrorText>{error}</ErrorText>
         {info ? <Text style={styles.info}>{info}</Text> : null}
-        {loading ? <ActivityIndicator color={colors.primary} /> : null}
+        <LoadingSlot active={loading} />
 
-        <ScrollView contentContainerStyle={{ gap: 12, paddingBottom: 40 }}>
+        <KeyboardScroll contentContainerStyle={{ gap: 12, paddingBottom: 40 }}>
           <Card style={{ gap: 8 }}>
             <Text style={styles.section}>Search</Text>
             <TextInput
@@ -254,7 +252,7 @@ export default function AdminUsersScreen() {
               </View>
             ))}
           </Card>
-        </ScrollView>
+        </KeyboardScroll>
       </SafeAreaView>
     </AuthGate>
   );

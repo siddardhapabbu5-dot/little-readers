@@ -4,7 +4,6 @@ import {
   Linking,
   Platform,
   Pressable,
-  ScrollView,
   StyleSheet,
   Text,
   View,
@@ -12,7 +11,7 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Card, ErrorText, Field, PrimaryButton, SoftButton, Title } from "../components/ui";
+import { Card, ErrorText, Field, KeyboardScroll, PrimaryButton, SoftButton, Title } from "../components/ui";
 import { AuthGate } from "../components/AuthGate";
 import { RequireParentGate } from "../components/RequireParentGate";
 import { RegistrationSteps } from "../components/RegistrationSteps";
@@ -250,7 +249,7 @@ export default function AgreementsScreen() {
     <AuthGate roles={ROLE_SETS.parentFamily}>
       <RequireParentGate>
         <SafeAreaView style={styles.safe}>
-          <ScrollView contentContainerStyle={styles.content}>
+          <KeyboardScroll contentContainerStyle={styles.content}>
             <SoftButton label="← Back" onPress={() => !paying && router.back()} />
             <RegistrationSteps step={paying ? 6 : 5} />
             <Title>Learn Wise – Agreements</Title>
@@ -373,7 +372,7 @@ export default function AgreementsScreen() {
                 ) : null}
               </>
             ) : null}
-          </ScrollView>
+          </KeyboardScroll>
         </SafeAreaView>
       </RequireParentGate>
     </AuthGate>

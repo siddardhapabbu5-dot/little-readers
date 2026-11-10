@@ -1,10 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  ActivityIndicator,
   Alert,
   Platform,
   Pressable,
-  ScrollView,
   StyleSheet,
   Text,
   View,
@@ -12,7 +10,7 @@ import {
 import { useFocusEffect, useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { AdminTabBar } from "../components/AdminTabBar";
-import { Card, ErrorText, Field, SoftButton, Title } from "../components/ui";
+import { Card, ErrorText, Field, KeyboardScroll, SoftButton, Title, LoadingSlot } from "../components/ui";
 import { AuthGate } from "../components/AuthGate";
 import { apiRequest, ApiError } from "../services/api";
 import { ROLE_SETS } from "../services/auth-errors";
@@ -580,7 +578,7 @@ export default function AdminStructureScreen() {
   return (
     <AuthGate roles={ROLE_SETS.admin}>
       <SafeAreaView style={styles.safe} edges={["top"]}>
-        <ScrollView
+        <KeyboardScroll
           contentContainerStyle={styles.content}
           keyboardShouldPersistTaps="handled"
           keyboardDismissMode="on-drag"
@@ -596,7 +594,7 @@ export default function AdminStructureScreen() {
           </Text>
           <ErrorText>{error}</ErrorText>
           {info ? <Text style={styles.info}>{info}</Text> : null}
-          {busy ? <ActivityIndicator color={colors.primary} /> : null}
+          <LoadingSlot active={busy} />
 
           <View style={styles.rowBetween}>
             <Text style={styles.section}>Grades</Text>
@@ -1043,7 +1041,7 @@ export default function AdminStructureScreen() {
             label="Open Vocabulary"
             onPress={() => router.push("/admin-vocabulary" as never)}
           />
-        </ScrollView>
+        </KeyboardScroll>
         <AdminTabBar />
       </SafeAreaView>
     </AuthGate>

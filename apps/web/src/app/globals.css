@@ -23,6 +23,7 @@ body {
   font-family: "Trebuchet MS", "Segoe UI", sans-serif;
   color: var(--ink);
   background: var(--bg);
+  overflow-wrap: break-word;
 }
 
 a {
@@ -31,14 +32,30 @@ a {
 }
 
 button,
-input {
+input,
+select,
+textarea {
   font: inherit;
+}
+
+input,
+select,
+textarea {
+  max-width: 100%;
+}
+
+img,
+video,
+svg {
+  max-width: 100%;
 }
 
 .shell {
   min-height: 100vh;
+  min-height: 100dvh;
   display: grid;
   grid-template-rows: auto 1fr auto;
+  grid-template-columns: minmax(0, 1fr);
 }
 
 .nav {
@@ -223,8 +240,9 @@ input {
 
 .vocab-admin {
   display: grid;
-  grid-template-columns: 260px 1fr;
+  grid-template-columns: 260px minmax(0, 1fr);
   min-height: 100vh;
+  min-height: 100dvh;
 }
 
 .vocab-admin-nav {
@@ -258,6 +276,72 @@ input {
 
 .vocab-admin-main {
   padding: 24px;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+/* Long option labels, e-mails and order ids must shrink with the column, not widen the page. */
+.vocab-admin-main input:not([type="checkbox"]):not([type="radio"]),
+.vocab-admin-main select,
+.vocab-admin-main textarea,
+.vocab-admin-main button {
+  max-width: 100%;
+  min-width: 0;
+}
+
+.vocab-admin-main table {
+  overflow-wrap: normal;
+}
+
+.admin-shell .muted {
+  color: #94a3b8;
+}
+
+/* White panels inside the dark admin shell would otherwise inherit its light text colour. */
+.vocab-admin-main .panel {
+  color: #0f172a;
+}
+
+.vocab-admin-main .panel a {
+  color: #1d4ed8;
+}
+
+.vocab-admin-main .panel .muted {
+  color: #475569;
+}
+
+.vocab-admin-main .panel th {
+  padding: 8px 10px;
+  background: #f1f5f9;
+  color: #334155;
+  font-weight: 700;
+  text-align: left;
+  border-bottom: 2px solid #cbd5e1;
+  white-space: nowrap;
+}
+
+.vocab-admin-main .panel td {
+  padding: 8px 10px;
+  border-bottom: 1px solid #e2e8f0;
+  vertical-align: top;
+}
+
+.vocab-admin-main .panel tbody tr:nth-child(even):not([class]) {
+  background: #f8fafc;
+}
+
+/* Dark inputs: the browser's default grey placeholder is too faint on them. */
+.admin-dark-field::placeholder,
+.vocab-admin-main .vocab-table input::placeholder,
+.vocab-admin-main .vocab-panel input::placeholder,
+.vocab-admin-main .vocab-panel textarea::placeholder {
+  color: #94a3b8;
+}
+
+.admin-split {
+  display: grid;
+  grid-template-columns: minmax(260px, 1fr) 2fr;
+  gap: 16px;
 }
 
 .vocab-admin-main h1 {
@@ -413,7 +497,45 @@ input {
 
 @media (max-width: 900px) {
   .vocab-admin {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .vocab-admin-nav {
+    border-right: 0;
+    border-bottom: 1px solid #1e293b;
+    padding: 14px 16px;
+  }
+
+  /* 15 links stacked would push the page content a full screen down on phones. */
+  .vocab-admin-nav nav {
+    display: flex;
+    gap: 6px;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    padding-bottom: 4px;
+  }
+
+  .vocab-admin-nav nav a {
+    flex: 0 0 auto;
+    white-space: nowrap;
+  }
+
+  .vocab-admin-main {
+    padding: 16px;
+  }
+
+  .admin-split {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .vocab-admin-main table {
+    display: block;
+    max-width: 100%;
+    overflow-x: auto;
+  }
+
+  .vocab-table-wrap table {
+    display: table;
   }
 }
 
@@ -637,6 +759,12 @@ input {
   padding: 12px 22px;
   background: rgba(255, 255, 255, 0.96);
   box-shadow: 0 8px 24px rgba(23, 52, 94, 0.1);
+}
+
+@media (max-height: 520px) {
+  .lr-login-nav {
+    position: relative;
+  }
 }
 
 .lr-login-brand {

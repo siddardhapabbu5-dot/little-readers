@@ -1,9 +1,7 @@
 import { useCallback, useState } from "react";
 import {
-  ActivityIndicator,
   Alert,
   Platform,
-  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -11,7 +9,7 @@ import {
 } from "react-native";
 import { useFocusEffect } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Card, ErrorText, PrimaryButton, SoftButton } from "../components/ui";
+import { Card, ErrorText, KeyboardScroll, PrimaryButton, SoftButton, LoadingSlot } from "../components/ui";
 import { AdminTabBar } from "../components/AdminTabBar";
 import { AuthGate } from "../components/AuthGate";
 import { apiRequest, ApiError } from "../services/api";
@@ -235,11 +233,11 @@ export default function AdminSchoolsScreen() {
             Manage schools, teachers and classrooms (existing Admin APIs)
           </Text>
         </View>
-        {loading ? <ActivityIndicator color={adminColors.primary} /> : null}
+        <LoadingSlot active={loading} color={adminColors.primary} />
         {error ? <ErrorText>{error}</ErrorText> : null}
         {message ? <Text style={styles.ok}>{message}</Text> : null}
 
-        <ScrollView contentContainerStyle={{ gap: 12, paddingBottom: 24, paddingHorizontal: 16 }}>
+        <KeyboardScroll contentContainerStyle={{ gap: 12, paddingBottom: 24, paddingHorizontal: 16 }}>
           <Card style={{ gap: 8 }}>
             <Text style={styles.section}>Create school</Text>
             <TextInput
@@ -381,7 +379,7 @@ export default function AdminSchoolsScreen() {
               />
             </Card>
           ) : null}
-        </ScrollView>
+        </KeyboardScroll>
         <AdminTabBar />
       </SafeAreaView>
     </AuthGate>

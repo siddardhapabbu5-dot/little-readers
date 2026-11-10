@@ -403,7 +403,7 @@ export default function ManageVocabularyWordsPage() {
       {message ? <Alert tone="success">{message}</Alert> : null}
 
       <div className="panel" style={{ display: "grid", gap: 10, marginBottom: 16 }}>
-        <p style={{ color: "#94a3b8", margin: 0 }}>
+        <p style={{ color: "#475569", margin: 0 }}>
           Search and edit kids vocabulary. One A–Z XLSX can hold tabs per category (A-Z Alphabet,
           A-Z Fruits, …). Select a category to import its matching tab, or upload with no filter
           to fill every matching tab. Reclassification keeps the same word id.
@@ -670,7 +670,7 @@ export default function ManageVocabularyWordsPage() {
           <h2 style={{ marginTop: 0 }}>
             Edit · {detail.emoji} {detail.text}
           </h2>
-          <p style={{ margin: 0, color: "#94a3b8" }}>
+          <p style={{ margin: 0, color: "#475569" }}>
             id {detail.id} · attempts {detail._count.attempts}
             {detail.dictionarySense?.entry.sourceName
               ? ` · source ${detail.dictionarySense.entry.sourceName}`
@@ -786,7 +786,7 @@ export default function ManageVocabularyWordsPage() {
 
       <div className="panel" style={{ display: "grid", gap: 10 }}>
         <h2 style={{ marginTop: 0 }}>Bulk assignment review</h2>
-        <p style={{ margin: 0, color: "#94a3b8" }}>
+        <p style={{ margin: 0, color: "#475569" }}>
           Filter pending or low-confidence classifications, select rows, then approve / reject /
           publish. Does not invent confidence scores.
         </p>

@@ -247,9 +247,10 @@ export default function AdminDevicesPage() {
         at a time. Use this page for support requests such as a lost or replaced phone.
       </p>
 
-      <div style={{ display: "grid", gridTemplateColumns: "minmax(260px, 1fr) 2fr", gap: 16 }}>
+      <div className="admin-split">
         <div style={{ ...card, display: "grid", gap: 8, alignContent: "start" }}>
           <input
+            className="admin-dark-field"
             placeholder="Search parent email, name or child"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
@@ -364,6 +365,7 @@ export default function AdminDevicesPage() {
                     </span>
                     <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
                       <input
+                        className="admin-dark-field"
                         placeholder="Reason (e.g. lost or replaced phone)"
                         value={reasons[c.id] ?? ""}
                         onChange={(e) => setReasons((r) => ({ ...r, [c.id]: e.target.value }))}

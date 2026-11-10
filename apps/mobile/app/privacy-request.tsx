@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
-import { ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { StyleSheet, Text, TextInput, View } from "react-native";
 import { useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { AuthGate } from "../components/AuthGate";
-import { Card, ErrorText, SoftButton, Title } from "../components/ui";
+import { Card, ErrorText, KeyboardScroll, SoftButton, Title } from "../components/ui";
 import { apiRequest, ApiError } from "../services/api";
 import { ROLE_SETS } from "../services/auth-errors";
 import { colors, radii } from "../theme";
@@ -70,7 +70,7 @@ export default function PrivacyRequestScreen() {
   return (
     <AuthGate roles={ROLE_SETS.parentFamily}>
       <SafeAreaView style={styles.safe}>
-        <ScrollView contentContainerStyle={styles.content}>
+        <KeyboardScroll contentContainerStyle={styles.content}>
           <SoftButton label="← Back" onPress={() => router.back()} />
           <Title>Privacy & data requests</Title>
           <Text style={styles.note}>
@@ -106,7 +106,7 @@ export default function PrivacyRequestScreen() {
               onPress={() => void submit()}
             />
           </Card>
-        </ScrollView>
+        </KeyboardScroll>
       </SafeAreaView>
     </AuthGate>
   );

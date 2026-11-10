@@ -4,6 +4,7 @@ import {
   Animated,
   Modal,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   View,
@@ -130,7 +131,7 @@ export function ParentGateModal({ visible, onClose, onUnlocked }: Props) {
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
-      <View style={styles.backdrop}>
+      <ScrollView style={styles.backdropScroll} contentContainerStyle={styles.backdrop} bounces={false}>
         <View style={styles.card}>
           <LinearGradient
             colors={[colors.primary, colors.primaryGradientEnd]}
@@ -261,7 +262,7 @@ export function ParentGateModal({ visible, onClose, onUnlocked }: Props) {
             )}
           </View>
         </View>
-      </View>
+      </ScrollView>
     </Modal>
   );
 }
@@ -275,9 +276,12 @@ export function isParentGateUnlocked() {
 const KEY_SIZE = 64;
 
 const styles = StyleSheet.create({
-  backdrop: {
+  backdropScroll: {
     flex: 1,
     backgroundColor: "rgba(31,22,53,0.6)",
+  },
+  backdrop: {
+    flexGrow: 1,
     justifyContent: "center",
     padding: 18,
   },

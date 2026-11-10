@@ -1,9 +1,7 @@
 import { useCallback, useState } from "react";
 import {
-  ActivityIndicator,
   Alert,
   Platform,
-  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -13,7 +11,7 @@ import * as DocumentPicker from "expo-document-picker";
 import { useFocusEffect, useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { AdminTabBar } from "../components/AdminTabBar";
-import { Card, ErrorText, SoftButton, Title } from "../components/ui";
+import { Card, ErrorText, KeyboardScroll, SoftButton, Title, LoadingSlot } from "../components/ui";
 import { AuthGate } from "../components/AuthGate";
 import { KIDS_STARTER_WORDS } from "../data/kids-starter-words";
 import { goAdminBack } from "../services/admin-nav";
@@ -308,7 +306,7 @@ export default function AdminDictionaryScreen() {
   return (
     <AuthGate roles={ROLE_SETS.admin}>
       <SafeAreaView style={styles.safe}>
-        <ScrollView contentContainerStyle={styles.content}>
+        <KeyboardScroll contentContainerStyle={styles.content}>
           <SoftButton label="← Back" onPress={() => goAdminBack(router)} />
           <Title>Dictionary → Grades</Title>
           <Text style={styles.note}>
@@ -318,7 +316,7 @@ export default function AdminDictionaryScreen() {
           </Text>
           <ErrorText>{error}</ErrorText>
           {info ? <Text style={styles.info}>{info}</Text> : null}
-          {busy ? <ActivityIndicator color={colors.primary} /> : null}
+          <LoadingSlot active={busy} />
 
           <Card style={{ gap: 10 }}>
             <Text style={styles.section}>0. Replace old words</Text>
@@ -396,7 +394,7 @@ export default function AdminDictionaryScreen() {
               </View>
             ))}
           </Card>
-        </ScrollView>
+        </KeyboardScroll>
         <AdminTabBar />
       </SafeAreaView>
     </AuthGate>

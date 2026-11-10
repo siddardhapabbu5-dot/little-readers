@@ -3,21 +3,13 @@ import {
   ActivityIndicator,
   Alert,
   Platform,
-  ScrollView,
   StyleSheet,
   Text,
   View,
 } from "react-native";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
-import {
-  Card,
-  ErrorText,
-  Field,
-  PrimaryButton,
-  SoftButton,
-  Title,
-} from "../../components/ui";
+import { Card, ErrorText, Field, KeyboardScroll, PrimaryButton, SoftButton, Title } from "../../components/ui";
 import { AuthGate } from "../../components/AuthGate";
 import { RequireParentGate } from "../../components/RequireParentGate";
 import { apiRequest, ApiError } from "../../services/api";
@@ -281,7 +273,7 @@ export default function ChildDetailScreen() {
     <AuthGate roles={ROLE_SETS.parentFamily}>
       <RequireParentGate>
       <SafeAreaView style={styles.safe}>
-        <ScrollView contentContainerStyle={styles.content}>
+        <KeyboardScroll contentContainerStyle={styles.content}>
           <SoftButton label="← Back" onPress={() => router.back()} />
           <Title>{profile?.displayName ?? "Child profile"}</Title>
           <ErrorText>{error}</ErrorText>
@@ -554,7 +546,7 @@ export default function ChildDetailScreen() {
               />
             </>
           )}
-        </ScrollView>
+        </KeyboardScroll>
       </SafeAreaView>
       </RequireParentGate>
     </AuthGate>

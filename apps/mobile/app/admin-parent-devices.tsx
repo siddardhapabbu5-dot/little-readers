@@ -2,7 +2,6 @@ import { useCallback, useState } from "react";
 import {
   ActivityIndicator,
   Pressable,
-  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -15,7 +14,7 @@ import { parsePhoneNumberFromString, type CountryCode } from "libphonenumber-js"
 import { AdminTabBar } from "../components/AdminTabBar";
 import { AuthGate } from "../components/AuthGate";
 import { CountryCodePicker } from "../components/CountryCodePicker";
-import { PrimaryButton } from "../components/ui";
+import { KeyboardScroll, PrimaryButton, LoadingSlot } from "../components/ui";
 import { goAdminBack } from "../services/admin-nav";
 import { apiRequest, ApiError } from "../services/api";
 import { ROLE_SETS } from "../services/auth-errors";
@@ -199,7 +198,7 @@ export default function AdminParentDevicesScreen() {
           </View>
         </View>
 
-        <ScrollView contentContainerStyle={styles.content}>
+        <KeyboardScroll contentContainerStyle={styles.content}>
           {error ? <Text style={styles.error}>{error}</Text> : null}
           {loading ? (
             <ActivityIndicator color={adminColors.primary} />
@@ -241,7 +240,7 @@ export default function AdminParentDevicesScreen() {
                 />
               </View>
 
-              {busy ? <ActivityIndicator color={adminColors.primary} /> : null}
+              <LoadingSlot active={busy} color={adminColors.primary} />
               {sessions.map((s) => (
                 <View key={s.id} style={[styles.card, shadow.soft]}>
                   <Text style={styles.name}>
@@ -293,7 +292,7 @@ export default function AdminParentDevicesScreen() {
               </Pressable>
             ))
           )}
-        </ScrollView>
+        </KeyboardScroll>
         <AdminTabBar />
       </SafeAreaView>
     </AuthGate>

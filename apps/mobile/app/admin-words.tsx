@@ -1,8 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  ActivityIndicator,
   Platform,
-  ScrollView,
   Share,
   StyleSheet,
   Text,
@@ -13,7 +11,7 @@ import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import * as DocumentPicker from "expo-document-picker";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { AdminTabBar } from "../components/AdminTabBar";
-import { Card, ErrorText, SoftButton, Title } from "../components/ui";
+import { Card, ErrorText, KeyboardScroll, SoftButton, Title, LoadingSlot } from "../components/ui";
 import { AuthGate } from "../components/AuthGate";
 import { goAdminBack } from "../services/admin-nav";
 import {
@@ -408,7 +406,7 @@ export default function AdminWordsScreen() {
   return (
     <AuthGate roles={ROLE_SETS.admin}>
       <SafeAreaView style={styles.safe} edges={["top"]}>
-        <ScrollView contentContainerStyle={styles.content}>
+        <KeyboardScroll contentContainerStyle={styles.content}>
           <SoftButton label="← Back" onPress={() => goAdminBack(router)} />
           <Title>Vocabulary Manager</Title>
           <Text style={styles.note}>
@@ -440,7 +438,7 @@ export default function AdminWordsScreen() {
               ))}
             </View>
           ) : null}
-          {busy ? <ActivityIndicator color={colors.primary} /> : null}
+          <LoadingSlot active={busy} />
 
           <Card style={{ gap: 8 }}>
             <Text style={styles.section}>Grade</Text>
@@ -583,7 +581,7 @@ export default function AdminWordsScreen() {
               <SoftButton label="Close" onPress={() => setSelected(null)} />
             </Card>
           ) : null}
-        </ScrollView>
+        </KeyboardScroll>
         <AdminTabBar />
       </SafeAreaView>
     </AuthGate>

@@ -445,7 +445,7 @@ function RewardsTab({ history, winners }: { history: ChallengeHistory | null; wi
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: "transparent" },
-  content: { padding: 16, gap: 14, paddingBottom: 40 },
+  content: { padding: 16, gap: 14, paddingBottom: 40, width: "100%", maxWidth: 720, alignSelf: "center" },
   hero: { borderRadius: radii.xl, padding: 18, gap: 8 },
   heroKicker: { color: "#fff", fontWeight: "700", opacity: 0.95 },
   heroRow: { flexDirection: "row", alignItems: "center", gap: 12 },

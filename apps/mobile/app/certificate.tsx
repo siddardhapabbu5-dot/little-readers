@@ -25,7 +25,10 @@ export default function CertificateScreen() {
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
-    if (!id) return;
+    if (!id) {
+      setError("Certificate not found");
+      return;
+    }
     apiRequest<CertificateData>(`/learning/certificates/${encodeURIComponent(String(id))}`)
       .then(setCert)
       .catch((err) => setError(err instanceof ApiError ? err.message : "Could not load certificate"));

@@ -2,7 +2,6 @@ import { useCallback, useState } from "react";
 import {
   ActivityIndicator,
   Pressable,
-  ScrollView,
   Share,
   StyleSheet,
   Switch,
@@ -12,7 +11,7 @@ import {
 } from "react-native";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Card, ErrorText, PrimaryButton, ProgressBar, SoftButton, Title } from "../components/ui";
+import { Card, ErrorText, KeyboardScroll, PrimaryButton, ProgressBar, SoftButton, Title } from "../components/ui";
 import { AuthGate } from "../components/AuthGate";
 import { RequireParentGate } from "../components/RequireParentGate";
 import { apiRequest, ApiError } from "../services/api";
@@ -111,7 +110,7 @@ export default function ParentChallengesScreen() {
     <AuthGate roles={ROLE_SETS.parentFamily}>
       <RequireParentGate>
         <SafeAreaView style={styles.safe}>
-          <ScrollView contentContainerStyle={styles.content}>
+          <KeyboardScroll contentContainerStyle={styles.content}>
             <SoftButton label="← Back" onPress={() => router.back()} />
             <Title>🏆 Challenge settings{childName ? ` · ${childName}` : ""}</Title>
             <Text style={styles.sub}>
@@ -390,7 +389,7 @@ export default function ParentChallengesScreen() {
                 ) : null}
               </>
             ) : null}
-          </ScrollView>
+          </KeyboardScroll>
         </SafeAreaView>
       </RequireParentGate>
     </AuthGate>

@@ -4,7 +4,6 @@ import {
   Alert,
   Platform,
   Pressable,
-  ScrollView,
   StyleSheet,
   Text,
   View,
@@ -12,7 +11,7 @@ import {
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { CameraView, useCameraPermissions, type BarcodeScanningResult } from "expo-camera";
-import { Card, ErrorText, Field, PrimaryButton, SoftButton, Title } from "../components/ui";
+import { Card, ErrorText, Field, KeyboardScroll, PrimaryButton, SoftButton, Title } from "../components/ui";
 import { AuthGate } from "../components/AuthGate";
 import { RequireParentGate } from "../components/RequireParentGate";
 import { apiRequest, ApiError } from "../services/api";
@@ -213,7 +212,7 @@ function TvConnectBody() {
 
   return (
     <SafeAreaView style={styles.safe}>
-      <ScrollView contentContainerStyle={styles.content}>
+      <KeyboardScroll contentContainerStyle={styles.content}>
         <SoftButton label="← Back" onPress={() => router.back()} />
         <Title>Connect a TV</Title>
         <Text style={styles.muted}>
@@ -295,7 +294,7 @@ function TvConnectBody() {
             ))}
           </Card>
         )}
-      </ScrollView>
+      </KeyboardScroll>
     </SafeAreaView>
   );
 }

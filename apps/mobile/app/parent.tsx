@@ -1,15 +1,8 @@
 import { useCallback, useState } from "react";
-import { ScrollView, StyleSheet, Text, View } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
 import { useFocusEffect, useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
-import {
-  Card,
-  ErrorText,
-  Field,
-  PrimaryButton,
-  SoftButton,
-  Title,
-} from "../components/ui";
+import { Card, ErrorText, Field, KeyboardScroll, PrimaryButton, SoftButton, Title } from "../components/ui";
 import { AuthGate } from "../components/AuthGate";
 import { RequireParentGate } from "../components/RequireParentGate";
 import { RegistrationSteps } from "../components/RegistrationSteps";
@@ -182,7 +175,7 @@ export default function ParentScreen() {
     <AuthGate roles={ROLE_SETS.parentFamily}>
       <RequireParentGate>
       <SafeAreaView style={styles.safe}>
-        <ScrollView contentContainerStyle={styles.content}>
+        <KeyboardScroll contentContainerStyle={styles.content}>
           <SoftButton
             label="← Back"
             onPress={() => {
@@ -347,7 +340,7 @@ export default function ParentScreen() {
             label="Device registration / transfer"
             onPress={() => router.push("/devices")}
           />
-        </ScrollView>
+        </KeyboardScroll>
       </SafeAreaView>
       </RequireParentGate>
     </AuthGate>

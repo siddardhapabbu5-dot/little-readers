@@ -1,9 +1,7 @@
 import { useCallback, useState } from "react";
 import {
-  ActivityIndicator,
   Linking,
   Platform,
-  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -12,7 +10,7 @@ import {
 import { useFocusEffect, useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { AdminTabBar } from "../components/AdminTabBar";
-import { Card, ErrorText, SoftButton, Title } from "../components/ui";
+import { Card, ErrorText, KeyboardScroll, SoftButton, Title, LoadingSlot } from "../components/ui";
 import { AuthGate } from "../components/AuthGate";
 import { goAdminBack } from "../services/admin-nav";
 import { apiRequest, ApiError } from "../services/api";
@@ -162,7 +160,7 @@ export default function AdminLessonsScreen() {
   return (
     <AuthGate roles={ROLE_SETS.admin}>
       <SafeAreaView style={styles.safe} edges={["top"]}>
-        <ScrollView contentContainerStyle={styles.content}>
+        <KeyboardScroll contentContainerStyle={styles.content}>
           <SoftButton label="← Back" onPress={() => goAdminBack(router)} />
           <Title>Lessons</Title>
           <Text style={styles.note}>
@@ -171,7 +169,7 @@ export default function AdminLessonsScreen() {
           </Text>
           <ErrorText>{error}</ErrorText>
           {info ? <Text style={styles.info}>{info}</Text> : null}
-          {busy ? <ActivityIndicator color={colors.primary} /> : null}
+          <LoadingSlot active={busy} />
 
           <Card style={{ gap: 8 }}>
             <TextInput
@@ -247,7 +245,7 @@ export default function AdminLessonsScreen() {
               ) : null}
             </Card>
           ))}
-        </ScrollView>
+        </KeyboardScroll>
         <AdminTabBar />
       </SafeAreaView>
     </AuthGate>

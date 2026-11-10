@@ -4,7 +4,6 @@ import {
   Alert,
   Platform,
   Pressable,
-  ScrollView,
   StyleSheet,
   Text,
   View,
@@ -14,14 +13,7 @@ import { useFocusEffect, useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { AdminTabBar } from "../components/AdminTabBar";
 import { AuthGate } from "../components/AuthGate";
-import {
-  Card,
-  ErrorText,
-  Field,
-  PrimaryButton,
-  SoftButton,
-  Title,
-} from "../components/ui";
+import { Card, ErrorText, Field, KeyboardScroll, PrimaryButton, SoftButton, Title } from "../components/ui";
 import { apiRequest, ApiError } from "../services/api";
 import { ROLE_SETS } from "../services/auth-errors";
 import { adminColors, radii, shadow } from "../theme";
@@ -242,7 +234,7 @@ export default function AdminLevelsScreen() {
   return (
     <AuthGate roles={ROLE_SETS.admin}>
       <SafeAreaView style={styles.safe} edges={["top"]}>
-        <ScrollView
+        <KeyboardScroll
           ref={scrollRef}
           contentContainerStyle={styles.content}
           keyboardShouldPersistTaps="handled"
@@ -471,7 +463,7 @@ export default function AdminLevelsScreen() {
               </View>
             ))
           )}
-        </ScrollView>
+        </KeyboardScroll>
         <AdminTabBar />
       </SafeAreaView>
     </AuthGate>

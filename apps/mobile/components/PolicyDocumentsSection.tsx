@@ -1,6 +1,7 @@
 import { createElement, useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
+  KeyboardAvoidingView,
   Linking,
   Modal,
   Platform,
@@ -672,8 +673,12 @@ export function PolicyDocumentsSection() {
       </Modal>
 
       <Modal visible={!!editing} animationType="fade" transparent onRequestClose={() => setEditing(null)}>
-        <View style={styles.backdrop}>
-          <View style={styles.modal}>
+        <KeyboardAvoidingView style={styles.backdrop} behavior={Platform.OS === "ios" ? "padding" : "height"}>
+          <ScrollView
+            style={styles.formModal}
+            contentContainerStyle={styles.formModalBody}
+            keyboardShouldPersistTaps="handled"
+          >
             <View style={styles.modalHeader}>
               <Ionicons name="create-outline" size={20} color={colors.primary} />
               <Text style={styles.modalTitle}>Edit document details</Text>
@@ -719,13 +724,17 @@ export function PolicyDocumentsSection() {
                 {savingEdit ? <ActivityIndicator color="#fff" /> : <Text style={styles.btnPrimaryText}>Save</Text>}
               </Pressable>
             </View>
-          </View>
-        </View>
+          </ScrollView>
+        </KeyboardAvoidingView>
       </Modal>
 
       <Modal visible={!!publishing} animationType="fade" transparent onRequestClose={() => setPublishing(null)}>
-        <View style={styles.backdrop}>
-          <View style={styles.modal}>
+        <KeyboardAvoidingView style={styles.backdrop} behavior={Platform.OS === "ios" ? "padding" : "height"}>
+          <ScrollView
+            style={styles.formModal}
+            contentContainerStyle={styles.formModalBody}
+            keyboardShouldPersistTaps="handled"
+          >
             <View style={styles.modalHeader}>
               <Ionicons name="megaphone-outline" size={20} color={colors.primary} />
               <Text style={styles.modalTitle} numberOfLines={2}>
@@ -803,8 +812,8 @@ export function PolicyDocumentsSection() {
                 )}
               </Pressable>
             </View>
-          </View>
-        </View>
+          </ScrollView>
+        </KeyboardAvoidingView>
       </Modal>
 
       <Modal visible={!!history} animationType="none" transparent onRequestClose={() => setHistory(null)}>
@@ -1043,6 +1052,15 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   previewModal: { maxWidth: 960, height: "90%", padding: 12 },
+  formModal: {
+    width: "100%",
+    maxWidth: 480,
+    maxHeight: "92%",
+    flexGrow: 0,
+    backgroundColor: "#fff",
+    borderRadius: radii.lg,
+  },
+  formModalBody: { padding: 18, gap: 10 },
   modalHeader: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 4 },
   modalTitle: { flex: 1, fontSize: 17, fontWeight: "800", color: colors.text },
   iconBtn: { padding: 6, borderRadius: radii.pill },

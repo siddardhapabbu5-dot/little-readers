@@ -1,9 +1,7 @@
 import { useCallback, useState } from "react";
 import {
-  ActivityIndicator,
   Alert,
   Platform,
-  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -13,7 +11,7 @@ import { useFocusEffect, useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { AuthGate } from "../components/AuthGate";
 import { PolicyDocumentsSection } from "../components/PolicyDocumentsSection";
-import { Card, ErrorText, SoftButton, Title } from "../components/ui";
+import { Card, ErrorText, KeyboardScroll, SoftButton, Title, LoadingSlot } from "../components/ui";
 import { apiRequest, ApiError } from "../services/api";
 import { colors, radii } from "../theme";
 
@@ -290,14 +288,14 @@ export default function AdminPrivacyScreen() {
   return (
     <AuthGate roles={["ADMIN", "SUPER_ADMIN"]}>
       <SafeAreaView style={styles.safe}>
-        <ScrollView contentContainerStyle={styles.content}>
+        <KeyboardScroll contentContainerStyle={styles.content}>
           <SoftButton label="← Settings" onPress={() => router.back()} />
           <Title>Privacy & Compliance</Title>
           <Text style={styles.note}>
             Draft wording only until legal/admin completes and publishes. Do not
             invent company details.
           </Text>
-          {loading ? <ActivityIndicator color={colors.primary} /> : null}
+          <LoadingSlot active={loading} />
           <ErrorText>{error}</ErrorText>
           {info ? <Text style={styles.info}>{info}</Text> : null}
 
@@ -464,7 +462,7 @@ export default function AdminPrivacyScreen() {
               ))
             )}
           </Card>
-        </ScrollView>
+        </KeyboardScroll>
       </SafeAreaView>
     </AuthGate>
   );

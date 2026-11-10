@@ -325,7 +325,7 @@ export default function RevisionScreen() {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: "transparent" },
-  content: { padding: 20, gap: 12, paddingBottom: 40 },
+  content: { padding: 20, gap: 12, paddingBottom: 40, width: "100%", maxWidth: 720, alignSelf: "center" },
   center: { padding: 40, alignItems: "center" },
   muted: { color: colors.textMuted, fontWeight: "600", textAlign: "center" },
   note: {

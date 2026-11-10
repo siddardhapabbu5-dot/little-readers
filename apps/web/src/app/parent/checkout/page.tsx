@@ -363,13 +363,22 @@ export default function ParentCheckoutPage() {
   }
 
   return (
-    <div style={{ maxWidth: 720, margin: "32px auto", padding: 20, display: "grid", gap: 14 }}>
-      <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
+    <div
+      style={{
+        maxWidth: 720,
+        margin: "32px auto",
+        padding: 20,
+        display: "grid",
+        gridTemplateColumns: "minmax(0, 1fr)",
+        gap: 14,
+      }}
+    >
+      <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", gap: 12 }}>
         <div>
           <p style={{ margin: 0, opacity: 0.7, fontWeight: 700 }}>Parent</p>
           <h1 style={{ margin: "6px 0 0" }}>Subscription checkout</h1>
         </div>
-        <div style={{ display: "flex", gap: 8 }}>
+        <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 8 }}>
           <Link href="/parent">Dashboard</Link>
           <Button
             variant="secondary"

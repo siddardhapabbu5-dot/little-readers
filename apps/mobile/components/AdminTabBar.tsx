@@ -75,7 +75,7 @@ export function AdminTabBar() {
   const pathname = usePathname();
   const insets = useSafeAreaInsets();
   const current = activeKey(pathname);
-  const bottom = Platform.OS === "web" ? 8 : Math.max(insets.bottom, 6);
+  const bottom = Platform.OS === "web" ? Math.max(insets.bottom, 8) : Math.max(insets.bottom, 6);
 
   return (
     <View style={[styles.wrap, { paddingBottom: bottom }]}>

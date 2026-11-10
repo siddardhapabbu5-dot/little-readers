@@ -229,7 +229,7 @@ export default function ManageLessonsPage() {
       {message ? <Alert tone="success">{message}</Alert> : null}
 
       <div className="panel" style={{ display: "grid", gap: 10, marginBottom: 16 }}>
-        <p style={{ margin: 0, color: "#94a3b8" }}>
+        <p style={{ margin: 0, color: "#475569" }}>
           Create lessons, attach published vocabulary, preview, then publish. Activities:
           Listen &amp; Spell only.{" "}
           <Link href="/admin/vocabulary/words">Manage words →</Link>
@@ -346,7 +346,7 @@ export default function ManageLessonsPage() {
       {selected ? (
         <div className="panel" style={{ display: "grid", gap: 12 }}>
           <h2 style={{ marginTop: 0 }}>Edit · {selected.title}</h2>
-          <p style={{ margin: 0, color: "#94a3b8" }}>
+          <p style={{ margin: 0, color: "#475569" }}>
             sessions {selected._count?.sessions ?? 0} · child progress{" "}
             {selected._count?.childProgress ?? 0}
           </p>
@@ -422,7 +422,7 @@ export default function ManageLessonsPage() {
               </label>
             ))}
           </div>
-          <p style={{ color: "#94a3b8" }}>
+          <p style={{ color: "#475569" }}>
             Selected order:{" "}
             {wordIds
               .map((id) => categoryWords.find((w) => w.id === id)?.text ?? id)

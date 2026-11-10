@@ -13,7 +13,7 @@ import { useFocusEffect, useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { AdminTabBar } from "../components/AdminTabBar";
 import { AuthGate } from "../components/AuthGate";
-import { Card, ErrorText, Field, SoftButton, Title } from "../components/ui";
+import { Card, ErrorText, Field, KeyboardScroll, SoftButton, Title } from "../components/ui";
 import { goAdminBack } from "../services/admin-nav";
 import { apiRequest, ApiError } from "../services/api";
 import { ROLE_SETS } from "../services/auth-errors";
@@ -134,7 +134,7 @@ export default function AdminGradesScreen() {
   return (
     <AuthGate roles={ROLE_SETS.admin}>
       <SafeAreaView style={styles.safe} edges={["top"]}>
-        <ScrollView contentContainerStyle={styles.content}>
+        <KeyboardScroll contentContainerStyle={styles.content}>
           <SoftButton label="← Back" onPress={() => goAdminBack(router)} />
           <Title>Grades</Title>
           <Text style={styles.sub}>Academic Setup · Grade Management</Text>
@@ -301,7 +301,7 @@ export default function AdminGradesScreen() {
               </View>
             ))
           )}
-        </ScrollView>
+        </KeyboardScroll>
         <AdminTabBar />
       </SafeAreaView>
     </AuthGate>

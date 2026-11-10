@@ -1,7 +1,6 @@
 import { useCallback, useMemo, useState } from "react";
 import {
   ActivityIndicator,
-  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -9,7 +8,7 @@ import {
 } from "react-native";
 import { useFocusEffect, useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Card, ErrorText, SoftButton, Title } from "../components/ui";
+import { Card, ErrorText, KeyboardScroll, SoftButton, Title } from "../components/ui";
 import { AuthGate } from "../components/AuthGate";
 import { ClassroomChallengePanel } from "../components/ClassroomChallengePanel";
 import { apiRequest, ApiError } from "../services/api";
@@ -234,7 +233,7 @@ export default function TeacherScreen() {
         {error ? <ErrorText>{error}</ErrorText> : null}
         {info ? <Text style={styles.info}>{info}</Text> : null}
 
-        <ScrollView contentContainerStyle={{ gap: 12, paddingBottom: 40 }}>
+        <KeyboardScroll contentContainerStyle={{ gap: 12, paddingBottom: 40 }}>
           <Card style={{ gap: 8 }}>
             <Text style={styles.section}>Assigned classrooms</Text>
             {!classrooms.length ? (
@@ -428,7 +427,7 @@ export default function TeacherScreen() {
               <SoftButton label="Close" onPress={() => setStudentDetail(null)} />
             </Card>
           ) : null}
-        </ScrollView>
+        </KeyboardScroll>
       </SafeAreaView>
     </AuthGate>
   );

@@ -166,7 +166,7 @@ function Stat({ label, value }: { label: string; value: string }) {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: "transparent" },
-  content: { padding: 20, gap: 12, paddingBottom: 36 },
+  content: { padding: 20, gap: 12, paddingBottom: 36, width: "100%", maxWidth: 720, alignSelf: "center" },
   center: { padding: 40, alignItems: "center" },
   section: { fontWeight: "800", fontSize: 16, color: colors.text },
   muted: { color: colors.textMuted, fontWeight: "600", lineHeight: 20 },

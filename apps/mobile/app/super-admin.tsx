@@ -1,8 +1,8 @@
 import { useCallback, useState } from "react";
-import { ActivityIndicator, ScrollView, StyleSheet, Text } from "react-native";
+import { ScrollView, StyleSheet, Text } from "react-native";
 import { useFocusEffect, useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Card, ErrorText, SoftButton, Title } from "../components/ui";
+import { Card, ErrorText, SoftButton, Title, LoadingSlot } from "../components/ui";
 import { AuthGate } from "../components/AuthGate";
 import { apiRequest, ApiError } from "../services/api";
 import { ROLE_SETS } from "../services/auth-errors";
@@ -115,7 +115,7 @@ export default function SuperAdminScreen() {
             accounts cannot open this screen.
           </Text>
           <ErrorText>{error}</ErrorText>
-          {loading ? <ActivityIndicator color={colors.primary} /> : null}
+          <LoadingSlot active={loading} />
 
           <Card>
             <Text style={styles.section}>Platform overview</Text>

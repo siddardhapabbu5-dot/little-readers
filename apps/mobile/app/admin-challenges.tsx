@@ -1,9 +1,9 @@
 import { useCallback, useState } from "react";
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, View } from "react-native";
+import { ActivityIndicator, Pressable, StyleSheet, Switch, Text, TextInput, View } from "react-native";
 import { useFocusEffect, useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { POINT_SOURCES, POINT_SOURCE_LABELS, type PointSource, type WeeklyGoals } from "@little-readers/shared";
-import { Card, ErrorText, PrimaryButton, SoftButton, Title } from "../components/ui";
+import { Card, ErrorText, KeyboardScroll, PrimaryButton, SoftButton, Title } from "../components/ui";
 import { AuthGate } from "../components/AuthGate";
 import { apiRequest, ApiError } from "../services/api";
 import { ROLE_SETS } from "../services/auth-errors";
@@ -104,7 +104,7 @@ export default function AdminChallengesScreen() {
   return (
     <AuthGate roles={ROLE_SETS.admin}>
       <SafeAreaView style={styles.safe}>
-        <ScrollView contentContainerStyle={styles.content}>
+        <KeyboardScroll contentContainerStyle={styles.content}>
           <SoftButton label="← Back" onPress={() => router.back()} />
           <Title>🏆 Challenge World</Title>
           <Text style={styles.sub}>
@@ -317,7 +317,7 @@ export default function AdminChallengesScreen() {
               )}
             </Card>
           ) : null}
-        </ScrollView>
+        </KeyboardScroll>
       </SafeAreaView>
     </AuthGate>
   );

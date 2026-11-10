@@ -211,7 +211,7 @@ function MenuRow({
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: "transparent" },
-  content: { padding: 20, gap: 14 },
+  content: { padding: 20, gap: 14, width: "100%", maxWidth: 720, alignSelf: "center" },
   header: { flexDirection: "row", gap: 14, alignItems: "center" },
   meta: { color: colors.textMuted },
   role: { color: colors.primary, fontWeight: "800", marginTop: 2 },

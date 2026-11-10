@@ -1,6 +1,5 @@
 import { useCallback, useMemo, useState } from "react";
 import {
-  ActivityIndicator,
   RefreshControl,
   ScrollView,
   StyleSheet,
@@ -14,7 +13,7 @@ import { AdminTabBar } from "../components/AdminTabBar";
 import { AdminRevenueChart } from "../components/admin/AdminRevenueChart";
 import { dash } from "../components/admin/dashboardTheme";
 import { AuthGate } from "../components/AuthGate";
-import { ErrorText } from "../components/ui";
+import { ErrorText, LoadingSlot } from "../components/ui";
 import { apiRequest, ApiError } from "../services/api";
 import { ROLE_SETS } from "../services/auth-errors";
 
@@ -128,7 +127,7 @@ export default function AdminReportsScreen() {
           <Text style={styles.sub}>Live payment analytics · platform reports API pending</Text>
         </View>
 
-        {loading ? <ActivityIndicator color={dash.purple} style={{ marginTop: 20 }} /> : null}
+        <LoadingSlot active={loading} color={dash.purple} />
         {error ? (
           <View style={{ paddingHorizontal: 16 }}>
             <ErrorText>{error}</ErrorText>

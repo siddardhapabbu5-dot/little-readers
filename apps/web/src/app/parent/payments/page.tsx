@@ -38,16 +38,27 @@ export default function ParentPaymentsPage() {
   }, [router]);
 
   return (
-    <div style={{ maxWidth: 800, margin: "32px auto", padding: 20, display: "grid", gap: 12 }}>
-      <div style={{ display: "flex", justifyContent: "space-between" }}>
+    <div
+      style={{
+        maxWidth: 800,
+        margin: "32px auto",
+        padding: 20,
+        display: "grid",
+        gridTemplateColumns: "minmax(0, 1fr)",
+        gap: 12,
+      }}
+    >
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 10, justifyContent: "space-between" }}>
         <h1 style={{ margin: 0 }}>Payment history</h1>
-        <div style={{ display: "flex", gap: 10 }}>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
           <Link href="/parent">Dashboard</Link>
           <Link href="/parent/checkout">Checkout</Link>
         </div>
       </div>
       {error ? <Alert tone="error">{error}</Alert> : null}
-      <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "grid", gap: 8 }}>
+      <ul
+        style={{ listStyle: "none", padding: 0, margin: 0, display: "grid", gap: 8, overflowWrap: "anywhere" }}
+      >
         {rows.map((p) => (
           <li key={p.id} className="panel">
             <strong>

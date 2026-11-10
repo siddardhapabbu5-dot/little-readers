@@ -1,7 +1,5 @@
 import { useCallback, useState } from "react";
 import {
-  ActivityIndicator,
-  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -9,7 +7,7 @@ import {
 } from "react-native";
 import { useFocusEffect, useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Card, ErrorText, SoftButton, Title } from "../components/ui";
+import { Card, ErrorText, KeyboardScroll, SoftButton, Title, LoadingSlot } from "../components/ui";
 import { AuthGate } from "../components/AuthGate";
 import { goAdminBack } from "../services/admin-nav";
 import { apiRequest, ApiError } from "../services/api";
@@ -107,7 +105,7 @@ export default function AdminSeatsScreen() {
   return (
     <AuthGate roles={ROLE_SETS.admin}>
       <SafeAreaView style={styles.safe}>
-        <ScrollView contentContainerStyle={styles.content}>
+        <KeyboardScroll contentContainerStyle={styles.content}>
           <SoftButton label="← Back" onPress={() => goAdminBack(router)} />
           <Title>Seats admin</Title>
           <Text style={styles.note}>
@@ -115,7 +113,7 @@ export default function AdminSeatsScreen() {
           </Text>
           <ErrorText>{error}</ErrorText>
           {info ? <Text style={styles.info}>{info}</Text> : null}
-          {busy ? <ActivityIndicator color={colors.primary} /> : null}
+          <LoadingSlot active={busy} />
           {rows.map((row) => (
             <Card key={row.id} style={{ gap: 8 }}>
               <Text style={styles.word}>
@@ -142,7 +140,7 @@ export default function AdminSeatsScreen() {
               <SoftButton label="Revoke add-on" onPress={() => void revoke(row.user.id)} />
             </Card>
           ))}
-        </ScrollView>
+        </KeyboardScroll>
       </SafeAreaView>
     </AuthGate>
   );

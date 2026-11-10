@@ -185,6 +185,13 @@
   box-shadow: 0 8px 24px rgba(23, 52, 94, 0.1);
 }
 
+/* Short viewports (phone landscape or on-screen keyboard open): a sticky header would cover the focused field. */
+@media (max-height: 520px) {
+  .lr-pro-nav {
+    position: relative;
+  }
+}
+
 .lr-pro-brand {
   display: flex;
   align-items: center;

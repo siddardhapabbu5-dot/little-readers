@@ -234,7 +234,7 @@ export default function AdminSubscriptionsPage() {
       </p>
       <form
         className="panel"
-        style={{ display: "flex", gap: 8, marginBottom: 16 }}
+        style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 16 }}
         onSubmit={(e) => {
           e.preventDefault();
           searchRef.current = query;
@@ -245,7 +245,7 @@ export default function AdminSubscriptionsPage() {
           placeholder="Search email, name, order / payment id"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          style={{ minWidth: 320 }}
+          style={{ flex: "1 1 240px", minWidth: "min(320px, 100%)" }}
         />
         <Button type="submit" disabled={busy}>
           Search
@@ -272,7 +272,7 @@ export default function AdminSubscriptionsPage() {
         <Button disabled={busy} onClick={() => void grantSubscription()}>
           Grant subscription
         </Button>
-        <span style={{ color: "#94a3b8", fontSize: 13 }}>
+        <span style={{ color: "#475569", fontSize: 13 }}>
           Starts or extends the plan (2 seats included) and seats waiting children.
         </span>
       </div>
@@ -301,7 +301,7 @@ export default function AdminSubscriptionsPage() {
                 </td>
                 <td>{p.status}</td>
                 <td>{p.provider}</td>
-                <td align="right">
+                <td align="right" style={{ whiteSpace: "nowrap" }}>
                   {p.currency} {(p.amountCents / 100).toFixed(2)}
                 </td>
                 <td style={{ maxWidth: 160, overflow: "hidden", textOverflow: "ellipsis" }}>
@@ -331,7 +331,7 @@ export default function AdminSubscriptionsPage() {
             {row.plan} · {row.status} · eligible {row.eligible ? "yes" : "no"} · until{" "}
             {new Date(row.expiresAt).toLocaleDateString()}
           </span>
-          <span style={{ color: "#94a3b8", fontSize: 13 }}>
+          <span style={{ color: "#475569", fontSize: 13 }}>
             {row.management?.label ?? row.provider}
             {row.productId ? ` · ${row.productId}` : ""}
             {row.autoRenewing == null ? "" : row.autoRenewing ? " · auto-renew on" : " · auto-renew off"}

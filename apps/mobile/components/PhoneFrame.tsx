@@ -1,6 +1,10 @@
 import { useEffect, type ReactNode } from "react";
-import { Platform, StyleSheet, Text, View } from "react-native";
+import { Platform, StyleSheet, Text, useWindowDimensions, View } from "react-native";
 import { colors } from "../theme";
+
+/** Touch screens, and windows below this size, use the full viewport instead of the phone preview. */
+const FRAME_MIN_WIDTH = 600;
+const FRAME_MIN_HEIGHT = 700;
 
 const WEB_CSS = `
 html, body, #root { height: 100%; margin: 0; overflow: hidden; background: #1A1528; }
@@ -10,6 +14,7 @@ html, body, #root { height: 100%; margin: 0; overflow: hidden; background: #1A15
 
 /** Desktop-only shell so Expo web looks like a phone, not a website. */
 export function PhoneFrame({ children }: { children: ReactNode }) {
+  const { width, height } = useWindowDimensions();
   useEffect(() => {
     if (Platform.OS !== "web" || typeof document === "undefined") return;
     const id = "lr-phone-frame-css";
@@ -22,6 +27,15 @@ export function PhoneFrame({ children }: { children: ReactNode }) {
 
   if (Platform.OS !== "web") {
     return <>{children}</>;
+  }
+
+  const touchScreen =
+    typeof window !== "undefined" &&
+    typeof window.matchMedia === "function" &&
+    window.matchMedia("(pointer: coarse)").matches;
+
+  if (touchScreen || width < FRAME_MIN_WIDTH || height < FRAME_MIN_HEIGHT) {
+    return <View style={styles.fullscreen}>{children}</View>;
   }
 
   return (
@@ -38,6 +52,12 @@ export function PhoneFrame({ children }: { children: ReactNode }) {
 }
 
 const styles = StyleSheet.create({
+  fullscreen: {
+    flex: 1,
+    height: "100%" as unknown as number,
+    backgroundColor: colors.bg,
+    overflow: "hidden",
+  },
   desktop: {
     flex: 1,
     height: "100%" as unknown as number,

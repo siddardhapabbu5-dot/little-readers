@@ -9,6 +9,7 @@ import { validateBody } from "../middleware/validate.js";
 import * as cashfreeService from "./cashfree.service.js";
 import * as googlePlay from "./google-play.js";
 import * as paymentService from "./payment.service.js";
+import { PRICE_REGIONS } from "./region.js";
 
 export const paymentsRouter = Router();
 
@@ -83,12 +84,17 @@ paymentsRouter.post("/google-play/rtdn", async (req, res, next) => {
   }
 });
 
-paymentsRouter.get("/plans", requireAuth, async (req, res, next) => {
+const regionField = z.enum(PRICE_REGIONS).optional();
+
+paymentsRouter.get("/plans", requireAuth, async (req: AuthenticatedRequest, res, next) => {
   try {
     const levelId = req.query.levelId
       ? String(req.query.levelId)
       : undefined;
-    res.json({ data: await paymentService.getPlansCatalog(levelId) });
+    const region = regionField.catch(undefined).parse(req.query.region);
+    res.json({
+      data: await paymentService.getPlansCatalog(levelId, { region, userId: req.user?.id }),
+    });
   } catch (e) {
     next(e);
   }
@@ -120,6 +126,7 @@ paymentsRouter.post(
         .optional(),
       planId: z.string().min(1).optional(),
       seats: z.number().int().min(1).max(20).optional(),
+      region: regionField,
     })
   ),
   async (req: AuthenticatedRequest, res, next) => {
@@ -151,6 +158,7 @@ paymentsRouter.post(
       seats: z.number().int().min(1).max(20).optional(),
       phone: z.string().min(10).max(16).optional(),
       returnTo: z.enum(["web", "app", "sdk"]).optional(),
+      region: regionField,
     })
   ),
   async (req: AuthenticatedRequest, res, next) => {

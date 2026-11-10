@@ -34,7 +34,7 @@ type Receipt = {
 };
 
 function money(paise: number, currency: string) {
-  const symbol = currency === "INR" ? "₹" : `${currency} `;
+  const symbol = currency === "INR" ? "₹" : currency === "PHP" ? "₱" : `${currency} `;
   return `${symbol}${(paise / 100).toLocaleString("en-IN", {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,

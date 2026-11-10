@@ -42,6 +42,7 @@ const planBody = z.object({
   description: z.string().max(500).optional().nullable(),
   durationMonths: z.coerce.number().int().refine((n) => [1, 3, 6, 12].includes(n)),
   amountPaise: z.coerce.number().int().positive(),
+  amountPhpCentavos: z.coerce.number().int().positive().nullable().optional(),
   applicableLevel: z.string().min(1).max(40).optional(),
   levelId: z.string().min(1).nullable().optional(),
   includedSeats: z.coerce.number().int().min(1).max(20).optional(),

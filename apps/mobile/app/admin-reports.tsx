@@ -78,23 +78,28 @@ export default function AdminReportsScreen() {
     }, [load])
   );
 
-  const currency = payments.find((p) => p.currency)?.currency || "INR";
+  // The chart is in INR; Philippine (PHP) payments are totalled separately so currencies never mix.
+  const currency = "INR";
+  const phpPaidTotal = payments
+    .filter((p) => p.currency === "PHP" && p.status === "SUCCEEDED")
+    .reduce((n, p) => n + p.amountCents, 0);
 
   const revenue = useMemo(() => {
+    const rows = payments.filter((p) => !p.currency || p.currency === "INR");
     const now = new Date();
     const dayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     const weekStart = new Date(dayStart);
     weekStart.setDate(weekStart.getDate() - 6);
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
     const yearStart = new Date(now.getFullYear(), 0, 1);
-    const daily = sumSucceeded(payments, dayStart, now);
-    const weekly = sumSucceeded(payments, weekStart, now);
-    const monthly = sumSucceeded(payments, monthStart, now);
-    const yearly = sumSucceeded(payments, yearStart, now);
-    const total = payments
+    const daily = sumSucceeded(rows, dayStart, now);
+    const weekly = sumSucceeded(rows, weekStart, now);
+    const monthly = sumSucceeded(rows, monthStart, now);
+    const yearly = sumSucceeded(rows, yearStart, now);
+    const total = rows
       .filter((p) => p.status === "SUCCEEDED")
       .reduce((n, p) => n + p.amountCents, 0);
-    const pending = payments
+    const pending = rows
       .filter((p) => p.status === "PENDING")
       .reduce((n, p) => n + p.amountCents, 0);
     const points = [];
@@ -105,7 +110,7 @@ export default function AdminReportsScreen() {
       next.setDate(next.getDate() + 1);
       points.push({
         label: d.toLocaleDateString(undefined, { weekday: "short" }).slice(0, 2),
-        amountMinor: sumSucceeded(payments, d, new Date(next.getTime() - 1)),
+        amountMinor: sumSucceeded(rows, d, new Date(next.getTime() - 1)),
       });
     }
     return {
@@ -169,6 +174,11 @@ export default function AdminReportsScreen() {
               total={revenue.total}
               pending={revenue.pending}
             />
+          ) : null}
+          {!loading && phpPaidTotal > 0 ? (
+            <Text style={styles.noteText}>
+              Philippines payments (not in the ₹ chart): {formatMoney(phpPaidTotal, "PHP")} received
+            </Text>
           ) : null}
         </ScrollView>
 

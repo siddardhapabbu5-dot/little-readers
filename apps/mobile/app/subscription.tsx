@@ -69,8 +69,19 @@ const WEB_CHECKOUT = Platform.OS !== "ios";
 
 function formatAmount(minor: number, currency: string) {
   if (!currency || currency === "INR") return formatInr(minor);
+  if (currency === "PHP") {
+    const pesos = minor / 100;
+    return `₱${pesos % 1 === 0 ? pesos.toLocaleString("en-PH") : pesos.toFixed(2)}`;
+  }
   return `${currency} ${(minor / 100).toFixed(2)}`;
 }
+
+type Region = "IN" | "PH";
+
+const REGIONS: { code: Region; label: string }[] = [
+  { code: "IN", label: "India (₹)" },
+  { code: "PH", label: "Philippines (₱)" },
+];
 
 function formatInr(paise: number) {
   const rupees = paise / 100;
@@ -87,6 +98,9 @@ type Catalog = {
   plans: Plan[];
   note: string | null;
   dbCatalog?: boolean;
+  /** Absent on servers without regional pricing. */
+  suggestedRegion?: Region;
+  regions?: Region[];
 };
 
 type PublishedLevel = {
@@ -121,6 +135,8 @@ export default function SubscriptionScreen() {
   const [catalog, setCatalog] = useState<Catalog | null>(null);
   const [levels, setLevels] = useState<PublishedLevel[]>([]);
   const [selectedLevelId, setSelectedLevelId] = useState<string | null>(null);
+  // null until the server suggests one from the parent's mobile number.
+  const [region, setRegion] = useState<Region | null>(null);
   const [payments, setPayments] = useState<Pay[]>([]);
   const [adminList, setAdminList] = useState<any[] | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -144,11 +160,16 @@ export default function SubscriptionScreen() {
           if (!selectedLevelId && pubLevels[0]?.id) {
             setSelectedLevelId(pubLevels[0].id);
           }
+          const query = new URLSearchParams();
+          if (levelId) query.set("levelId", levelId);
+          query.set("region", region ?? "IN");
           const plans = WEB_CHECKOUT
-            ? await apiRequest<Catalog>(
-                `/payments/plans${levelId ? `?levelId=${levelId}` : ""}`
-              ).catch(() => null)
+            ? await apiRequest<Catalog>(`/payments/plans?${query.toString()}`).catch(() => null)
             : null;
+          if (plans && !region && plans.suggestedRegion && plans.suggestedRegion !== "IN") {
+            // Re-runs this effect with the suggested region's prices.
+            setRegion(plans.suggestedRegion);
+          }
           if (plans) {
             setCatalog(plans);
             setSelectedPlanId((cur) =>
@@ -167,7 +188,7 @@ export default function SubscriptionScreen() {
           setLoadingCatalog(false);
         }
       })();
-    }, [selectedLevelId])
+    }, [selectedLevelId, region])
   );
 
   const sub = data?.subscription;
@@ -180,7 +201,9 @@ export default function SubscriptionScreen() {
       return;
     }
     setError(null);
-    router.push(`/agreements?planId=${encodeURIComponent(selectedPlanId)}`);
+    router.push(
+      `/agreements?planId=${encodeURIComponent(selectedPlanId)}&region=${region ?? "IN"}`
+    );
   }
 
   return (
@@ -325,6 +348,28 @@ export default function SubscriptionScreen() {
               <Text style={styles.note}>Loading plans…</Text>
             ) : null}
 
+            {catalog?.regions && catalog.regions.length > 1 ? (
+              <View style={{ gap: 8 }}>
+                <Text style={styles.fieldLabel}>Paying from</Text>
+                <View style={styles.chipRow}>
+                  {REGIONS.filter((r) => catalog.regions?.includes(r.code)).map((r) => {
+                    const on = (region ?? "IN") === r.code;
+                    return (
+                      <Pressable
+                        key={r.code}
+                        onPress={() => setRegion(r.code)}
+                        accessibilityRole="radio"
+                        accessibilityState={{ checked: on }}
+                        style={[styles.chip, on && styles.chipOn]}
+                      >
+                        <Text style={[styles.chipTitle, on && styles.chipTitleOn]}>{r.label}</Text>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+              </View>
+            ) : null}
+
             {levels.length ? (
               <View style={{ gap: 8 }}>
                 <Text style={styles.fieldLabel}>Learning level</Text>
@@ -407,7 +452,7 @@ export default function SubscriptionScreen() {
                           )}
                         </View>
                         <View style={styles.priceBlock}>
-                          <Text style={styles.price}>{formatInr(p.totalPaise)}</Text>
+                          <Text style={styles.price}>{formatAmount(p.totalPaise, p.currency)}</Text>
                           {p.taxPaise && p.taxPaise > 0 ? (
                             <Text style={styles.priceNote}>incl. tax</Text>
                           ) : (
@@ -429,7 +474,7 @@ export default function SubscriptionScreen() {
 
             <Text style={styles.checkoutHint}>
               {selectedPlan
-                ? `${planTitle(selectedPlan)} · ${formatInr(selectedPlan.totalPaise)}. Next: review agreements, then pay securely online.`
+                ? `${planTitle(selectedPlan)} · ${formatAmount(selectedPlan.totalPaise, selectedPlan.currency)}. Next: review agreements, then pay securely online.`
                 : "Tap a plan to select it."}
             </Text>
             <PrimaryButton

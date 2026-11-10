@@ -455,6 +455,8 @@ model SubscriptionPlan {
   durationMonths   Int
   amountPaise      Int
   currency         String   @default("INR")
+  /// Final price for parents paying from the Philippines (centavos, no tax added). Null = INR only.
+  amountPhpCentavos Int?
   /// LEVEL_1 | LEVEL_2 | LEVEL_3 | ALL
   applicableLevel  String   @default("ALL")
   levelId          String?

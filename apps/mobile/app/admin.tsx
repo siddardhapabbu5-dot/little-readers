@@ -226,10 +226,19 @@ export default function AdminScreen() {
     }
   }
 
-  const currency =
-    payments.find((p) => p.currency)?.currency ||
-    payments.find((p) => p.status === "SUCCEEDED")?.currency ||
-    "INR";
+  // The chart is in INR; Philippine (PHP) payments are totalled separately so currencies never mix.
+  const currency = "INR";
+  const inrPayments = useMemo(
+    () => payments.filter((p) => !p.currency || p.currency === "INR"),
+    [payments]
+  );
+  const phpPaidTotal = useMemo(
+    () =>
+      payments
+        .filter((p) => p.currency === "PHP" && p.status === "SUCCEEDED")
+        .reduce((n, p) => n + (p.amountCents ?? 0), 0),
+    [payments]
+  );
 
   const stats = useMemo(() => {
     const totalStudents =
@@ -257,14 +266,14 @@ export default function AdminScreen() {
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
     const yearStart = new Date(now.getFullYear(), 0, 1);
 
-    const daily = sumSucceeded(payments, dayStart, now);
-    const weekly = sumSucceeded(payments, weekStart, now);
-    const monthly = sumSucceeded(payments, monthStart, now);
-    const yearly = sumSucceeded(payments, yearStart, now);
-    const total = payments
+    const daily = sumSucceeded(inrPayments, dayStart, now);
+    const weekly = sumSucceeded(inrPayments, weekStart, now);
+    const monthly = sumSucceeded(inrPayments, monthStart, now);
+    const yearly = sumSucceeded(inrPayments, yearStart, now);
+    const total = inrPayments
       .filter((p) => p.status === "SUCCEEDED")
       .reduce((n, p) => n + (p.amountCents ?? 0), 0);
-    const pending = payments
+    const pending = inrPayments
       .filter((p) => p.status === "PENDING")
       .reduce((n, p) => n + (p.amountCents ?? 0), 0);
 
@@ -276,7 +285,7 @@ export default function AdminScreen() {
       next.setDate(next.getDate() + 1);
       points.push({
         label: d.toLocaleDateString(undefined, { weekday: "short" }).slice(0, 2),
-        amountMinor: sumSucceeded(payments, d, new Date(next.getTime() - 1)),
+        amountMinor: sumSucceeded(inrPayments, d, new Date(next.getTime() - 1)),
       });
     }
 
@@ -289,7 +298,7 @@ export default function AdminScreen() {
       pending: formatMoney(pending, currency),
       points,
     };
-  }, [payments, currency]);
+  }, [inrPayments, currency]);
 
   const activity = useMemo(() => {
     const items: ActivityItem[] = [];
@@ -714,6 +723,11 @@ export default function AdminScreen() {
               total={revenue.total}
               pending={revenue.pending}
             />
+            {phpPaidTotal > 0 ? (
+              <Text style={{ color: "#6B7280", fontWeight: "600", fontSize: 13 }}>
+                Philippines payments (not in the ₹ chart): {formatMoney(phpPaidTotal, "PHP")} received
+              </Text>
+            ) : null}
           </View>
         </ScrollView>
 

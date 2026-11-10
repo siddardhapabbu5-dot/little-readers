@@ -28,6 +28,15 @@ export function normaliseIndianMobile(raw: string | null | undefined) {
   return /^[6-9]\d{9}$/.test(digits) ? digits : null;
 }
 
+/** Philippine mobiles go to Cashfree in +63 form (09XXXXXXXXX, 9XXXXXXXXX and 63… are accepted). */
+export function normalisePhilippineMobile(raw: string | null | undefined) {
+  if (!raw) return null;
+  let digits = raw.replace(/\D/g, "");
+  if (digits.length === 12 && digits.startsWith("63")) digits = digits.slice(2);
+  if (digits.length === 11 && digits.startsWith("0")) digits = digits.slice(1);
+  return /^9\d{9}$/.test(digits) ? `+63${digits}` : null;
+}
+
 function httpsUrl(url: string) {
   return /^https:\/\//i.test(url) ? url : undefined;
 }
@@ -61,11 +70,17 @@ export async function createCashfreeOrder(
     select: { id: true, name: true, email: true, mobileE164: true },
   });
   if (!user) throw new AppError("Account not found", 404);
-  const phone = normaliseIndianMobile(input.phone) ?? normaliseIndianMobile(user.mobileE164);
+  const philippines = plan.currency === "PHP";
+  const normalise = philippines ? normalisePhilippineMobile : normaliseIndianMobile;
+  const phone = normalise(input.phone) ?? normalise(user.mobileE164);
   if (!phone) {
-    throw new AppError("Enter a 10-digit mobile number to pay with Cashfree", 400, {
-      code: "PHONE_REQUIRED",
-    });
+    throw new AppError(
+      philippines
+        ? "Enter your Philippine mobile number (09XXXXXXXXX) to pay with Cashfree"
+        : "Enter a 10-digit mobile number to pay with Cashfree",
+      400,
+      { code: "PHONE_REQUIRED", region: philippines ? "PH" : "IN" }
+    );
   }
 
   const orderId = `lw_${userId.slice(-8)}_${Date.now()}_${randomBytes(3).toString("hex")}`;

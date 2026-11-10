@@ -65,9 +65,10 @@ function formatWhen(value: string | null) {
 }
 
 export default function AgreementsScreen() {
-  const params = useLocalSearchParams<{ planId?: string; store?: string }>();
+  const params = useLocalSearchParams<{ planId?: string; store?: string; region?: string }>();
   // Web and Android pay through Razorpay / Cashfree; the iPhone app has no purchase path.
   const planId = Platform.OS === "ios" ? undefined : params.planId;
+  const region = params.region === "PH" ? "PH" : "IN";
   const storeFlow = params.store === "google_play" || (Platform.OS === "ios" && Boolean(params.planId));
   const router = useRouter();
   const [status, setStatus] = useState<AgreementStatus | null>(null);
@@ -92,12 +93,12 @@ export default function AgreementsScreen() {
       setError(err instanceof ApiError ? err.message : "Could not load agreements");
     }
     if (planId) {
-      const catalog = await apiRequest<{ keyId: string | null; gateways?: Gateways }>("/payments/plans").catch(
-        () => null
-      );
+      const catalog = await apiRequest<{ keyId: string | null; gateways?: Gateways }>(
+        `/payments/plans?region=${region}`
+      ).catch(() => null);
       if (catalog) setGateways(catalog.gateways ?? { razorpay: Boolean(catalog.keyId), cashfree: false });
     }
-  }, [planId]);
+  }, [planId, region]);
 
   async function payWithCashfree() {
     if (!planId) return;
@@ -109,6 +110,7 @@ export default function AgreementsScreen() {
         method: "POST",
         body: JSON.stringify({
           planId,
+          region,
           phone: phone.trim() || undefined,
           returnTo: Platform.OS === "web" ? "app" : "sdk",
         }),
@@ -133,7 +135,11 @@ export default function AgreementsScreen() {
     } catch (err) {
       if (err instanceof ApiError && err.code === "PHONE_REQUIRED") {
         setNeedPhone(true);
-        setError("Cashfree needs a 10-digit mobile number. Enter it below and tap Pay again.");
+        setError(
+          region === "PH"
+            ? "Cashfree needs your Philippine mobile number. Enter it below and tap Pay again."
+            : "Cashfree needs a 10-digit mobile number. Enter it below and tap Pay again."
+        );
       } else if (err instanceof ApiError && err.code === "PAYMENT_NOT_COMPLETED") {
         setNotice("Payment was not completed. You have not been charged. You can try again.");
       } else if (err instanceof ApiError && err.code === "PLAN_PRICES_NOT_CONFIGURED") {
@@ -179,7 +185,7 @@ export default function AgreementsScreen() {
     try {
       order = await apiRequest<Order>("/payments/orders", {
         method: "POST",
-        body: JSON.stringify({ planId }),
+        body: JSON.stringify({ planId, region }),
       });
       const user = await getUser<{ email?: string; name?: string }>();
       const months = order.plan?.durationMonths;
@@ -297,15 +303,19 @@ export default function AgreementsScreen() {
                         value={phone}
                         onChangeText={setPhone}
                         keyboardType="phone-pad"
-                        maxLength={13}
-                        placeholder="10-digit mobile"
+                        maxLength={region === "PH" ? 14 : 13}
+                        placeholder={region === "PH" ? "09XXXXXXXXX" : "10-digit mobile"}
                       />
                     ) : null}
                     {gateways.razorpay && gateways.cashfree ? (
                       <>
                         <PrimaryButton label="Pay with Razorpay" onPress={() => void pay()} loading={paying} />
                         <PrimaryButton
-                          label="Pay with Cashfree (UPI, cards, net banking)"
+                          label={
+                            region === "PH"
+                              ? "Pay with Cashfree (cards)"
+                              : "Pay with Cashfree (UPI, cards, net banking)"
+                          }
                           onPress={() => void payWithCashfree()}
                           loading={paying}
                         />

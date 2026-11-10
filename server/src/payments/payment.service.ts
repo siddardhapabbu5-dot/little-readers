@@ -15,6 +15,7 @@ import {
   type CatalogPlan,
   type PlanPurpose,
 } from "./plans.js";
+import { PRICE_REGIONS, regionFromMobile, type PriceRegion } from "./region.js";
 import {
   getPublishedPlanById,
   listPublishedPlans,
@@ -99,8 +100,19 @@ export async function getPublicPriceList() {
   };
 }
 
-export async function getPlansCatalog(levelId?: string) {
-  const dbPlans = await listPublishedPlans(levelId);
+/**
+ * Prices follow the region the app asks for (default INR, so older app builds stay consistent);
+ * suggestedRegion comes from the parent's mobile number.
+ */
+export async function getPlansCatalog(
+  levelId?: string,
+  opts: { region?: PriceRegion; userId?: string } = {}
+) {
+  const region = opts.region ?? "IN";
+  const user = opts.userId
+    ? await prisma.user.findUnique({ where: { id: opts.userId }, select: { mobileE164: true } })
+    : null;
+  const dbPlans = await listPublishedPlans(levelId, region);
   const envPlans = listConfiguredPlans().filter((p) => p.purpose === "EXTRA_SEATS");
   const mapped: Array<CatalogPlan & { planId?: string; durationMonths?: number }> =
     dbPlans.map((p) => ({
@@ -126,7 +138,7 @@ export async function getPlansCatalog(levelId?: string) {
 
   // Subscription prices come only from Admin-published DB plans.
   const hasSubscriptionPlans = mapped.length > 0;
-  mapped.push(...envPlans);
+  if (region === "IN") mapped.push(...envPlans);
 
   const liveBlocked = liveKeyBlocked();
   const razorpayOn = Boolean(paymentsEnabled() && !liveBlocked);
@@ -135,6 +147,9 @@ export async function getPlansCatalog(levelId?: string) {
   const enabled = Boolean(gatewayOn && hasSubscriptionPlans);
   return {
     enabled,
+    region,
+    suggestedRegion: regionFromMobile(user?.mobileE164),
+    regions: PRICE_REGIONS,
     currency: mapped[0]?.currency ?? "INR",
     keyId: enabled && razorpayOn ? publicKeyId() : null,
     gateways: {
@@ -174,7 +189,12 @@ async function latestWebSubscription(userId: string, tx: Prisma.TransactionClien
   });
 }
 
-export type CheckoutInput = { purpose?: PlanPurpose; seats?: number; planId?: string };
+export type CheckoutInput = {
+  purpose?: PlanPurpose;
+  seats?: number;
+  planId?: string;
+  region?: PriceRegion;
+};
 
 /** Shared website-checkout guards and price lookup; the caller creates the gateway order. */
 export async function resolveCheckoutPlan(
@@ -218,7 +238,7 @@ export async function resolveCheckoutPlan(
   let snapshot: Record<string, unknown> = {};
 
   if (input.planId) {
-    const dbPlan = await getPublishedPlanById(input.planId);
+    const dbPlan = await getPublishedPlanById(input.planId, input.region ?? "IN");
     if (!dbPlan) {
       throw new AppError(
         "Selected plan is not available (draft, inactive, or unpublished)",
@@ -251,10 +271,14 @@ export async function resolveCheckoutPlan(
       amountPaise: dbPlan.amountPaise,
       taxPaise: dbPlan.taxPaise,
       totalPaise: dbPlan.totalPaise,
+      currency: dbPlan.currency,
       applicableLevel: dbPlan.applicableLevel,
     };
   } else {
     const purpose = input.purpose;
+    if (input.region === "PH") {
+      throw new AppError("Extra seats can only be bought in INR", 400, { code: "REGION_UNSUPPORTED" });
+    }
     if (purpose !== "EXTRA_SEATS") {
       throw new AppError("Choose a published subscription plan", 400, {
         code: "PLAN_REQUIRED",

@@ -26,6 +26,7 @@ type Plan = {
   description?: string | null;
   durationMonths: number;
   amountPaise: number;
+  amountPhpCentavos?: number | null;
   currency: string;
   applicableLevel: string;
   levelId?: string | null;
@@ -71,6 +72,7 @@ export default function AdminSubscriptionPlansScreen() {
     description: string;
     durationMonths: number;
     amountInr: string;
+    amountPhp: string;
     applicableLevel: string;
     levelId: string;
     isPublished: boolean;
@@ -121,6 +123,13 @@ export default function AdminSubscriptionPlansScreen() {
       setError("Amount (INR) must be greater than zero");
       return;
     }
+    const amountPhpCentavos = form.amountPhp.trim()
+      ? Math.round(Number(form.amountPhp) * 100)
+      : null;
+    if (amountPhpCentavos !== null && !(amountPhpCentavos > 0)) {
+      setError("Philippines price must be greater than zero, or left empty");
+      return;
+    }
     try {
       const body = {
         name: form.name,
@@ -128,6 +137,7 @@ export default function AdminSubscriptionPlansScreen() {
         description: form.description || null,
         durationMonths: form.durationMonths,
         amountPaise,
+        amountPhpCentavos,
         applicableLevel: form.applicableLevel,
         levelId: form.levelId || null,
         isPublished: form.isPublished,
@@ -176,6 +186,7 @@ export default function AdminSubscriptionPlansScreen() {
                 description: "",
                 durationMonths: 1,
                 amountInr: "",
+                amountPhp: "",
                 applicableLevel: "ALL",
                 levelId: "",
                 isPublished: true,
@@ -239,6 +250,13 @@ export default function AdminSubscriptionPlansScreen() {
                 value={form.amountInr}
                 onChangeText={(v) => setForm({ ...form, amountInr: v })}
                 keyboardType="decimal-pad"
+              />
+              <Field
+                label="Philippines price (₱, final amount)"
+                value={form.amountPhp}
+                onChangeText={(v) => setForm({ ...form, amountPhp: v })}
+                keyboardType="decimal-pad"
+                placeholder="Leave empty to charge INR"
               />
               <Text style={styles.meta}>Applicable Level</Text>
               <View style={styles.filters}>
@@ -317,6 +335,7 @@ export default function AdminSubscriptionPlansScreen() {
                 </Text>
                 <Text style={styles.meta}>
                   {r.durationMonths} mo · {inr(r.amountPaise)} ·{" "}
+                  {r.amountPhpCentavos ? `₱${(r.amountPhpCentavos / 100).toFixed(2)} · ` : ""}
                   {r.level?.label ?? r.applicableLevel} ·{" "}
                   {r.isActive ? "Active" : "Inactive"} ·{" "}
                   {r.isPublished ? "Published" : "Draft (hidden from parents)"}
@@ -335,6 +354,7 @@ export default function AdminSubscriptionPlansScreen() {
                         description: r.description ?? "",
                         durationMonths: r.durationMonths,
                         amountInr: String(r.amountPaise / 100),
+                        amountPhp: r.amountPhpCentavos ? String(r.amountPhpCentavos / 100) : "",
                         applicableLevel: r.applicableLevel,
                         levelId: r.levelId ?? "",
                         isPublished: r.isPublished,

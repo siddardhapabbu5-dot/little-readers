@@ -1,6 +1,7 @@
 import { AppError } from "../lib/errors.js";
 import { prisma } from "../lib/prisma.js";
 import { env } from "../config/env.js";
+import type { PriceRegion } from "../payments/region.js";
 
 const ALLOWED_DURATIONS = new Set([1, 3, 6, 12]);
 const CODE_RE = /^[A-Z0-9_]{1,40}$/;
@@ -46,6 +47,7 @@ export async function createPlan(input: {
   description?: string;
   durationMonths: number;
   amountPaise: number;
+  amountPhpCentavos?: number | null;
   applicableLevel?: string;
   levelId?: string | null;
   includedSeats?: number;
@@ -92,6 +94,7 @@ export async function createPlan(input: {
       description: input.description?.trim() || null,
       durationMonths: input.durationMonths,
       amountPaise: input.amountPaise,
+      amountPhpCentavos: input.amountPhpCentavos ?? null,
       currency: env.PAYMENT_CURRENCY ?? "INR",
       applicableLevel,
       levelId: input.levelId ?? null,
@@ -111,6 +114,7 @@ export async function updatePlan(
     description?: string | null;
     durationMonths?: number;
     amountPaise?: number;
+    amountPhpCentavos?: number | null;
     applicableLevel?: string;
     levelId?: string | null;
     includedSeats?: number;
@@ -144,6 +148,9 @@ export async function updatePlan(
         : {}),
       ...(patch.amountPaise !== undefined
         ? { amountPaise: patch.amountPaise }
+        : {}),
+      ...(patch.amountPhpCentavos !== undefined
+        ? { amountPhpCentavos: patch.amountPhpCentavos }
         : {}),
       ...(patch.applicableLevel !== undefined
         ? { applicableLevel: patch.applicableLevel.toUpperCase() }
@@ -189,6 +196,28 @@ export async function deleteOrArchivePlan(id: string) {
   return { deleted: true as const, id };
 }
 
+/** PH parents pay the plan's PHP price as entered (no tax added); plans without one stay in INR. */
+function regionalPrice(
+  p: { amountPaise: number; currency: string; amountPhpCentavos: number | null },
+  region: PriceRegion
+) {
+  if (region === "PH" && p.amountPhpCentavos && p.amountPhpCentavos > 0) {
+    return {
+      amountPaise: p.amountPhpCentavos,
+      taxPaise: 0,
+      totalPaise: p.amountPhpCentavos,
+      currency: "PHP",
+    };
+  }
+  const taxPaise = taxOn(p.amountPaise);
+  return {
+    amountPaise: p.amountPaise,
+    taxPaise,
+    totalPaise: p.amountPaise + taxPaise,
+    currency: p.currency,
+  };
+}
+
 export type PublicPlan = {
   id: string;
   code: string;
@@ -206,7 +235,10 @@ export type PublicPlan = {
   purpose: string;
 };
 
-export async function listPublishedPlans(levelId?: string): Promise<PublicPlan[]> {
+export async function listPublishedPlans(
+  levelId?: string,
+  region: PriceRegion = "IN"
+): Promise<PublicPlan[]> {
   const rows = await prisma.subscriptionPlan.findMany({
     where: {
       isActive: true,
@@ -241,17 +273,13 @@ export async function listPublishedPlans(levelId?: string): Promise<PublicPlan[]
   }
 
   return filtered.map((p) => {
-    const taxPaise = taxOn(p.amountPaise);
     return {
       id: p.id,
       code: p.code,
       name: p.name,
       description: p.description,
       durationMonths: p.durationMonths,
-      amountPaise: p.amountPaise,
-      taxPaise,
-      totalPaise: p.amountPaise + taxPaise,
-      currency: p.currency,
+      ...regionalPrice(p, region),
       applicableLevel: p.applicableLevel,
       levelId: p.levelId,
       level: p.level,
@@ -261,23 +289,19 @@ export async function listPublishedPlans(levelId?: string): Promise<PublicPlan[]
   });
 }
 
-export async function getPublishedPlanById(planId: string) {
+export async function getPublishedPlanById(planId: string, region: PriceRegion = "IN") {
   const p = await prisma.subscriptionPlan.findFirst({
     where: { id: planId, isActive: true, isPublished: true },
     include: { level: { select: { id: true, code: true, label: true } } },
   });
   if (!p) return null;
-  const taxPaise = taxOn(p.amountPaise);
   return {
     id: p.id,
     code: p.code,
     name: p.name,
     description: p.description,
     durationMonths: p.durationMonths,
-    amountPaise: p.amountPaise,
-    taxPaise,
-    totalPaise: p.amountPaise + taxPaise,
-    currency: p.currency,
+    ...regionalPrice(p, region),
     applicableLevel: p.applicableLevel,
     levelId: p.levelId,
     level: p.level,

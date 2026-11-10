@@ -32,9 +32,9 @@ function withLocalReleaseSigning(config) {
     );
 
     src = src.replace(
-      /(release\s*\{[^}]*?)signingConfig signingConfigs\.debug/,
+      /(release\s*\{[^}]*?)signingConfig(?:\s*=\s*|\s+)signingConfigs\.debug/,
       (match, head) =>
-        `${head}signingConfig project.hasProperty('LW_UPLOAD_STORE_FILE') ? signingConfigs.release : signingConfigs.debug`
+        `${head}signingConfig = project.hasProperty('LW_UPLOAD_STORE_FILE') ? signingConfigs.release : signingConfigs.debug`
     );
 
     cfg.modResults.contents = src;

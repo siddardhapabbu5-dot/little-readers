@@ -1,9 +1,6 @@
 import { useMemo, useState } from "react";
 import {
-  KeyboardAvoidingView,
-  Platform,
   Pressable,
-  ScrollView,
   StyleSheet,
   Text,
   View,
@@ -16,6 +13,7 @@ import {
   Field,
   PrimaryButton,
   SoftButton,
+  KeyboardScroll,
   Title,
 } from "../components/ui";
 import { apiRequest, ApiError } from "../services/api";
@@ -111,11 +109,7 @@ export default function AdminResetPasswordScreen() {
 
   return (
     <SafeAreaView style={styles.safe}>
-      <KeyboardAvoidingView
-        style={{ flex: 1 }}
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-      >
-        <ScrollView
+      <KeyboardScroll
           contentContainerStyle={styles.content}
           keyboardShouldPersistTaps="handled"
         >
@@ -226,8 +220,7 @@ export default function AdminResetPasswordScreen() {
               />
             )}
           </Card>
-        </ScrollView>
-      </KeyboardAvoidingView>
+        </KeyboardScroll>
     </SafeAreaView>
   );
 }

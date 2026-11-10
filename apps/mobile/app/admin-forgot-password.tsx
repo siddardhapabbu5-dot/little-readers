@@ -1,8 +1,6 @@
 import { useState } from "react";
 import {
-  KeyboardAvoidingView,
   Platform,
-  ScrollView,
   StyleSheet,
   Text,
 } from "react-native";
@@ -14,6 +12,7 @@ import {
   Field,
   PrimaryButton,
   SoftButton,
+  KeyboardScroll,
   Title,
 } from "../components/ui";
 import { apiRequest, ApiError } from "../services/api";
@@ -73,11 +72,7 @@ export default function AdminForgotPasswordScreen() {
 
   return (
     <SafeAreaView style={styles.safe}>
-      <KeyboardAvoidingView
-        style={{ flex: 1 }}
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-      >
-        <ScrollView
+      <KeyboardScroll
           contentContainerStyle={styles.content}
           keyboardShouldPersistTaps="handled"
         >
@@ -118,8 +113,7 @@ export default function AdminForgotPasswordScreen() {
               onPress={() => void onSubmit()}
             />
           </Card>
-        </ScrollView>
-      </KeyboardAvoidingView>
+        </KeyboardScroll>
     </SafeAreaView>
   );
 }

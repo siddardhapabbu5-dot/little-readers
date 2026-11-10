@@ -1,10 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import {
   Image,
-  KeyboardAvoidingView,
   Platform,
   Pressable,
-  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -17,6 +15,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import type { CountryCode } from "libphonenumber-js";
 import { CountryCodePicker } from "../components/CountryCodePicker";
 import { EmailOtpVerify } from "../components/EmailOtpVerify";
+import { KeyboardAwareScroll } from "../components/keyboard";
 import { apiRequest, ApiError } from "../services/api";
 import { isValidEmail, routeForRole } from "../services/auth-errors";
 import {
@@ -53,7 +52,6 @@ export default function RegisterScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { height: winH } = useWindowDimensions();
-  const scrollRef = useRef<ScrollView>(null);
   const emailRef = useRef<TextInputType>(null);
   const passwordRef = useRef<TextInputType>(null);
   const mobileRef = useRef<TextInputType>(null);
@@ -93,12 +91,6 @@ export default function RegisterScreen() {
         })
       );
   }, []);
-
-  function scrollFieldIntoView(y: number) {
-    requestAnimationFrame(() => {
-      scrollRef.current?.scrollTo({ y: Math.max(0, y - 20), animated: true });
-    });
-  }
 
   async function onRegister() {
     if (loading) return;
@@ -230,13 +222,7 @@ export default function RegisterScreen() {
         accessibilityIgnoresInvertColors
       />
 
-      <KeyboardAvoidingView
-        style={styles.flex}
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-        keyboardVerticalOffset={Platform.OS === "ios" ? 8 : 0}
-      >
-        <ScrollView
-          ref={scrollRef}
+      <KeyboardAwareScroll
           style={styles.flex}
           contentContainerStyle={[
             styles.content,
@@ -246,9 +232,7 @@ export default function RegisterScreen() {
             },
           ]}
           keyboardShouldPersistTaps="handled"
-          keyboardDismissMode="on-drag"
           showsVerticalScrollIndicator={false}
-          automaticallyAdjustKeyboardInsets={Platform.OS === "ios"}
         >
           <Text style={styles.title} accessibilityRole="header">
             Create Student Account
@@ -269,6 +253,7 @@ export default function RegisterScreen() {
                 placeholderTextColor="#9B8EC4"
                 autoCapitalize="words"
                 returnKeyType="next"
+                blurOnSubmit={false}
                 onSubmitEditing={() => emailRef.current?.focus()}
                 editable={!loading}
                 accessibilityLabel="Student full name"
@@ -290,7 +275,6 @@ export default function RegisterScreen() {
                 textContentType="emailAddress"
                 returnKeyType="next"
                 blurOnSubmit={false}
-                onFocus={() => scrollFieldIntoView(120)}
                 onSubmitEditing={() => passwordRef.current?.focus()}
                 editable={!loading}
                 accessibilityLabel="Parent or guardian email"
@@ -322,7 +306,7 @@ export default function RegisterScreen() {
                 secureTextEntry={!showPassword}
                 textContentType="newPassword"
                 returnKeyType="next"
-                onFocus={() => scrollFieldIntoView(200)}
+                blurOnSubmit={false}
                 onSubmitEditing={() => mobileRef.current?.focus()}
                 editable={!loading}
                 accessibilityLabel="Password"
@@ -357,7 +341,7 @@ export default function RegisterScreen() {
                 keyboardType="phone-pad"
                 textContentType="telephoneNumber"
                 returnKeyType="next"
-                onFocus={() => scrollFieldIntoView(280)}
+                blurOnSubmit={false}
                 onSubmitEditing={() => birthRef.current?.focus()}
                 editable={!loading}
                 accessibilityLabel="Mobile number (optional)"
@@ -375,7 +359,6 @@ export default function RegisterScreen() {
                 placeholderTextColor="#9B8EC4"
                 keyboardType="number-pad"
                 returnKeyType="done"
-                onFocus={() => scrollFieldIntoView(360)}
                 onSubmitEditing={() => void onRegister()}
                 editable={!loading}
                 accessibilityLabel="Student birthday"
@@ -463,8 +446,7 @@ export default function RegisterScreen() {
               <Text style={styles.softBtnText}>Back to login</Text>
             </Pressable>
           </View>
-        </ScrollView>
-      </KeyboardAvoidingView>
+      </KeyboardAwareScroll>
     </View>
   );
 }

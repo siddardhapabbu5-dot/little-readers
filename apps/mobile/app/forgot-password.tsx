@@ -1,8 +1,6 @@
 import { useState } from "react";
 import {
-  KeyboardAvoidingView,
   Platform,
-  ScrollView,
   StyleSheet,
   Text,
 } from "react-native";
@@ -14,6 +12,7 @@ import {
   Field,
   PrimaryButton,
   SoftButton,
+  KeyboardScroll,
   Title,
 } from "../components/ui";
 import { EmailOtpVerify } from "../components/EmailOtpVerify";
@@ -58,11 +57,7 @@ export default function ForgotPasswordScreen() {
 
   return (
     <SafeAreaView style={styles.safe}>
-      <KeyboardAvoidingView
-        style={{ flex: 1 }}
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-      >
-        <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+      <KeyboardScroll contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
           <SoftButton label="← Back to login" onPress={() => router.replace("/login")} />
           <Title>Forgot password</Title>
           <Text style={styles.sub}>
@@ -112,8 +107,7 @@ export default function ForgotPasswordScreen() {
               </>
             )}
           </Card>
-        </ScrollView>
-      </KeyboardAvoidingView>
+        </KeyboardScroll>
     </SafeAreaView>
   );
 }

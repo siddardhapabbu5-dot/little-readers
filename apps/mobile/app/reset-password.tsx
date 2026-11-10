@@ -1,8 +1,6 @@
 import { useMemo, useState } from "react";
 import {
-  KeyboardAvoidingView,
   Platform,
-  ScrollView,
   StyleSheet,
   Text,
 } from "react-native";
@@ -14,6 +12,7 @@ import {
   Field,
   PrimaryButton,
   SoftButton,
+  KeyboardScroll,
   Title,
 } from "../components/ui";
 import { apiRequest, ApiError } from "../services/api";
@@ -62,11 +61,7 @@ export default function ResetPasswordScreen() {
 
   return (
     <SafeAreaView style={styles.safe}>
-      <KeyboardAvoidingView
-        style={{ flex: 1 }}
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-      >
-        <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+      <KeyboardScroll contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
           <SoftButton label="← Back to login" onPress={() => router.replace("/login")} />
           <Title>Reset password</Title>
           <Text style={styles.sub}>
@@ -99,8 +94,7 @@ export default function ResetPasswordScreen() {
               <PrimaryButton label="Go to login" onPress={() => router.replace("/login")} />
             )}
           </Card>
-        </ScrollView>
-      </KeyboardAvoidingView>
+        </KeyboardScroll>
     </SafeAreaView>
   );
 }

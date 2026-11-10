@@ -1,10 +1,8 @@
 import { forwardRef, type ReactNode } from "react";
 import {
   ActivityIndicator,
-  KeyboardAvoidingView,
-  Platform,
   Pressable,
-  ScrollView,
+  type ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -15,6 +13,7 @@ import {
   type ViewStyle,
 } from "react-native";
 import { colors, radii, shadow } from "../theme";
+import { KeyboardAwareScroll } from "./keyboard";
 
 /**
  * Vertical page scroller for screens with inputs: lifts content above the keyboard,
@@ -25,20 +24,13 @@ export const KeyboardScroll = forwardRef<ScrollView, ScrollViewProps>(function K
   ref
 ) {
   return (
-    <KeyboardAvoidingView
-      style={styles.flex}
-      behavior={Platform.OS === "ios" ? "padding" : "height"}
-    >
-      <ScrollView
-        ref={ref}
-        style={[styles.flex, style]}
-        contentContainerStyle={[styles.scrollContent, contentContainerStyle]}
-        keyboardShouldPersistTaps="handled"
-        keyboardDismissMode={Platform.OS === "ios" ? "interactive" : "on-drag"}
-        automaticallyAdjustKeyboardInsets={Platform.OS === "ios"}
-        {...rest}
-      />
-    </KeyboardAvoidingView>
+    <KeyboardAwareScroll
+      ref={ref}
+      style={[styles.flex, style]}
+      contentContainerStyle={[styles.scrollContent, contentContainerStyle]}
+      keyboardShouldPersistTaps="handled"
+      {...rest}
+    />
   );
 });
 

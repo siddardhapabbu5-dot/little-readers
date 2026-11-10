@@ -10,6 +10,7 @@ import {
 import { Stack, useRouter, type ErrorBoundaryProps } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { SafeAreaProvider } from "react-native-safe-area-context";
+import { KeyboardRoot } from "../components/keyboard";
 import { NetworkBanner } from "../components/NetworkBanner";
 import { PhoneFrame } from "../components/PhoneFrame";
 import { API_URL, checkParentSessionAlive } from "../services/api";
@@ -106,17 +107,19 @@ function PhoneLayout() {
 
   return (
     <SafeAreaProvider>
-      <StatusBar style="dark" />
-      <NetworkBanner />
-      <PhoneFrame>
-        <Stack
-          screenOptions={{
-            headerShown: false,
-            contentStyle: { backgroundColor: colors.bg },
-            animation: "slide_from_right",
-          }}
-        />
-      </PhoneFrame>
+      <KeyboardRoot>
+        <StatusBar style="dark" />
+        <NetworkBanner />
+        <PhoneFrame>
+          <Stack
+            screenOptions={{
+              headerShown: false,
+              contentStyle: { backgroundColor: colors.bg },
+              animation: "slide_from_right",
+            }}
+          />
+        </PhoneFrame>
+      </KeyboardRoot>
     </SafeAreaProvider>
   );
 }

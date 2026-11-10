@@ -2,10 +2,8 @@ import { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Image,
-  KeyboardAvoidingView,
   Platform,
   Pressable,
-  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -15,6 +13,7 @@ import {
 } from "react-native";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { KeyboardAwareScroll } from "../components/keyboard";
 import { apiRequest, ApiError } from "../services/api";
 import {
   friendlyAuthError,
@@ -40,10 +39,7 @@ export default function LoginScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { height: winH } = useWindowDimensions();
-  const scrollRef = useRef<ScrollView>(null);
   const passwordRef = useRef<TextInputType>(null);
-  const emailFieldY = useRef(0);
-  const passwordFieldY = useRef(0);
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -65,16 +61,6 @@ export default function LoginScreen() {
     setError(null);
     setFieldHint(null);
     setInfo(null);
-  }
-
-  function scrollToY(y: number) {
-    // Keep focused field visible without jumping to top.
-    requestAnimationFrame(() => {
-      scrollRef.current?.scrollTo({
-        y: Math.max(0, y - 24),
-        animated: true,
-      });
-    });
   }
 
   async function onEmailLogin() {
@@ -138,13 +124,7 @@ export default function LoginScreen() {
         accessibilityIgnoresInvertColors
       />
 
-      <KeyboardAvoidingView
-        style={styles.overlay}
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-        keyboardVerticalOffset={Platform.OS === "ios" ? 8 : 0}
-      >
-        <ScrollView
-          ref={scrollRef}
+      <KeyboardAwareScroll
           style={styles.overlay}
           contentContainerStyle={[
             styles.page,
@@ -154,9 +134,7 @@ export default function LoginScreen() {
             },
           ]}
           keyboardShouldPersistTaps="handled"
-          keyboardDismissMode="on-drag"
           showsVerticalScrollIndicator={false}
-          automaticallyAdjustKeyboardInsets={Platform.OS === "ios"}
         >
           <View
             style={styles.header}
@@ -214,12 +192,7 @@ export default function LoginScreen() {
             </View>
 
             <>
-                <View
-                  style={styles.inputRow}
-                  onLayout={(e) => {
-                    emailFieldY.current = e.nativeEvent.layout.y;
-                  }}
-                >
+                <View style={styles.inputRow}>
                   <Text style={styles.inputIcon} accessibilityElementsHidden>
                     ✉
                   </Text>
@@ -240,19 +213,13 @@ export default function LoginScreen() {
                     autoComplete="email"
                     returnKeyType="next"
                     blurOnSubmit={false}
-                    onFocus={() => scrollToY(emailFieldY.current + 160)}
                     onSubmitEditing={() => passwordRef.current?.focus()}
                     editable={!loading}
                     accessibilityLabel="Email address"
                   />
                 </View>
 
-                <View
-                  style={styles.inputRow}
-                  onLayout={(e) => {
-                    passwordFieldY.current = e.nativeEvent.layout.y;
-                  }}
-                >
+                <View style={styles.inputRow}>
                   <Text style={styles.inputIcon} accessibilityElementsHidden>
                     🔒
                   </Text>
@@ -271,7 +238,6 @@ export default function LoginScreen() {
                     textContentType="password"
                     autoComplete="password"
                     returnKeyType="go"
-                    onFocus={() => scrollToY(passwordFieldY.current + 200)}
                     onSubmitEditing={() => void onEmailLogin()}
                     editable={!loading}
                     accessibilityLabel="Password"
@@ -362,8 +328,7 @@ export default function LoginScreen() {
               <Text style={styles.createText}>Create Student Account</Text>
             </Pressable>
           </View>
-        </ScrollView>
-      </KeyboardAvoidingView>
+      </KeyboardAwareScroll>
     </View>
   );
 }

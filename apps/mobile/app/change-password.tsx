@@ -1,8 +1,8 @@
 import { useCallback, useState } from "react";
-import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text } from "react-native";
+import { ScrollView, StyleSheet, Text } from "react-native";
 import { useFocusEffect, useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Card, ErrorText, Field, PrimaryButton, SoftButton, Title } from "../components/ui";
+import { Card, ErrorText, Field, PrimaryButton, SoftButton, Title, KeyboardScroll } from "../components/ui";
 import { AuthGate } from "../components/AuthGate";
 import { apiRequest, ApiError } from "../services/api";
 import { ROLE_SETS } from "../services/auth-errors";
@@ -80,11 +80,7 @@ export default function ChangePasswordScreen() {
   return (
     <AuthGate roles={ROLE_SETS.anyAuthed}>
       <SafeAreaView style={styles.safe}>
-        <KeyboardAvoidingView
-          style={{ flex: 1 }}
-          behavior={Platform.OS === "ios" ? "padding" : "height"}
-        >
-          <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+        <KeyboardScroll contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
             <SoftButton label="← Back" onPress={() => router.back()} />
             <Title>Change password</Title>
             <Text style={styles.sub}>New password: {rule}</Text>
@@ -120,8 +116,7 @@ export default function ChangePasswordScreen() {
             <Text style={styles.sub}>
               Forgot your current password? Log out and use “Forgot password” on the login screen.
             </Text>
-          </ScrollView>
-        </KeyboardAvoidingView>
+          </KeyboardScroll>
       </SafeAreaView>
     </AuthGate>
   );

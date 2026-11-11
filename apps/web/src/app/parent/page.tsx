@@ -78,8 +78,8 @@ interface LearningOverview {
   }>;
   history: Array<{
     sessionId: string;
-    category: string;
-    emoji: string;
+    category: string | { label: string; emoji: string };
+    emoji?: string;
     points: number;
     stars: number;
     wordsLearned: number;
@@ -419,7 +419,10 @@ export default function ParentDashboardPage() {
                 <ul style={{ margin: 0, paddingLeft: 18 }}>
                   {learning.history.map((h) => (
                     <li key={h.sessionId} style={{ marginBottom: 6 }}>
-                      {h.emoji} {h.category} · {h.points} pts · {h.stars}★ ·{" "}
+                      {typeof h.category === "string"
+                        ? `${h.emoji ?? ""} ${h.category}`
+                        : `${h.category.emoji} ${h.category.label}`}{" "}
+                      · {h.points} pts · {h.stars}★ ·{" "}
                       {h.wordsLearned} words
                       {h.completedAt
                         ? ` · ${new Date(h.completedAt).toLocaleString()}`

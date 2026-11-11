@@ -45,7 +45,12 @@ async function registerParent(tag: string) {
     .send({
       versionIds: status.body.data.documents.map((d: { current: { id: string } }) => d.current.id),
     });
-  return { token, id: reg.body.data.user.id as string };
+  const child = await request(app)
+    .post("/api/children")
+    .set("Authorization", `Bearer ${token}`)
+    .send({ displayName: `Php ${tag}`, birthDate: "10/02/2023", level: "LEVEL_1" });
+  expect(child.status).toBe(201);
+  return { token, id: reg.body.data.user.id as string, childId: child.body.data.id as string };
 }
 
 describe.skipIf(!hasDb)("Philippine (PHP) plan pricing", () => {
@@ -152,7 +157,7 @@ describe.skipIf(!hasDb)("Philippine (PHP) plan pricing", () => {
     const created = await request(app)
       .post("/api/payments/orders")
       .set("Authorization", `Bearer ${p.token}`)
-      .send({ planId: phpPlanId, region: "PH" });
+      .send({ planId: phpPlanId, childId: p.childId, region: "PH" });
     expect(created.status).toBe(201);
     expect(created.body.data).toMatchObject({ amountPaise: 14900, currency: "PHP" });
 
@@ -189,14 +194,14 @@ describe.skipIf(!hasDb)("Philippine (PHP) plan pricing", () => {
     const noPhone = await request(app)
       .post("/api/payments/cashfree/orders")
       .set("Authorization", `Bearer ${p.token}`)
-      .send({ planId: phpPlanId, region: "PH", phone: "8876543210" });
+      .send({ planId: phpPlanId, childId: p.childId, region: "PH", phone: "8876543210" });
     expect(noPhone.status).toBe(400);
     expect(noPhone.body.code).toBe("PHONE_REQUIRED");
 
     const created = await request(app)
       .post("/api/payments/cashfree/orders")
       .set("Authorization", `Bearer ${p.token}`)
-      .send({ planId: phpPlanId, region: "PH", phone: "09776605514" });
+      .send({ planId: phpPlanId, childId: p.childId, region: "PH", phone: "09776605514" });
     expect(created.status).toBe(201);
     expect(created.body.data).toMatchObject({ amountPaise: 14900, currency: "PHP" });
 

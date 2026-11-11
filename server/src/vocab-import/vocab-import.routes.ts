@@ -6,6 +6,7 @@ import {
   requireRoles,
   type AuthenticatedRequest,
 } from "../middleware/auth.js";
+import { requirePermission } from "../auth/permissions.js";
 import { AppError } from "../lib/errors.js";
 import { MAX_VOCAB_UPLOAD_BYTES } from "./file-security.js";
 import {
@@ -39,7 +40,7 @@ const upload = multer({
 
 export const vocabImportRouter = Router();
 
-vocabImportRouter.use(requireAuth, requireRoles("ADMIN", "SUPER_ADMIN"));
+vocabImportRouter.use(requireAuth, requirePermission("content.manage"));
 
 vocabImportRouter.get("/levels", async (_req, res, next) => {
   try {
@@ -124,7 +125,7 @@ const clearWordsSchema = z.object({
 });
 
 /** Wipe published VocabularyWord rows so a new dictionary can replace them. */
-vocabImportRouter.post("/words/clear-all", async (req, res, next) => {
+vocabImportRouter.post("/words/clear-all", requirePermission("content.destroy"), async (req, res, next) => {
   try {
     const parsed = clearWordsSchema.safeParse(req.body);
     if (!parsed.success) {
@@ -202,11 +203,17 @@ vocabImportRouter.post("/words/import-sheet", (req, res, next) => {
       (typeof req.query.categoryId === "string" ? req.query.categoryId : "") ||
       undefined;
 
+    const levelCode =
+      (typeof req.body?.levelCode === "string" && req.body.levelCode) ||
+      (typeof req.query.levelCode === "string" ? req.query.levelCode : "") ||
+      undefined;
+
     const data = await importVocabularySheet({
       buffer: req.file?.buffer,
       filename: req.file?.originalname,
       csvText: typeof req.body?.csv === "string" ? req.body.csv : undefined,
       categoryId,
+      levelCode,
     });
     res.status(200).json({ data });
   } catch (error) {

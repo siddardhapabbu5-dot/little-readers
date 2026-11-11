@@ -41,7 +41,9 @@ type ChildRow = {
   level: string;
   levelId?: string | null;
   hasLearningSeat?: boolean;
+  learnWiseGrade?: { levelCode: string; gradeLabel: string } | null;
 };
+type GradeAccess = { entitled: boolean; gradeLabel: string; reason: string | null };
 type Category = {
   id: string;
   label: string;
@@ -83,6 +85,7 @@ export default function HomeTab() {
   const [progress, setProgress] = useState<ProgressPayload | null>(null);
   const [daily, setDaily] = useState<DailyStatus | null>(null);
   const [week, setWeek] = useState<ChallengeOverview | null>(null);
+  const [access, setAccess] = useState<GradeAccess | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -109,17 +112,24 @@ export default function HomeTab() {
           }
           setChild(active);
 
-          if (active?.hasLearningSeat !== false && active) {
-            const catalog = await apiRequest<Parameters<typeof resolveChildLevel>[1]>(
-              "/learning/levels"
-            );
-            const levelKey = resolveChildLevel(active.level, catalog);
+          const levelKey = active
+            ? active.learnWiseGrade?.levelCode ??
+              resolveChildLevel(
+                active.level,
+                await apiRequest<Parameters<typeof resolveChildLevel>[1]>("/learning/levels")
+              )
+            : "";
+          const curriculum =
+            active && levelKey
+              ? await apiRequest<{ groups: Group[]; access: GradeAccess | null }>(
+                  `/learning/levels/${encodeURIComponent(levelKey)}/groups?childId=${encodeURIComponent(active.id)}`
+                )
+              : null;
+          setAccess(curriculum?.access ?? null);
+          if (active && curriculum && curriculum.access?.entitled !== false) {
             const q = encodeURIComponent(active.id);
-            const [p, curriculum, d, w] = await Promise.all([
+            const [p, d, w] = await Promise.all([
               apiRequest<ProgressPayload>(`/learning/progress/${active.id}`),
-              apiRequest<{ groups: Group[] }>(
-                `/learning/levels/${encodeURIComponent(levelKey)}/groups?childId=${q}`
-              ),
               apiRequest<DailyStatus>(`/learning/progress/${q}/daily-challenge`).catch(() => null),
               apiRequest<ChallengeOverview>(`/challenges/overview?childId=${q}`).catch(() => null),
             ]);
@@ -166,7 +176,12 @@ export default function HomeTab() {
   const stars = summary?.stars ?? 0;
   const points = summary?.points ?? 0;
   const words = summary?.wordsCorrect ?? summary?.wordsLearned ?? 0;
-  const level = child ? levelLabel(child.level) ?? "Level 1" : null;
+  const level = child
+    ? (access?.gradeLabel ?? child.learnWiseGrade?.gradeLabel)?.split(" – ")[0] ??
+      levelLabel(child.level) ??
+      "Grade 1"
+    : null;
+  const blocked = Boolean(access && !access.entitled);
   const weekGoalsDone = week ? week.goals.filter((g) => g.done).length : 0;
 
   function openCategory(cat?: Category) {
@@ -211,7 +226,7 @@ export default function HomeTab() {
     });
   }
 
-  const ready = !loading && child && child.hasLearningSeat !== false;
+  const ready = !loading && child && !blocked;
   const continuePct = continueCat
     ? Math.round(((continueCat.progress?.wordsLearned ?? 0) / Math.max(continueCat.wordCount, 1)) * 100)
     : 0;
@@ -257,13 +272,13 @@ export default function HomeTab() {
               </Text>
               <SoftButton label="Open Parent dashboard" onPress={() => router.push("/parent")} />
             </View>
-          ) : child.hasLearningSeat === false ? (
+          ) : blocked ? (
             <View style={styles.emptyCard}>
-              <Text style={styles.emptyTitle}>Activate a learning seat</Text>
+              <Text style={styles.emptyTitle}>Ask a parent to unlock {level}</Text>
               <Text style={styles.hint}>
-                {child.displayName} needs a seat before Kids Zone unlocks.
+                {access?.reason ?? `${child.displayName} needs a ${level} subscription.`}
               </Text>
-              <SoftButton label="Subscription / seats" onPress={() => router.push("/subscription")} />
+              <SoftButton label="Subscription" onPress={() => router.push("/subscription")} />
               <SoftButton label="Parent dashboard" onPress={() => router.push("/parent")} />
             </View>
           ) : null}

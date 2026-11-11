@@ -60,7 +60,7 @@ describe.skipIf(!hasDb)("Batch 8 — kids lessons + seat revoke", () => {
         .set("Authorization", `Bearer ${adminToken}`)
         .send({
           categoryId,
-          text: `bew${String(stamp + i).replace(/\d/g, (d) => "abcdefghij"[Number(d)])}`,
+          text: `bew${String(stamp + i).replace(/\d/g, (d, at: number) => (at % 2 ? "klmnopqrst" : "abcdefghij")[Number(d)])}`,
           meaning: `Batch 8 meaning ${i}`,
           emoji: "📗",
         });

@@ -1,11 +1,14 @@
 /**
  * Force-restore local demo Parent / Admin / Super Admin logins.
- * Same behavior as API boot ensure (non-production).
+ * Same behavior as API boot ensure (ALLOW_DEMO=1, local non-production database only).
  *
  *   npm run db:restore-demo --workspace=@little-readers/server
  */
 import bcrypt from "bcryptjs";
 import { PrismaClient } from "@prisma/client";
+import { assertDemoAllowed } from "./lib/destructive-guard.mjs";
+
+assertDemoAllowed("restore-demo-logins");
 
 const prisma = new PrismaClient();
 

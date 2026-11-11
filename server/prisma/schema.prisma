@@ -135,6 +135,12 @@ model User {
   /// Parent gate PIN (bcrypt). Required before kids chrome opens adult tools.
   parentPinHash String?
   parentPinUpdatedAt DateTime?
+  /// Consecutive wrong passwords; reaching the limit sets loginLockedUntil.
+  failedLoginCount Int @default(0)
+  loginLockedUntil DateTime?
+  /// Consecutive wrong Parent PINs; reaching the limit sets parentPinLockedUntil.
+  parentPinFailedCount Int @default(0)
+  parentPinLockedUntil DateTime?
   /// Small profile photo as a data:image/jpeg;base64 URL (resized on the device, max ~300 KB).
   avatarUrl    String?
   createdAt    DateTime @default(now())
@@ -253,6 +259,7 @@ model PasswordResetToken {
 enum EmailOtpPurpose {
   REGISTER
   RESET_PASSWORD
+  RESET_PIN
 }
 
 /** Email verification codes (registration + forgot password). Only hashes are stored. */
@@ -337,6 +344,7 @@ model Child {
   friendInvites      FriendConnection[] @relation("FriendInviter")
   friendJoins        FriendConnection[] @relation("FriendInvitee")
   leaderboardReports LeaderboardReport[]
+  gradeSubscriptions Subscription[]    @relation("ChildGradeSubscription")
 
   @@index([parentId])
   @@index([gradeId])
@@ -440,6 +448,7 @@ model LearningLevel {
   vocabImports     VocabImportBatch[]
   assignments      VocabularyGradeAssignment[]
   subscriptionPlans SubscriptionPlan[]
+  gradeSubscriptions Subscription[]  @relation("LevelGradeSubscription")
 
   @@index([gradeId])
   @@index([isActive, isPublished])
@@ -509,6 +518,15 @@ model LearningGroup {
   @@index([isActive])
 }
 
+/// Curriculum review state. `isPublished` stays the child-facing switch and is kept in sync (true only when PUBLISHED).
+enum CategoryStatus {
+  DRAFT
+  PENDING_APPROVAL
+  APPROVED
+  PUBLISHED
+  UNPUBLISHED
+}
+
 model LearningCategory {
   id          String   @id @default(cuid())
   groupId     String
@@ -519,6 +537,13 @@ model LearningCategory {
   sortOrder   Int      @default(0)
   unlockOrder Int      @default(0)
   isPublished Boolean  @default(true)
+  status      CategoryStatus @default(DRAFT)
+  /// Topic fields from the grade curriculum sheets (Symbol | Daily Conversation | Example Sentence).
+  symbol            String?
+  dailyConversation String?
+  exampleSentence   String?
+  /// True when words/topic text were drafted for review rather than taken from an approved source.
+  needsReview       Boolean @default(false)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
@@ -532,6 +557,7 @@ model LearningCategory {
 
   @@unique([groupId, code])
   @@index([groupId, sortOrder])
+  @@index([status])
 }
 
 enum VocabImportStatus {
@@ -587,6 +613,7 @@ model VocabularyWord {
   audioUrl    String?
   /// Pronunciation guide / IPA hint (API: pronunciation)
   phonetic    String?
+  exampleSentence String?
   firstLetter String   @default("")
   difficulty  Int      @default(1)
   /// Display order within category (API: displayOrder)
@@ -1106,14 +1133,22 @@ model Subscription {
   /// Google Play purchase token (needed to re-query Google). Never returned by any API.
   providerToken      String?            @db.Text
   acknowledgedAt     DateTime?
+  /// Grade-wise entitlement: set together with levelId. Null on legacy family subscriptions,
+  /// which keep their original all-children access until they expire.
+  childId            String?
+  /// Learn Wise grade (LearningLevel) this entitlement unlocks for childId.
+  levelId            String?
   createdAt   DateTime           @default(now())
   updatedAt   DateTime           @updatedAt
 
   user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  child    Child?         @relation("ChildGradeSubscription", fields: [childId], references: [id], onDelete: SetNull)
+  level    LearningLevel? @relation("LevelGradeSubscription", fields: [levelId], references: [id], onDelete: SetNull)
   payments Payment[]
 
   @@index([userId, status])
   @@index([provider, status])
+  @@index([childId, levelId])
 }
 
 /// Append-only history of subscription / payment status changes from every provider.

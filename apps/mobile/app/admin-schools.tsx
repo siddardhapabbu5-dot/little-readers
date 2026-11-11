@@ -225,7 +225,7 @@ export default function AdminSchoolsScreen() {
   }
 
   return (
-    <AuthGate roles={ROLE_SETS.admin}>
+    <AuthGate roles={ROLE_SETS.schools}>
       <SafeAreaView style={styles.safe} edges={["top"]}>
         <View style={styles.header}>
           <Text style={styles.title}>Schools</Text>

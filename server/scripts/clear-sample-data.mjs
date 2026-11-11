@@ -7,6 +7,9 @@
  *   RESTORE_DEMO_SUB=1 node ./scripts/clear-sample-data.mjs   # empty parent seat, no kids
  */
 import { PrismaClient } from "@prisma/client";
+import { assertDestructiveAllowed } from "./lib/destructive-guard.mjs";
+
+assertDestructiveAllowed("clear-sample-data");
 
 const prisma = new PrismaClient();
 const restoreDemoSub = process.env.RESTORE_DEMO_SUB !== "0";

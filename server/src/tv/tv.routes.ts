@@ -17,11 +17,11 @@ import { listActivitySettings } from "../learning/activity-settings.js";
 import {
   completeLearningSession,
   getChildLearningOverview,
-  listLearningLevels,
   listLevelGroups,
   startLearningSession,
   submitQuestionAttempt,
 } from "../learning/learning.service.js";
+import { effectiveLevelForChild } from "../learning/grade-access.js";
 import { prisma } from "../lib/prisma.js";
 import {
   approveTvPairing,
@@ -155,16 +155,11 @@ tvRouter.get("/activities", requireTvSession, async (_req: TvRequest, res, next)
   }
 });
 
-/** Same Admin-published vocabulary the mobile Learn tab shows (first level with words). */
+/** Same Admin-published vocabulary the mobile Learn tab shows, for the paired child's grade. */
 tvRouter.get("/categories", requireTvSession, async (req: TvRequest, res, next) => {
   try {
     const tv = req.tv!;
-    const levels = await listLearningLevels();
-    const level = levels.find((l) => l.wordCount > 0) ?? levels[0];
-    if (!level) {
-      res.status(200).json({ data: { level: null, categories: [] } });
-      return;
-    }
+    const level = await effectiveLevelForChild(tv.childId);
     const data = await listLevelGroups(level.code, tv.parentId, tv.childId);
     res.status(200).json({
       data: {

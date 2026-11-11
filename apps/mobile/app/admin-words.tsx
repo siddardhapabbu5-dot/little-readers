@@ -24,6 +24,8 @@ import { ROLE_SETS } from "../services/auth-errors";
 import { displayEmoji } from "../services/emoji";
 import { AdminActivityPanel } from "../components/AdminActivityPanel";
 import { ReadinessPanel } from "../components/ReadinessPanel";
+import { AdminGradeSelector, useAdminGrade } from "../components/AdminGradeSelector";
+import { ADMIN_PRODUCT_GRADES } from "../services/admin-grade";
 import { colors } from "../theme";
 
 type GradeRow = { id: string; code: string; label: string };
@@ -92,7 +94,8 @@ export default function AdminWordsScreen() {
     ? params.categoryId[0]
     : params.categoryId;
   const [q, setQ] = useState("");
-  const [grade, setGrade] = useState<string>(paramGrade || "GRADE_1");
+  const [grade, setSharedGrade] = useAdminGrade();
+  const setGrade = setSharedGrade;
   const [gradeRows, setGradeRows] = useState<GradeRow[]>([]);
   const [categoryId, setCategoryId] = useState<string>(paramCategoryId || "");
   const [words, setWords] = useState<WordRow[]>([]);
@@ -331,6 +334,8 @@ export default function AdminWordsScreen() {
         } as unknown as Blob);
       }
       if (categoryId) form.append("categoryId", categoryId);
+      const levelCode = ADMIN_PRODUCT_GRADES.find((g) => g.code === grade)?.levelCode;
+      if (levelCode) form.append("levelCode", levelCode);
 
       const data = await apiUpload<{
         created: number;
@@ -441,23 +446,13 @@ export default function AdminWordsScreen() {
           <LoadingSlot active={busy} />
 
           <Card style={{ gap: 8 }}>
-            <Text style={styles.section}>Grade</Text>
-            <View style={styles.rowWrap}>
-              {(gradeRows.length
-                ? gradeRows.map((g) => g.code)
-                : ["GRADE_1", "GRADE_2", "GRADE_3", "GRADE_4"]
-              ).map((g) => (
-                <SoftButton
-                  key={g}
-                  label={g.replace("_", " ")}
-                  active={grade === g}
-                  onPress={() => {
-                    setGrade(g);
-                    setCategoryId("");
-                  }}
-                />
-              ))}
-            </View>
+            <AdminGradeSelector
+              value={grade}
+              onChange={(g) => {
+                setGrade(g);
+                setCategoryId("");
+              }}
+            />
             <Text style={styles.section}>Category (saves scrolling)</Text>
             <View style={styles.rowWrap}>
               <SoftButton

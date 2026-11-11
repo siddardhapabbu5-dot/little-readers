@@ -8,7 +8,8 @@ loadEnv({ path: path.resolve(__dirname, "../../../.env") });
 loadEnv();
 
 const envSchema = z.object({
-  NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
+  /** Missing NODE_ENV is treated as production so dev-only behaviour is never enabled by accident. */
+  NODE_ENV: z.enum(["development", "test", "production"]).default("production"),
   PORT: z.coerce.number().default(4100),
   DATABASE_URL: z.string().min(1, "DATABASE_URL is required"),
   JWT_SECRET: z.string().min(32, "JWT_SECRET must be at least 32 characters"),
@@ -97,65 +98,48 @@ const envSchema = z.object({
   PLAN_EXTRA_SEAT_AMOUNT_PAISE: z.coerce.number().int().nonnegative().optional(),
   /** Tax in basis points (1800 = 18%). Applied server-side to configured amounts. */
   TAX_RATE_BPS: z.coerce.number().int().min(0).max(10000).default(0),
+  /** Opt-in for demo accounts (development/test only; rejected in production). */
+  ALLOW_DEMO: z
+    .string()
+    .optional()
+    .transform((v) => v === "1"),
 });
 
-const parsed = envSchema.safeParse(process.env);
+const PLACEHOLDER_SECRET = /change[-_ ]?me|replace[-_ ]?me|example|placeholder|dev[-_]?secret|test[-_]?secret|^(.)\1+$/i;
 
-if (!parsed.success) {
-  console.error("Invalid environment configuration:", parsed.error.flatten().fieldErrors);
-  if (process.env.NODE_ENV !== "test") {
+export type Env = z.infer<typeof envSchema>;
+
+/** Production must never run with dev-only switches or placeholder secrets. */
+export function productionConfigErrors(e: Env): string[] {
+  if (e.NODE_ENV !== "production") return [];
+  const errors: string[] = [];
+  if (PLACEHOLDER_SECRET.test(e.JWT_SECRET)) errors.push("JWT_SECRET looks like a placeholder");
+  if (e.OTP_DEV_MODE) errors.push("OTP_DEV_MODE must be off in production");
+  if (e.PASSWORD_RESET_LOG_ONLY) errors.push("PASSWORD_RESET_LOG_ONLY must be off in production");
+  if (e.ALLOW_DEMO) errors.push("ALLOW_DEMO must not be set in production");
+  return errors;
+}
+
+/** Parses and validates configuration; throws instead of falling back to defaults. */
+export function parseEnv(source: NodeJS.ProcessEnv): Env {
+  const parsed = envSchema.safeParse(source);
+  if (!parsed.success) {
+    const fields = Object.keys(parsed.error.flatten().fieldErrors).join(", ");
+    throw new Error(`Invalid environment configuration: ${fields}`);
+  }
+  const errors = productionConfigErrors(parsed.data);
+  if (errors.length) throw new Error(`Refusing to start: ${errors.join("; ")}`);
+  return parsed.data;
+}
+
+function loadOrExit(): Env {
+  try {
+    return parseEnv(process.env);
+  } catch (err) {
+    console.error(err instanceof Error ? err.message : err);
+    if (process.env.NODE_ENV === "test" || process.env.VITEST) throw err;
     process.exit(1);
   }
 }
 
-export const env =
-  parsed.success
-    ? parsed.data
-    : {
-        NODE_ENV: "test" as const,
-        PORT: 4000,
-        DATABASE_URL: process.env.DATABASE_URL ?? "postgresql://invalid",
-        JWT_SECRET: "test_secret_at_least_thirty_two_chars_long",
-        JWT_EXPIRES_IN: "1h",
-        ACCESS_TOKEN_EXPIRY: "15m",
-        REFRESH_TOKEN_EXPIRY: "30d",
-        BCRYPT_ROUNDS: 10,
-        CORS_ORIGIN: "http://localhost:3000",
-        RATE_LIMIT_WINDOW_MS: 15 * 60 * 1000,
-        RATE_LIMIT_MAX: 1000,
-        APP_PUBLIC_URL: "http://localhost:3100",
-        MOBILE_PUBLIC_URL: "http://localhost:8081",
-        PASSWORD_RESET_TOKEN_TTL_MINUTES: 60,
-        ADMIN_PASSWORD_RESET_TOKEN_TTL_MINUTES: 15,
-        SUPPORT_EMAIL: "support@littlereaders.example",
-        PASSWORD_RESET_LOG_ONLY: true,
-        RESEND_API_KEY: undefined,
-        RESEND_FROM_EMAIL: undefined,
-        SMTP_HOST: undefined,
-        SMTP_PORT: 465,
-        SMTP_SECURE: undefined,
-        SMTP_USER: undefined,
-        SMTP_PASSWORD: undefined,
-        SMTP_FROM_EMAIL: undefined,
-        SMTP_FROM_NAME: "LEARN WISE",
-        RAZORPAY_KEY_ID: undefined,
-        RAZORPAY_KEY_SECRET: undefined,
-        RAZORPAY_WEBHOOK_SECRET: undefined,
-        PAYMENT_CURRENCY: "INR",
-        PAYMENT_ENABLED: false,
-        PLAN_FAMILY_MONTHLY_AMOUNT_PAISE: undefined,
-        PLAN_FAMILY_YEARLY_AMOUNT_PAISE: undefined,
-        PLAN_EXTRA_SEAT_AMOUNT_PAISE: undefined,
-        TAX_RATE_BPS: 0,
-        OTP_EXPIRY_SECONDS: 300,
-        OTP_RESEND_SECONDS: 60,
-        OTP_MAX_ATTEMPTS: 5,
-        OTP_MAX_SENDS_PER_HOUR: 5,
-        OTP_DEV_MODE: true,
-        SMS_PROVIDER: "console" as const,
-        SMS_API_KEY: undefined,
-        SMS_SENDER_ID: undefined,
-        SMS_HTTP_URL: undefined,
-        SMS_TEMPLATE_ID: undefined,
-        DEFAULT_COUNTRY_CODE: "+91",
-      };
+export const env = loadOrExit();

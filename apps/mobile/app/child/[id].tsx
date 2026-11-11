@@ -12,6 +12,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Card, ErrorText, Field, KeyboardScroll, PrimaryButton, SoftButton, Title } from "../../components/ui";
 import { AuthGate } from "../../components/AuthGate";
 import { RequireParentGate } from "../../components/RequireParentGate";
+import { GradePicker, type LearnWiseGrade } from "../../components/GradePicker";
 import { apiRequest, ApiError } from "../../services/api";
 import { ROLE_SETS } from "../../services/auth-errors";
 import { clearActiveChild, getActiveChild, saveActiveChild } from "../../services/secure";
@@ -31,24 +32,10 @@ type ChildProfile = {
     label: string;
     gradeNumber: number | null;
   } | null;
+  learnWiseGrade?: { levelId: string; levelCode: string; gradeLabel: string } | null;
   ageGroup?: { code: string; label: string } | null;
   parent?: { id: string; name: string; email: string };
   device?: { registered: boolean; platform?: string; deviceLabel?: string | null };
-};
-
-type CatalogLevel = {
-  id: string;
-  code: string;
-  label: string;
-  startGrade: number | null;
-  endGrade: number | null;
-};
-type CatalogGrade = {
-  id: string;
-  code: string;
-  label: string;
-  gradeNumber: number | null;
-  assignedLevelId: string | null;
 };
 
 function formatBirthdayInput(text: string) {
@@ -147,10 +134,8 @@ export default function ChildDetailScreen() {
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState("");
   const [birthDate, setBirthDate] = useState("");
-  const [catalogLevels, setCatalogLevels] = useState<CatalogLevel[]>([]);
-  const [catalogGrades, setCatalogGrades] = useState<CatalogGrade[]>([]);
+  const [learnWiseGrades, setLearnWiseGrades] = useState<LearnWiseGrade[]>([]);
   const [editLevelId, setEditLevelId] = useState<string | null>(null);
-  const [editGradeId, setEditGradeId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     if (!childId) {
@@ -175,14 +160,10 @@ export default function ChildDetailScreen() {
       setDashboard(dash);
       setName(p.displayName);
       setBirthDate(p.birthDate ?? `01/01/${p.birthYear}`);
-      setEditLevelId(p.levelId ?? p.level?.id ?? null);
-      setEditGradeId(p.gradeId ?? p.grade?.id ?? null);
-      const [levels, grades] = await Promise.all([
-        apiRequest<CatalogLevel[]>("/parent/catalog/levels").catch(() => []),
-        apiRequest<CatalogGrade[]>("/parent/catalog/grades").catch(() => []),
-      ]);
-      setCatalogLevels(levels);
-      setCatalogGrades(grades);
+      setEditLevelId(p.learnWiseGrade?.levelId ?? null);
+      setLearnWiseGrades(
+        await apiRequest<LearnWiseGrade[]>("/children/learn-wise-grades").catch(() => [])
+      );
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Could not load child");
       setProfile(null);
@@ -207,8 +188,9 @@ export default function ChildDetailScreen() {
         body: JSON.stringify({
           displayName: name.trim(),
           birthDate: birthDate.trim(),
-          ...(editLevelId ? { levelId: editLevelId } : {}),
-          gradeId: editGradeId,
+          ...(editLevelId && editLevelId !== profile?.learnWiseGrade?.levelId
+            ? { levelId: editLevelId }
+            : {}),
         }),
       });
       setEditing(false);
@@ -222,7 +204,6 @@ export default function ChildDetailScreen() {
           birthDate: updated.birthDate ?? birthDate.trim(),
           level: updated.level?.code ?? profile?.level?.code ?? "",
           levelId: updated.levelId ?? editLevelId,
-          gradeId: updated.gradeId ?? editGradeId,
         });
       }
     } catch (err) {
@@ -305,17 +286,7 @@ export default function ChildDetailScreen() {
                       Birthday {profile.birthDate ?? `01/01/${profile.birthYear}`}
                     </Text>
                     <Text style={styles.meta}>
-                      Level {profile.level?.label ?? profile.level?.code ?? "—"}
-                    </Text>
-                    <Text style={styles.meta}>
-                      Grade{" "}
-                      {profile.grade
-                        ? `${profile.grade.label}${
-                            profile.grade.gradeNumber != null
-                              ? ` (#${profile.grade.gradeNumber})`
-                              : ""
-                          }`
-                        : "Not set"}
+                      Learn Wise {profile.learnWiseGrade?.gradeLabel ?? "grade not set"}
                     </Text>
                     {profile.parent ? (
                       <Text style={styles.meta}>Parent {profile.parent.email}</Text>
@@ -355,37 +326,16 @@ export default function ChildDetailScreen() {
                 ) : (
                   <>
                     <Field label="Display name" value={name} onChangeText={setName} />
-                    <Text style={styles.meta}>Learning level</Text>
-                    <View style={styles.row}>
-                      {catalogLevels.map((l) => (
-                        <SoftButton
-                          key={l.id}
-                          label={l.label}
-                          active={editLevelId === l.id}
-                          onPress={() => {
-                            setEditLevelId(l.id);
-                            setEditGradeId(null);
-                          }}
-                        />
-                      ))}
-                    </View>
-                    <Text style={styles.meta}>School grade</Text>
-                    <View style={styles.row}>
-                      {catalogGrades
-                        .filter(
-                          (g) =>
-                            !editLevelId ||
-                            g.assignedLevelId === editLevelId
-                        )
-                        .map((g) => (
-                          <SoftButton
-                            key={g.id}
-                            label={g.label}
-                            active={editGradeId === g.id}
-                            onPress={() => setEditGradeId(g.id)}
-                          />
-                        ))}
-                    </View>
+                    <Text style={styles.meta}>
+                      Learn Wise grade (changing a birthday never changes it; a new grade needs its
+                      own subscription)
+                    </Text>
+                    <GradePicker
+                      grades={learnWiseGrades}
+                      value={editLevelId}
+                      onChange={setEditLevelId}
+                      birthYear={profile.birthYear}
+                    />
                     <Field
                       label="Birthday (DD/MM/YYYY)"
                       keyboardType="number-pad"

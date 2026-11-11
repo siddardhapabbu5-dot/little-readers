@@ -17,6 +17,7 @@ import { KIDS_STARTER_WORDS } from "../data/kids-starter-words";
 import { goAdminBack } from "../services/admin-nav";
 import { apiRequest, apiUpload, ApiError } from "../services/api";
 import { ROLE_SETS } from "../services/auth-errors";
+import { getUser } from "../services/secure";
 import { colors } from "../theme";
 
 type Assignment = {
@@ -105,6 +106,13 @@ export default function AdminDictionaryScreen() {
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [canDestroy, setCanDestroy] = useState(false);
+
+  useFocusEffect(
+    useCallback(() => {
+      void getUser<{ role: string }>().then((u) => setCanDestroy(u?.role === "SUPER_ADMIN"));
+    }, [])
+  );
 
   const loadPending = useCallback(async () => {
     const data = await apiRequest<Assignment[]>(
@@ -318,13 +326,15 @@ export default function AdminDictionaryScreen() {
           {info ? <Text style={styles.info}>{info}</Text> : null}
           <LoadingSlot active={busy} />
 
-          <Card style={{ gap: 10 }}>
-            <Text style={styles.section}>0. Replace old words</Text>
-            <Text style={styles.meta}>
-              Clear previous published vocabulary before loading the kids starter.
-            </Text>
-            <SoftButton label="Clear old vocabulary words" onPress={confirmClearOldWords} />
-          </Card>
+          {canDestroy ? (
+            <Card style={{ gap: 10 }}>
+              <Text style={styles.section}>0. Replace old words</Text>
+              <Text style={styles.meta}>
+                Clear previous published vocabulary before loading the kids starter.
+              </Text>
+              <SoftButton label="Clear old vocabulary words" onPress={confirmClearOldWords} />
+            </Card>
+          ) : null}
 
           <Card style={{ gap: 10 }}>
             <Text style={styles.section}>1. Upload dictionary</Text>

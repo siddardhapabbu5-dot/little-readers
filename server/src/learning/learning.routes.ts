@@ -41,6 +41,7 @@ import {
   listChildCertificates,
 } from "./certificates.js";
 import { prisma } from "../lib/prisma.js";
+import { AppError } from "../lib/errors.js";
 
 export const learningRouter = Router();
 
@@ -55,6 +56,16 @@ const progressReadRoles = requireRoles(
 );
 
 const parentAdminRoles = requireRoles("PARENT", "ADMIN", "SUPER_ADMIN");
+
+/** Parents see grade content only through a child; admins may browse the catalog without one. */
+function contentChildId(req: AuthenticatedRequest): string | undefined {
+  const childId = typeof req.query.childId === "string" && req.query.childId ? req.query.childId : undefined;
+  const role = req.user!.role;
+  if (!childId && role !== "ADMIN" && role !== "SUPER_ADMIN") {
+    throw new AppError("childId query parameter is required", 400, { code: "CHILD_REQUIRED" });
+  }
+  return childId;
+}
 
 /** Teachers may only hit /progress* read APIs; everything else stays parent/admin. */
 learningRouter.use((req, res, next) => {
@@ -79,8 +90,7 @@ learningRouter.get(
   "/levels/:levelKey/groups",
   async (req: AuthenticatedRequest, res, next) => {
     try {
-      const childId =
-        typeof req.query.childId === "string" ? req.query.childId : undefined;
+      const childId = contentChildId(req);
       const data = await listLevelGroups(
         String(req.params.levelKey),
         req.user!.id,
@@ -115,7 +125,11 @@ learningRouter.get(
   "/categories/:id/words",
   async (req: AuthenticatedRequest, res, next) => {
     try {
-      const data = await listCategoryWords(String(req.params.id));
+      const childId = contentChildId(req);
+      const data = await listCategoryWords(
+        String(req.params.id),
+        childId ? { parentId: req.user!.id, childId } : undefined
+      );
       res.status(200).json({ data });
     } catch (error) {
       next(error);
@@ -128,7 +142,11 @@ learningRouter.get(
   "/words/:id",
   async (req: AuthenticatedRequest, res, next) => {
     try {
-      const data = await getVocabularyWordById(String(req.params.id));
+      const childId = contentChildId(req);
+      const data = await getVocabularyWordById(
+        String(req.params.id),
+        childId ? { parentId: req.user!.id, childId } : undefined
+      );
       res.status(200).json({ data });
     } catch (error) {
       next(error);

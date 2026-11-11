@@ -7,7 +7,7 @@ export type EmailDelivery = {
   channel: "resend" | "log" | "test" | "smtp";
 };
 
-export type OtpEmailPurpose = "REGISTER" | "RESET_PASSWORD";
+export type OtpEmailPurpose = "REGISTER" | "RESET_PASSWORD" | "RESET_PIN";
 
 /** Vitest-only outbox so tests can read codes without exposing them in API responses. */
 const testOutbox: Array<{ to: string; purpose: OtpEmailPurpose; otp: string }> = [];
@@ -50,6 +50,10 @@ const OTP_TEMPLATES: Record<OtpEmailPurpose, { subject: string; intro: string }>
   RESET_PASSWORD: {
     subject: "LEARN WISE - Password Reset Verification Code",
     intro: "Use this code to reset your LEARN WISE password.",
+  },
+  RESET_PIN: {
+    subject: "LEARN WISE - Parent PIN Reset Code",
+    intro: "Use this code to set a new Parent PIN in the LEARN WISE app.",
   },
 };
 

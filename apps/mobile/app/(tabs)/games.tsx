@@ -27,7 +27,9 @@ type ChildRow = {
   displayName: string;
   level?: string;
   hasLearningSeat?: boolean;
+  learnWiseGrade?: { levelCode: string; gradeLabel: string } | null;
 };
+type GradeAccess = { entitled: boolean; gradeLabel: string; reason: string | null };
 type Category = {
   id: string;
   label: string;
@@ -48,6 +50,7 @@ export default function GamesTab() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [daily, setDaily] = useState<DailyStatus | null>(null);
   const [game, setGame] = useState<ActivityCode | null>(null);
+  const [access, setAccess] = useState<GradeAccess | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -64,24 +67,31 @@ export default function GamesTab() {
           if (active) await saveActiveChild(active);
           setChild(active);
 
-          if (active && active.hasLearningSeat !== false) {
-            const catalog = await apiRequest<Parameters<typeof resolveChildLevel>[1]>(
-              "/learning/levels"
-            );
-            const levelKey = resolveChildLevel(active.level, catalog);
+          if (active) {
+            const levelKey =
+              active.learnWiseGrade?.levelCode ??
+              resolveChildLevel(
+                active.level ?? "",
+                await apiRequest<Parameters<typeof resolveChildLevel>[1]>("/learning/levels")
+              );
             const [curriculum, dailyStatus] = await Promise.all([
-              apiRequest<{ groups: Group[] }>(
+              apiRequest<{ groups: Group[]; access: GradeAccess | null }>(
                 `/learning/levels/${encodeURIComponent(levelKey)}/groups?childId=${encodeURIComponent(active.id)}`
               ),
               apiRequest<DailyStatus>(
                 `/learning/progress/${encodeURIComponent(active.id)}/daily-challenge`
               ).catch(() => null),
             ]);
+            setAccess(curriculum.access ?? null);
+            const entitled = curriculum.access?.entitled !== false;
             setCategories(
-              (curriculum.groups ?? []).flatMap((g) => g.categories).filter((c) => c.wordCount > 0)
+              entitled
+                ? (curriculum.groups ?? []).flatMap((g) => g.categories).filter((c) => c.wordCount > 0)
+                : []
             );
-            setDaily(dailyStatus);
+            setDaily(entitled ? dailyStatus : null);
           } else {
+            setAccess(null);
             setCategories([]);
           }
           setError(null);
@@ -138,6 +148,7 @@ export default function GamesTab() {
   }
 
   const chosen = games.find((g) => g.code === game) ?? null;
+  const blocked = Boolean(access && !access.entitled);
 
   return (
     <SkyBackground>
@@ -151,7 +162,7 @@ export default function GamesTab() {
         </Text>
         <ErrorText>{error}</ErrorText>
 
-        {child && child.hasLearningSeat !== false ? (
+        {child && !blocked ? (
           <World
             emoji="🏆"
             image={art.trophy}
@@ -166,8 +177,13 @@ export default function GamesTab() {
           <ActivityIndicator color={colors.primary} />
         ) : !child ? (
           <Text style={styles.sub}>Add a student on Parent, then return here.</Text>
-        ) : child.hasLearningSeat === false ? (
-          <SoftButton label="Activate a learning seat" onPress={() => router.push("/subscription")} />
+        ) : blocked ? (
+          <>
+            <Text style={styles.sub}>
+              {access?.reason ?? `A ${access?.gradeLabel.split(" – ")[0]} subscription is needed.`}
+            </Text>
+            <SoftButton label="Ask a parent to subscribe" onPress={() => router.push("/subscription")} />
+          </>
         ) : !playable.length ? (
           <Text style={styles.sub}>
             No games yet. Learn your first words in Learn, then come back to play!

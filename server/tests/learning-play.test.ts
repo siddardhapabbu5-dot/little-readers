@@ -1,4 +1,4 @@
-import { beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import request from "supertest";
 import { createApp } from "../src/app.js";
 import { prisma } from "../src/lib/prisma.js";
@@ -36,6 +36,7 @@ describe.skipIf(!hasDb)("Listen / Spell / progress persistence", () => {
   let childA = "";
   let childB = "";
   let categoryId = "";
+  let wordStamp = "";
   let sessionId = "";
   let wordId = "";
   let correctKey = "";
@@ -98,7 +99,7 @@ describe.skipIf(!hasDb)("Listen / Spell / progress persistence", () => {
     categoryId = cats[0].id;
 
     // Fixture words for play tests (production seed keeps vocabulary empty).
-    const wordStamp = `playfix_${Date.now()}`;
+    wordStamp = `playfix_${Date.now()}`;
     for (let i = 0; i < 8; i++) {
       await prisma.vocabularyWord.create({
         data: {
@@ -110,6 +111,16 @@ describe.skipIf(!hasDb)("Listen / Spell / progress persistence", () => {
           sortOrder: i + 1,
           isActive: true,
         },
+      });
+    }
+  });
+
+  // Fixture words sit in a real Grade 1 category; hide them so Grade 1 keeps its 750 words.
+  afterAll(async () => {
+    if (wordStamp) {
+      await prisma.vocabularyWord.updateMany({
+        where: { text: { startsWith: `${wordStamp}_` } },
+        data: { isActive: false },
       });
     }
   });

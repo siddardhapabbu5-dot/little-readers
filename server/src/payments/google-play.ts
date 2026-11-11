@@ -10,6 +10,8 @@ import {
   isSubscriptionRecordEligible,
 } from "../subscriptions/subscription.service.js";
 import { googlePlayBillingEnabled } from "./flags.js";
+import { isGrandfatheredFamilyRow } from "../learning/grade-access.js";
+import { resolvePurchaseTarget } from "./payment.service.js";
 
 const ANDROID_PUBLISHER = "https://androidpublisher.googleapis.com/androidpublisher/v3/applications";
 const PUBLISHER_SCOPE = "https://www.googleapis.com/auth/androidpublisher";
@@ -207,6 +209,8 @@ type ProcessInput = {
   /** RTDN SUBSCRIPTION_REVOKED: access ends now regardless of expiryTime. */
   revoked?: boolean;
   notificationType?: number;
+  /** Child + grade this purchase unlocks (verify / restore from the app). */
+  target?: { childId: string; levelId: string };
 };
 
 export async function processGooglePlaySubscription(input: ProcessInput) {
@@ -253,11 +257,19 @@ export async function processGooglePlaySubscription(input: ProcessInput) {
     if (!owner) return { ignored: true as const, reason: "account not found" };
 
     const fromStatus = existing?.status ?? null;
+    // A row created by an RTDN before the app verified has no child yet; grandfathered family rows stay family.
+    const attachTarget =
+      existing && input.target && existing.childId === null && !isGrandfatheredFamilyRow(existing)
+        ? input.target
+        : null;
     let subscriptionId: string;
     if (existing) {
       const updated = await tx.subscription.update({
         where: { id: existing.id },
         data: {
+          ...(attachTarget
+            ? { childId: attachTarget.childId, levelId: attachTarget.levelId, includedSeats: 1, extraSeats: 0 }
+            : {}),
           status,
           expiresAt,
           productId,
@@ -277,9 +289,11 @@ export async function processGooglePlaySubscription(input: ProcessInput) {
         orderBy: { sortOrder: "asc" },
         select: { code: true, includedSeats: true },
       });
+      const target = input.target && ownerId === input.expectedUserId ? input.target : null;
       const created = await tx.subscription.create({
         data: {
           userId: ownerId,
+          ...(target ? { childId: target.childId, levelId: target.levelId } : {}),
           plan: plan?.code ?? productId,
           status,
           startedAt: now,
@@ -294,8 +308,8 @@ export async function processGooglePlaySubscription(input: ProcessInput) {
           verifiedAt: now,
           graceEndsAt: status === "GRACE" ? expiresAt : null,
           cancelledAt: status === "CANCELLED" ? now : null,
-          includedSeats: plan?.includedSeats ?? 2,
-          extraSeats: current && isSubscriptionRecordEligible(current, now) ? current.extraSeats : 0,
+          includedSeats: target ? 1 : plan?.includedSeats ?? 2,
+          extraSeats: !target && current && isSubscriptionRecordEligible(current, now) ? current.extraSeats : 0,
         },
       });
       subscriptionId = created.id;
@@ -462,17 +476,21 @@ export async function getGooglePlayConfig(userId: string) {
 
 export async function verifyGooglePlayPurchase(
   userId: string,
-  input: { productId: string; purchaseToken: string },
+  input: { productId: string; purchaseToken: string; childId?: string },
   source: "google_play_verify" | "google_play_restore" = "google_play_verify"
 ) {
   assertEnabled();
   if (!googlePlayProducts().some((p) => p.productId === input.productId)) {
     throw new AppError("Unknown subscription product.", 400, { code: "UNKNOWN_PRODUCT" });
   }
+  const purchaseTarget = input.childId ? await resolvePurchaseTarget(userId, input.childId) : null;
   const out = await processGooglePlaySubscription({
     purchaseToken: input.purchaseToken,
     expectedUserId: userId,
     source,
+    target: purchaseTarget
+      ? { childId: purchaseTarget.child.id, levelId: purchaseTarget.level.id }
+      : undefined,
   });
   if (out.ignored) {
     throw new AppError("This Google Play purchase could not be linked to your account.", 400, {

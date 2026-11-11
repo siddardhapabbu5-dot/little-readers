@@ -15,6 +15,8 @@ import { AuthGate } from "../components/AuthGate";
 import { goAdminBack } from "../services/admin-nav";
 import { apiRequest, ApiError } from "../services/api";
 import { ROLE_SETS } from "../services/auth-errors";
+import { AdminGradeSelector, useAdminGrade } from "../components/AdminGradeSelector";
+import { adminGradeLabel } from "../services/admin-grade";
 import { colors } from "../theme";
 
 const WEB_LESSONS =
@@ -47,13 +49,6 @@ type Lesson = {
 };
 type LessonList = { total: number; lessons: Lesson[] };
 
-const GRADE_FILTERS = [
-  { code: "GRADE_1", label: "Grade 1" },
-  { code: "GRADE_2", label: "Grade 2" },
-  { code: "GRADE_3", label: "Grade 3" },
-  { code: "GRADE_4", label: "Grade 4" },
-] as const;
-
 function categoryGradeCode(c: Category) {
   return c.group?.level?.grade?.code ?? "";
 }
@@ -66,7 +61,7 @@ export default function AdminLessonsScreen() {
   const router = useRouter();
   const [lessons, setLessons] = useState<Lesson[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
-  const [gradeFilter, setGradeFilter] = useState<string>("GRADE_1");
+  const [gradeFilter, setGradeFilter] = useAdminGrade();
   const [title, setTitle] = useState("");
   const [categoryId, setCategoryId] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -77,16 +72,21 @@ export default function AdminLessonsScreen() {
     setBusy(true);
     setError(null);
     try {
-      const [list, cats] = await Promise.all([
-        apiRequest<LessonList>("/admin/lessons?take=60"),
+      const [grades, cats] = await Promise.all([
+        apiRequest<{ id: string; code: string }[]>("/admin/content/grades"),
         apiRequest<Category[]>("/admin/content/categories"),
       ]);
+      const gradeId = grades.find((g) => g.code === gradeFilter)?.id;
+      const list = gradeId
+        ? await apiRequest<LessonList>(`/admin/lessons?take=60&gradeId=${encodeURIComponent(gradeId)}`)
+        : { total: 0, lessons: [] };
       setLessons(list.lessons);
       setCategories(cats);
-      const preferred =
-        cats.find((c) => categoryGradeCode(c) === "GRADE_1") ?? cats[0];
+      const preferred = cats.find((c) => categoryGradeCode(c) === gradeFilter);
       setCategoryId((current) => {
-        if (current && cats.some((c) => c.id === current)) return current;
+        if (current && cats.some((c) => c.id === current && categoryGradeCode(c) === gradeFilter)) {
+          return current;
+        }
         return preferred?.id ?? "";
       });
     } catch (err) {
@@ -94,7 +94,7 @@ export default function AdminLessonsScreen() {
     } finally {
       setBusy(false);
     }
-  }, []);
+  }, [gradeFilter]);
 
   useFocusEffect(
     useCallback(() => {
@@ -184,23 +184,15 @@ export default function AdminLessonsScreen() {
               Same topic names exist in each grade (Grade 1–4). Pick a grade first —
               these are not duplicates.
             </Text>
-            <View style={styles.gradeRow}>
-              {GRADE_FILTERS.map((g) => (
-                <SoftButton
-                  key={g.code}
-                  label={g.label}
-                  active={gradeFilter === g.code}
-                  onPress={() => {
-                    setGradeFilter(g.code);
-                    const first = categories.find(
-                      (c) => categoryGradeCode(c) === g.code
-                    );
-                    if (first) setCategoryId(first.id);
-                  }}
-                />
-              ))}
-            </View>
-            <Text style={styles.row}>Category ({gradeFilter.replace("_", " ")})</Text>
+            <AdminGradeSelector
+              value={gradeFilter}
+              onChange={(code) => {
+                setGradeFilter(code);
+                const first = categories.find((c) => categoryGradeCode(c) === code);
+                setCategoryId(first?.id ?? "");
+              }}
+            />
+            <Text style={styles.row}>Category ({adminGradeLabel(gradeFilter)})</Text>
             {categories
               .filter((c) => categoryGradeCode(c) === gradeFilter)
               .map((c) => {

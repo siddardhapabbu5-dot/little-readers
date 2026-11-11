@@ -5,6 +5,7 @@ import {
   requireRoles,
   type AuthenticatedRequest,
 } from "../middleware/auth.js";
+import { requirePermission } from "../auth/permissions.js";
 import { validateBody } from "../middleware/validate.js";
 import {
   getPublisherConfig,
@@ -17,7 +18,7 @@ import { prisma } from "../lib/prisma.js";
 
 export const publisherRouter = Router();
 
-publisherRouter.use(requireAuth, requireRoles("ADMIN", "SUPER_ADMIN"));
+publisherRouter.use(requireAuth, requirePermission("content.manage"));
 
 publisherRouter.get("/config", async (_req, res, next) => {
   try {

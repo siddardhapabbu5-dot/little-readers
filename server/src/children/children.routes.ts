@@ -7,6 +7,7 @@ import {
   getOrCreateAdminPracticeChild,
   listChildrenForParent,
   listParentsForAdmin,
+  listProductGrades,
   softDeleteChild,
   updateChild,
 } from "./children.service.js";
@@ -30,6 +31,14 @@ childrenRouter.get("/", async (req: AuthenticatedRequest, res, next) => {
   try {
     const children = await listChildrenForParent(req.user!.id);
     res.status(200).json({ data: children });
+  } catch (error) {
+    next(error);
+  }
+});
+
+childrenRouter.get("/learn-wise-grades", async (_req, res, next) => {
+  try {
+    res.status(200).json({ data: await listProductGrades() });
   } catch (error) {
     next(error);
   }

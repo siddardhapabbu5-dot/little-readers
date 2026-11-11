@@ -10,8 +10,9 @@ import type {
 import { adminPasswordSchema, passwordSchema } from "@little-readers/validation";
 import { AppError } from "../lib/errors.js";
 import { sendPasswordResetEmail } from "../lib/email.js";
-import { signAccessToken } from "../lib/jwt.js";
+import { passwordVersion, signAccessToken } from "../lib/jwt.js";
 import { hashPassword, verifyPassword } from "../lib/password.js";
+import { assertNotLocked, clearFailedAttempts, recordFailedAttempt } from "../lib/lockout.js";
 import { prisma } from "../lib/prisma.js";
 import { env } from "../config/env.js";
 import { activateParentDeviceSession } from "../parent-auth/session.service.js";
@@ -167,6 +168,7 @@ export async function registerParent(
     sub: user.id,
     email: user.email,
     role: user.role,
+    pwv: passwordVersion(user),
   });
 
   return {
@@ -185,10 +187,15 @@ export async function loginUser(input: LoginInput) {
   if (!user || !user.isActive) {
     throw new AppError("Invalid email or password", 401);
   }
+  assertNotLocked("login", user.loginLockedUntil);
 
   const valid = await verifyPassword(password, user.passwordHash);
   if (!valid) {
+    await recordFailedAttempt("login", user.id);
     throw new AppError("Invalid email or password", 401);
+  }
+  if (user.failedLoginCount > 0 || user.loginLockedUntil) {
+    await clearFailedAttempts("login", user.id);
   }
 
   // Mobile parents keep the one-device rule (previous device session is revoked).
@@ -206,6 +213,7 @@ export async function loginUser(input: LoginInput) {
     sub: user.id,
     email: user.email,
     role: user.role,
+    pwv: passwordVersion(user),
   });
 
   return {
@@ -330,6 +338,33 @@ export async function requestPasswordReset(input: ForgotPasswordInput) {
   }
 }
 
+type Tx = Parameters<Parameters<typeof prisma.$transaction>[0]>[0];
+
+/**
+ * A new password signs the account out everywhere: JWTs issued before this instant fail
+ * `requireAuth`, parent device sessions (and their refresh tokens) are revoked, and TV links drop.
+ */
+export async function setPasswordAndRevokeSessions(
+  tx: Tx,
+  userId: string,
+  passwordHash: string,
+  reason: string
+) {
+  const passwordChangedAt = new Date();
+  await tx.user.update({
+    where: { id: userId },
+    data: { passwordHash, passwordChangedAt, failedLoginCount: 0, loginLockedUntil: null },
+  });
+  await tx.parentDeviceSession.updateMany({
+    where: { parentId: userId, status: "ACTIVE" },
+    data: { status: "REVOKED", revokedAt: new Date(), revokedReason: reason },
+  });
+  await tx.passwordResetToken.updateMany({
+    where: { userId, usedAt: null },
+    data: { usedAt: new Date() },
+  });
+}
+
 export async function resetPasswordWithToken(input: ResetPasswordInput) {
   const tokenHash = hashResetToken(input.token.trim());
   const record = await prisma.passwordResetToken.findUnique({
@@ -347,19 +382,7 @@ export async function resetPasswordWithToken(input: ResetPasswordInput) {
   const passwordHash = await hashPassword(input.password);
 
   await prisma.$transaction(async (tx) => {
-    await tx.user.update({
-      where: { id: record.userId },
-      data: { passwordHash },
-    });
-    await tx.passwordResetToken.update({
-      where: { id: record.id },
-      data: { usedAt: new Date() },
-    });
-    // Invalidate any other outstanding tokens for this user.
-    await tx.passwordResetToken.updateMany({
-      where: { userId: record.userId, usedAt: null, id: { not: record.id } },
-      data: { usedAt: new Date() },
-    });
+    await setPasswordAndRevokeSessions(tx, record.userId, passwordHash, "PASSWORD_RESET");
   });
 
   return {
@@ -404,15 +427,9 @@ export async function changePassword(
   }
 
   const passwordHash = await hashPassword(input.newPassword);
-  // Whole seconds: JWT iat is in seconds, so tokens issued after this instant stay valid.
-  const passwordChangedAt = new Date(Math.floor(Date.now() / 1000) * 1000);
-  await prisma.$transaction([
-    prisma.user.update({ where: { id: user.id }, data: { passwordHash, passwordChangedAt } }),
-    prisma.passwordResetToken.updateMany({
-      where: { userId: user.id, usedAt: null },
-      data: { usedAt: new Date() },
-    }),
-  ]);
+  await prisma.$transaction(async (tx) => {
+    await setPasswordAndRevokeSessions(tx, user.id, passwordHash, "PASSWORD_CHANGED");
+  });
 
   return { message: "Password changed. Please sign in again with your new password." };
 }
@@ -432,11 +449,7 @@ export async function resetPasswordWithEmailOtp(input: ResetPasswordWithOtpInput
     if (!user || !user.isActive) {
       throw new AppError("This account cannot reset its password.", 403);
     }
-    await tx.user.update({ where: { id: user.id }, data: { passwordHash } });
-    await tx.passwordResetToken.updateMany({
-      where: { userId: user.id, usedAt: null },
-      data: { usedAt: new Date() },
-    });
+    await setPasswordAndRevokeSessions(tx, user.id, passwordHash, "PASSWORD_RESET");
   });
 
   return {

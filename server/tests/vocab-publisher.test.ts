@@ -212,7 +212,7 @@ describe.skipIf(!hasDb)("Vocab programme publisher (Kolkata worker)", () => {
     // Student category listing must not include future scheduled word
     const catWords = await request(app)
       .get(`/api/learning/categories/${categoryId}/words`)
-      .set("Authorization", `Bearer ${parentToken}`);
+      .set("Authorization", `Bearer ${adminToken}`);
     expect(catWords.status).toBe(200);
     const texts: string[] = (catWords.body.data.words ?? []).map(
       (w: { word?: string; text?: string }) => w.word ?? w.text

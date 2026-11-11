@@ -1,10 +1,7 @@
 import { Router } from "express";
 import { z } from "zod";
-import {
-  requireAuth,
-  requireRoles,
-  type AuthenticatedRequest,
-} from "../middleware/auth.js";
+import { requireAuth, type AuthenticatedRequest } from "../middleware/auth.js";
+import { requirePermission } from "../auth/permissions.js";
 import { validateBody } from "../middleware/validate.js";
 import * as schoolService from "./school.service.js";
 import * as teacherService from "./teacher.service.js";
@@ -12,15 +9,9 @@ import * as teacherService from "./teacher.service.js";
 export const schoolAdminRouter = Router();
 export const teacherRouter = Router();
 
-schoolAdminRouter.use(
-  requireAuth,
-  requireRoles("ADMIN", "SUPER_ADMIN", "SCHOOL_ADMIN")
-);
+schoolAdminRouter.use(requireAuth, requirePermission("schools.manage"));
 
-teacherRouter.use(
-  requireAuth,
-  requireRoles("TEACHER", "SCHOOL_ADMIN", "ADMIN", "SUPER_ADMIN")
-);
+teacherRouter.use(requireAuth, requirePermission("classrooms.teach"));
 
 const schoolBody = z.object({
   name: z.string().min(1).max(200),

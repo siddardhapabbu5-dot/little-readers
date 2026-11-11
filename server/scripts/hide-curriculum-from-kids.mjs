@@ -3,6 +3,9 @@
  * Keeps Admin structure; categories unpublished + words inactive until republished.
  */
 import { PrismaClient } from "@prisma/client";
+import { assertDestructiveAllowed } from "./lib/destructive-guard.mjs";
+
+assertDestructiveAllowed("hide-curriculum-from-kids");
 
 const prisma = new PrismaClient();
 

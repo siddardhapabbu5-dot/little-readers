@@ -14,6 +14,9 @@
  */
 import bcrypt from "bcryptjs";
 import { PrismaClient } from "@prisma/client";
+import { assertDestructiveAllowed } from "./lib/destructive-guard.mjs";
+
+assertDestructiveAllowed("prepare-client-fresh");
 
 const prisma = new PrismaClient();
 

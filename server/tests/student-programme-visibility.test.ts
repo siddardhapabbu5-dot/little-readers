@@ -16,6 +16,7 @@ describe.skipIf(!hasDb)("Student visibility vs programme schedule", () => {
   let parentToken = "";
   let gradeId = "";
   let categoryId = "";
+  let fixtureCategoryId = "";
   let programmeId = "";
   const wordIds: string[] = [];
   const stamp = `vis_${Date.now()}`;
@@ -36,10 +37,20 @@ describe.skipIf(!hasDb)("Student visibility vs programme schedule", () => {
 
     const grade = await prisma.learningGrade.findFirst({ where: { code: "GRADE_2" } });
     gradeId = grade!.id;
-    const cat = await prisma.learningCategory.findFirst({
+    let cat = await prisma.learningCategory.findFirst({
       where: { isPublished: true, group: { level: { gradeId } } },
     });
-    categoryId = cat!.id;
+    if (!cat) {
+      const group = await prisma.learningGroup.findFirstOrThrow({
+        where: { level: { gradeId } },
+        orderBy: { sortOrder: "asc" },
+      });
+      cat = await prisma.learningCategory.create({
+        data: { groupId: group.id, code: stamp, label: `Test ${stamp}`, emoji: "👀", sortOrder: 999, isPublished: true },
+      });
+      fixtureCategoryId = cat.id;
+    }
+    categoryId = cat.id;
 
     for (let i = 0; i < 3; i++) {
       const w = await prisma.vocabularyWord.create({
@@ -76,6 +87,9 @@ describe.skipIf(!hasDb)("Student visibility vs programme schedule", () => {
     }
     if (wordIds.length) {
       await prisma.vocabularyWord.deleteMany({ where: { id: { in: wordIds } } });
+    }
+    if (fixtureCategoryId) {
+      await prisma.learningCategory.deleteMany({ where: { id: fixtureCategoryId } });
     }
     await updatePublisherConfig({ status: "RUNNING", publishHour: 6, publishMinute: 0 });
   });
@@ -127,7 +141,7 @@ describe.skipIf(!hasDb)("Student visibility vs programme schedule", () => {
 
     const listed = await request(app)
       .get(`/api/learning/categories/${categoryId}/words`)
-      .set("Authorization", `Bearer ${parentToken}`);
+      .set("Authorization", `Bearer ${adminToken}`);
     expect(listed.status).toBe(200);
     const texts = listed.body.data.words.map((w: { word: string }) => w.word);
     expect(texts).toContain(`${stamp}_w0`);
@@ -136,7 +150,7 @@ describe.skipIf(!hasDb)("Student visibility vs programme schedule", () => {
     // Inactive future word direct fetch
     const future = await request(app)
       .get(`/api/learning/words/${wordIds[1]}`)
-      .set("Authorization", `Bearer ${parentToken}`);
+      .set("Authorization", `Bearer ${adminToken}`);
     expect(future.status).toBe(404);
 
     // Replace tomorrow's word — progress rows keyed by wordId stay intact

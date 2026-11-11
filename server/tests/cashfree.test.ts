@@ -14,7 +14,9 @@ const hasDb = Boolean(process.env.DATABASE_URL);
 const stamp = Date.now();
 const PHONE = "9876543210";
 
-async function registerParent(tag: string) {
+type Parent = { token: string; id: string; email: string; childId: string };
+
+async function registerParent(tag: string): Promise<Parent> {
   const email = `cashfree_${tag}_${stamp}@test.local`;
   const reg = await request(app).post("/api/auth/register").send({
     name: `Cashfree ${tag}`,
@@ -33,7 +35,26 @@ async function registerParent(tag: string) {
     .send({
       versionIds: status.body.data.documents.map((d: { current: { id: string } }) => d.current.id),
     });
-  return { token, id: reg.body.data.user.id as string, email };
+  const child = await request(app)
+    .post("/api/children")
+    .set("Authorization", `Bearer ${token}`)
+    .send({ displayName: `CF ${tag}`, birthDate: "10/02/2023", level: "LEVEL_1" });
+  expect(child.status).toBe(201);
+  return { token, id: reg.body.data.user.id as string, email, childId: child.body.data.id as string };
+}
+
+/** The purchased child's grade access (grade-wise purchases never touch the family subscription). */
+async function childAccess(p: Parent) {
+  const res = await request(app).get("/api/subscriptions/children").set("Authorization", `Bearer ${p.token}`);
+  expect(res.status).toBe(200);
+  const row = (res.body.data as Array<{
+    childId: string;
+    entitled: boolean;
+    via: string | null;
+    expiresAt: string | null;
+    gradeSubscriptions: Array<{ provider: string }>;
+  }>).find((c) => c.childId === p.childId)!;
+  return row;
 }
 
 function webhook(body: object, opts: { badSignature?: boolean } = {}) {
@@ -109,8 +130,11 @@ describe.skipIf(!hasDb)("Cashfree website checkout", () => {
     delete process.env.CASHFREE_LIVE_ENABLED;
   });
 
-  async function order(token: string, body: Record<string, unknown> = { planId, phone: PHONE }) {
-    return request(app).post("/api/payments/cashfree/orders").set("Authorization", `Bearer ${token}`).send(body);
+  async function order(p: Parent, body: Record<string, unknown> = { planId, phone: PHONE }) {
+    return request(app)
+      .post("/api/payments/cashfree/orders")
+      .set("Authorization", `Bearer ${p.token}`)
+      .send({ childId: p.childId, ...body });
   }
 
   it("stays closed when the flag is off or production mode is not approved", async () => {
@@ -118,13 +142,13 @@ describe.skipIf(!hasDb)("Cashfree website checkout", () => {
     process.env.CASHFREE_ENABLED = "false";
     let plans = await request(app).get("/api/payments/plans").set("Authorization", `Bearer ${p.token}`);
     expect(plans.body.data.gateways.cashfree).toBe(false);
-    expect((await order(p.token)).status).toBe(503);
+    expect((await order(p)).status).toBe(503);
 
     process.env.CASHFREE_ENABLED = "true";
     process.env.CASHFREE_ENV = "production";
     plans = await request(app).get("/api/payments/plans").set("Authorization", `Bearer ${p.token}`);
     expect(plans.body.data.gateways.cashfree).toBe(false);
-    expect((await order(p.token)).status).toBe(503);
+    expect((await order(p)).status).toBe(503);
 
     delete process.env.CASHFREE_ENV;
     plans = await request(app).get("/api/payments/plans").set("Authorization", `Bearer ${p.token}`);
@@ -139,25 +163,25 @@ describe.skipIf(!hasDb)("Cashfree website checkout", () => {
       .post("/api/payments/cashfree/orders")
       .set("Authorization", `Bearer ${p.token}`)
       .set("X-Client-Platform", "ios")
-      .send({ planId, phone: PHONE });
+      .send({ planId, childId: p.childId, phone: PHONE });
     expect(res.status).toBe(403);
     expect(res.body.code).toBe("USE_STORE_BILLING");
     const android = await request(app)
       .post("/api/payments/cashfree/orders")
       .set("Authorization", `Bearer ${p.token}`)
       .set("X-Client-Platform", "android")
-      .send({ planId, phone: PHONE, returnTo: "sdk" });
+      .send({ planId, childId: p.childId, phone: PHONE, returnTo: "sdk" });
     expect(android.status).toBe(201);
     expect(android.body.data.paymentSessionId).toBeTruthy();
-    const noPhone = await order(p.token, { planId });
+    const noPhone = await order(p, { planId });
     expect(noPhone.status).toBe(400);
     expect(noPhone.body.code).toBe("PHONE_REQUIRED");
-    expect((await order(p.token, { planId, phone: "12345" })).status).toBe(400);
+    expect((await order(p, { planId, phone: "12345" })).status).toBe(400);
   });
 
   it("activates only after Cashfree confirms the payment, and is idempotent", async () => {
     const p = await registerParent("verify");
-    const res = await order(p.token);
+    const res = await order(p);
     expect(res.status).toBe(201);
     expect(res.body.data).toMatchObject({ mode: "sandbox", amountPaise: 79900 });
     expect(res.body.data.paymentSessionId).toBeTruthy();
@@ -167,8 +191,7 @@ describe.skipIf(!hasDb)("Cashfree website checkout", () => {
     const early = await request(app).post("/api/payments/cashfree/verify").set("Authorization", `Bearer ${p.token}`).send({ orderId });
     expect(early.status).toBe(402);
     expect(early.body.code).toBe("PAYMENT_NOT_COMPLETED");
-    let me = await request(app).get("/api/subscriptions/me").set("Authorization", `Bearer ${p.token}`);
-    expect(me.body.data.eligible).toBe(false);
+    expect((await childAccess(p)).entitled).toBe(false);
 
     stubCashfreePayment(orderId, "PENDING");
     const pending = await request(app).post("/api/payments/cashfree/verify").set("Authorization", `Bearer ${p.token}`).send({ orderId });
@@ -179,15 +202,15 @@ describe.skipIf(!hasDb)("Cashfree website checkout", () => {
     const ok = await request(app).post("/api/payments/cashfree/verify").set("Authorization", `Bearer ${p.token}`).send({ orderId });
     expect(ok.status).toBe(200);
     expect(ok.body.data.status).toBe("SUCCEEDED");
-    me = await request(app).get("/api/subscriptions/me").set("Authorization", `Bearer ${p.token}`);
-    expect(me.body.data.eligible).toBe(true);
-    expect(me.body.data.subscription.provider).toBe("cashfree");
-    const expiry = me.body.data.subscription.expiresAt;
+    let access = await childAccess(p);
+    expect(access).toMatchObject({ entitled: true, via: "GRADE" });
+    expect(access.gradeSubscriptions[0].provider).toBe("cashfree");
+    const expiry = access.expiresAt;
 
     const again = await request(app).post("/api/payments/cashfree/verify").set("Authorization", `Bearer ${p.token}`).send({ orderId });
     expect(again.body.data.alreadyProcessed).toBe(true);
-    me = await request(app).get("/api/subscriptions/me").set("Authorization", `Bearer ${p.token}`);
-    expect(me.body.data.subscription.expiresAt).toBe(expiry);
+    access = await childAccess(p);
+    expect(access.expiresAt).toBe(expiry);
 
     const row = await prisma.payment.findFirstOrThrow({ where: { provider: "cashfree", providerRef: orderId } });
     const receipt = await request(app).get(`/api/payments/${row.id}/receipt`).set("Authorization", `Bearer ${p.token}`);
@@ -202,55 +225,52 @@ describe.skipIf(!hasDb)("Cashfree website checkout", () => {
 
   it("does not activate when Cashfree reports less money than the order", async () => {
     const p = await registerParent("short");
-    const orderId = (await order(p.token)).body.data.orderId as string;
+    const orderId = (await order(p)).body.data.orderId as string;
     stubCashfreePayment(orderId, "SUCCESS", 100);
     const res = await request(app).post("/api/payments/cashfree/verify").set("Authorization", `Bearer ${p.token}`).send({ orderId });
     expect(res.status).toBe(400);
     expect(res.body.code).toBe("AMOUNT_MISMATCH");
-    const me = await request(app).get("/api/subscriptions/me").set("Authorization", `Bearer ${p.token}`);
-    expect(me.body.data.eligible).toBe(false);
+    expect((await childAccess(p)).entitled).toBe(false);
   });
 
   it("accepts only signed webhooks, ignores duplicates and rejects amount mismatches", async () => {
     const p = await registerParent("hook");
-    const orderId = (await order(p.token)).body.data.orderId as string;
+    const orderId = (await order(p)).body.data.orderId as string;
     const cfPay = `55${stamp}`;
 
     expect((await webhook(successEvent(orderId, cfPay, 799), { badSignature: true })).status).toBe(400);
     const unsigned = await request(app).post("/api/payments/cashfree/webhook").send(successEvent(orderId, cfPay, 799));
     expect(unsigned.status).toBe(400);
     expect((await webhook(successEvent(orderId, cfPay, 1))).status).toBe(400);
-    let me = await request(app).get("/api/subscriptions/me").set("Authorization", `Bearer ${p.token}`);
-    expect(me.body.data.eligible).toBe(false);
+    expect((await childAccess(p)).entitled).toBe(false);
 
     expect((await webhook(successEvent(orderId, cfPay, 799))).status).toBe(200);
-    me = await request(app).get("/api/subscriptions/me").set("Authorization", `Bearer ${p.token}`);
-    expect(me.body.data.eligible).toBe(true);
-    const expiry = me.body.data.subscription.expiresAt;
+    let access = await childAccess(p);
+    expect(access.entitled).toBe(true);
+    const expiry = access.expiresAt;
     const dup = await webhook(successEvent(orderId, cfPay, 799));
     expect(dup.status).toBe(200);
     expect(dup.body.data.alreadyProcessed).toBe(true);
-    me = await request(app).get("/api/subscriptions/me").set("Authorization", `Bearer ${p.token}`);
-    expect(me.body.data.subscription.expiresAt).toBe(expiry);
+    access = await childAccess(p);
+    expect(access.expiresAt).toBe(expiry);
     expect(await prisma.payment.count({ where: { userId: p.id, status: "SUCCEEDED" } })).toBe(1);
   });
 
   it("marks failed / dropped payments without granting access", async () => {
     const p = await registerParent("fail");
-    const orderId = (await order(p.token)).body.data.orderId as string;
+    const orderId = (await order(p)).body.data.orderId as string;
     const res = await webhook({
       type: "PAYMENT_FAILED_WEBHOOK",
       data: { order: { order_id: orderId }, payment: { cf_payment_id: "1", payment_status: "FAILED" } },
     });
     expect(res.status).toBe(200);
     expect((await prisma.payment.findFirstOrThrow({ where: { providerRef: orderId } })).status).toBe("FAILED");
-    const me = await request(app).get("/api/subscriptions/me").set("Authorization", `Bearer ${p.token}`);
-    expect(me.body.data.eligible).toBe(false);
+    expect((await childAccess(p)).entitled).toBe(false);
   });
 
   it("a full Cashfree refund removes the paid period; partial refunds keep access", async () => {
     const p = await registerParent("refund");
-    const orderId = (await order(p.token)).body.data.orderId as string;
+    const orderId = (await order(p)).body.data.orderId as string;
     expect((await webhook(successEvent(orderId, `66${stamp}`, 799))).status).toBe(200);
 
     const refund = (id: string, rupees: number, status = "SUCCESS") => ({
@@ -260,14 +280,12 @@ describe.skipIf(!hasDb)("Cashfree website checkout", () => {
     expect((await webhook(refund(`r_pending_${stamp}`, 799, "PENDING"))).body.data.ignored).toBe(true);
     const partial = await webhook(refund(`r_part_${stamp}`, 10));
     expect(partial.body.data.partial).toBe(true);
-    let me = await request(app).get("/api/subscriptions/me").set("Authorization", `Bearer ${p.token}`);
-    expect(me.body.data.eligible).toBe(true);
+    expect((await childAccess(p)).entitled).toBe(true);
 
     const full = await webhook(refund(`r_full_${stamp}`, 789));
     expect(full.status).toBe(200);
     expect(full.body.data).toMatchObject({ refunded: true, accessRevoked: true });
-    me = await request(app).get("/api/subscriptions/me").set("Authorization", `Bearer ${p.token}`);
-    expect(me.body.data.eligible).toBe(false);
+    expect((await childAccess(p)).entitled).toBe(false);
     expect((await prisma.payment.findFirstOrThrow({ where: { providerRef: orderId } })).status).toBe("REFUNDED");
 
     const history = await request(app).get(`/api/subscriptions/admin/${p.id}/history`).set("Authorization", `Bearer ${adminToken}`);
@@ -279,20 +297,21 @@ describe.skipIf(!hasDb)("Cashfree website checkout", () => {
 
   it("a Cashfree purchase extends an active Razorpay plan instead of replacing it", async () => {
     const p = await registerParent("stack");
-    const rzp = await request(app).post("/api/payments/orders").set("Authorization", `Bearer ${p.token}`).send({ planId });
+    const rzp = await request(app)
+      .post("/api/payments/orders")
+      .set("Authorization", `Bearer ${p.token}`)
+      .send({ planId, childId: p.childId });
     const rzpOrder = rzp.body.data.orderId as string;
     const paid = stubMarkOrderPaid(rzpOrder, `pay_cfstack_${stamp}`);
     await request(app)
       .post("/api/payments/verify")
       .set("Authorization", `Bearer ${p.token}`)
       .send({ orderId: rzpOrder, paymentId: paid.id, signature: signCheckout(rzpOrder, paid.id) });
-    let me = await request(app).get("/api/subscriptions/me").set("Authorization", `Bearer ${p.token}`);
-    const first = new Date(me.body.data.subscription.expiresAt).getTime();
+    const first = new Date((await childAccess(p)).expiresAt!).getTime();
 
-    const orderId = (await order(p.token)).body.data.orderId as string;
+    const orderId = (await order(p)).body.data.orderId as string;
     expect((await webhook(successEvent(orderId, `77${stamp}`, 799))).status).toBe(200);
-    me = await request(app).get("/api/subscriptions/me").set("Authorization", `Bearer ${p.token}`);
-    const second = new Date(me.body.data.subscription.expiresAt).getTime();
+    const second = new Date((await childAccess(p)).expiresAt!).getTime();
     expect(second - first).toBeGreaterThan(360 * 86_400_000);
     expect(await prisma.subscription.count({ where: { userId: p.id } })).toBe(1);
   });

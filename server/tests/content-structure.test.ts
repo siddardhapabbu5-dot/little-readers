@@ -8,6 +8,7 @@ const hasDb = Boolean(process.env.DATABASE_URL);
 describe.skipIf(!hasDb)("Admin content structure CRUD", () => {
   let adminToken = "";
   let parentToken = "";
+  let superToken = "";
   const stamp = Date.now();
 
   beforeAll(async () => {
@@ -27,6 +28,13 @@ describe.skipIf(!hasDb)("Admin content structure CRUD", () => {
     });
     expect(parent.status).toBe(200);
     parentToken = parent.body.data.tokens.accessToken;
+
+    const superAdmin = await request(app).post("/api/auth/login").send({
+      email: "superadmin@littlereaders.test",
+      password: "SuperDemo1",
+    });
+    expect(superAdmin.status).toBe(200);
+    superToken = superAdmin.body.data.tokens.accessToken;
   });
 
   it("blocks PARENT from content admin APIs", async () => {
@@ -84,9 +92,14 @@ describe.skipIf(!hasDb)("Admin content structure CRUD", () => {
     expect(deact.status).toBe(200);
     expect(deact.body.data.isActive).toBe(false);
 
-    const del = await request(app)
+    const adminDel = await request(app)
       .delete(`/api/admin/content/grades/${id}`)
       .set("Authorization", `Bearer ${adminToken}`);
+    expect(adminDel.status).toBe(403);
+
+    const del = await request(app)
+      .delete(`/api/admin/content/grades/${id}`)
+      .set("Authorization", `Bearer ${superToken}`);
     expect(del.status).toBe(200);
   });
 
@@ -152,24 +165,29 @@ describe.skipIf(!hasDb)("Admin content structure CRUD", () => {
     // Cleanup empty category/group/level
     await request(app)
       .delete(`/api/admin/content/categories/${category.body.data.id}`)
-      .set("Authorization", `Bearer ${adminToken}`);
+      .set("Authorization", `Bearer ${superToken}`);
     await request(app)
       .delete(`/api/admin/content/groups/${groupId}`)
-      .set("Authorization", `Bearer ${adminToken}`);
+      .set("Authorization", `Bearer ${superToken}`);
     await request(app)
       .delete(`/api/admin/content/levels/${levelId}`)
-      .set("Authorization", `Bearer ${adminToken}`);
+      .set("Authorization", `Bearer ${superToken}`);
   });
 
-  it("refuses deleting in-use grade (GRADE_1) and prefers deactivate", async () => {
+  it("refuses deleting in-use grade (GRADE_1) without an explicit force", async () => {
     const grades = await request(app)
       .get("/api/admin/content/grades")
       .set("Authorization", `Bearer ${adminToken}`);
     const grade1 = grades.body.data.find((g: { code: string }) => g.code === "GRADE_1");
     const del = await request(app)
       .delete(`/api/admin/content/grades/${grade1.id}`)
-      .set("Authorization", `Bearer ${adminToken}`);
+      .set("Authorization", `Bearer ${superToken}`);
     expect(del.status).toBe(409);
-    expect(del.body.details?.suggest).toBe("deactivate");
+    expect(del.body.details?.code).toBe("GRADE_IN_USE");
+    expect(del.body.details?.suggest).toBe("force");
+    const after = await request(app)
+      .get("/api/admin/content/grades")
+      .set("Authorization", `Bearer ${adminToken}`);
+    expect(after.body.data.some((g: { id: string }) => g.id === grade1.id)).toBe(true);
   });
 });

@@ -7,20 +7,28 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   View,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { apiRequest, ApiError } from "../services/api";
+import { unlockParentGate } from "../services/parent-gate";
+import { getUser } from "../services/secure";
+import { EmailOtpVerify } from "./EmailOtpVerify";
 import { colors, radii, shadow } from "../theme";
+
+export { isParentGateUnlocked } from "../services/parent-gate";
 
 type Props = {
   visible: boolean;
+  /** Cancel only (X, Cancel, hardware back). Never called after a successful unlock. */
   onClose: () => void;
+  /** Called only after the server verified (or created) the PIN. */
   onUnlocked: () => void;
 };
 
-type Step = "loading" | "unlock" | "create" | "confirm";
+type Step = "loading" | "error" | "unlock" | "create" | "confirm";
 
 const MIN_PIN = 4;
 const MAX_PIN = 6;
@@ -33,25 +41,50 @@ export function ParentGateModal({ visible, onClose, onUnlocked }: Props) {
   const [reveal, setReveal] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  /** Forgot PIN: a new PIN is saved only after the account password is confirmed on the server. */
+  const [resetting, setResetting] = useState(false);
+  const [password, setPassword] = useState("");
+  const [email, setEmail] = useState("");
+  const [verificationToken, setVerificationToken] = useState("");
   const shake = useRef(new Animated.Value(0)).current;
+  const activeRef = useRef(false);
+
+  async function loadStatus() {
+    setError(null);
+    setStep("loading");
+    try {
+      const data = await apiRequest<{ pinSet: boolean }>("/parent/auth/gate/status");
+      if (!activeRef.current) return;
+      setStep(data.pinSet ? "unlock" : "create");
+    } catch (err) {
+      if (!activeRef.current) return;
+      setError(err instanceof ApiError ? err.message : "Could not load PIN status");
+      setStep("error");
+    }
+  }
 
   useEffect(() => {
+    activeRef.current = visible;
     if (!visible) return;
     setPin("");
     setFirstPin("");
     setReveal(false);
-    setError(null);
-    setStep("loading");
-    void (async () => {
-      try {
-        const data = await apiRequest<{ pinSet: boolean }>("/parent/auth/gate/status");
-        setStep(data.pinSet ? "unlock" : "create");
-      } catch (err) {
-        setError(err instanceof ApiError ? err.message : "Could not load PIN status");
-        setStep("create");
-      }
-    })();
+    setResetting(false);
+    setPassword("");
+    setVerificationToken("");
+    void getUser<{ email?: string }>().then((u) => setEmail(u?.email ?? ""));
+    void loadStatus();
+    return () => {
+      activeRef.current = false;
+    };
   }, [visible]);
+
+  function cancel() {
+    activeRef.current = false;
+    setPin("");
+    setFirstPin("");
+    onClose();
+  }
 
   function runShake() {
     shake.setValue(0);
@@ -69,7 +102,7 @@ export function ParentGateModal({ visible, onClose, onUnlocked }: Props) {
   }
 
   function press(key: (typeof KEYS)[number]) {
-    if (loading || step === "loading" || !key) return;
+    if (loading || step === "loading" || step === "error" || !key) return;
     setError(null);
     if (key === "back") {
       setPin((p) => p.slice(0, -1));
@@ -79,7 +112,7 @@ export function ParentGateModal({ visible, onClose, onUnlocked }: Props) {
   }
 
   async function submit() {
-    if (loading || pin.length < MIN_PIN) return;
+    if (loading || step === "loading" || step === "error" || pin.length < MIN_PIN) return;
     setError(null);
 
     if (step === "create") {
@@ -97,22 +130,39 @@ export function ParentGateModal({ visible, onClose, onUnlocked }: Props) {
 
     setLoading(true);
     try {
-      if (step === "confirm") {
+      let seconds = 600;
+      if (step === "confirm" && resetting) {
+        await apiRequest("/parent/auth/gate/reset-pin", {
+          method: "POST",
+          body: JSON.stringify(verificationToken ? { pin, verificationToken } : { pin, password }),
+        });
+      } else if (step === "confirm") {
         await apiRequest("/parent/auth/gate/set-pin", {
           method: "POST",
           body: JSON.stringify({ pin }),
         });
-        parentGateUnlockUntil = Date.now() + 600 * 1000;
       } else {
         const data = await apiRequest<{ unlockSeconds: number }>("/parent/auth/gate/verify-pin", {
           method: "POST",
           body: JSON.stringify({ pin }),
         });
-        parentGateUnlockUntil = Date.now() + (data.unlockSeconds ?? 600) * 1000;
+        seconds = data.unlockSeconds ?? 600;
       }
+      // Cancelled while the request was in flight: do not unlock or navigate.
+      if (!activeRef.current) return;
+      setPin("");
+      unlockParentGate(seconds);
       onUnlocked();
-      onClose();
     } catch (err) {
+      if (!activeRef.current) return;
+      if (step === "confirm" && resetting) {
+        // Keep the confirmed PIN so only the proof needs redoing.
+        setPassword("");
+        setVerificationToken("");
+        setError(err instanceof ApiError ? err.message : "Could not reset your PIN. Try again.");
+        runShake();
+        return;
+      }
       fail(err instanceof ApiError ? err.message : "That PIN didn't work. Try again.");
     } finally {
       setLoading(false);
@@ -121,16 +171,23 @@ export function ParentGateModal({ visible, onClose, onUnlocked }: Props) {
 
   const copy = {
     loading: { title: "Parent PIN", body: "Checking your PIN settings…", action: "" },
+    error: { title: "Parent PIN", body: "We couldn't check your Parent PIN.", action: "Try again" },
     unlock: { title: "Enter Parent PIN", body: "Grown-ups only. Enter your PIN to open parent tools.", action: "Unlock" },
-    create: { title: "Create a Parent PIN", body: "Choose a 4–6 digit PIN to protect subscription, devices and parent tools.", action: "Continue" },
-    confirm: { title: "Confirm your PIN", body: "Enter the same PIN again to confirm.", action: "Save PIN" },
+    create: resetting
+      ? { title: "Reset Parent PIN", body: "Choose a new 4–6 digit PIN. You'll confirm it with a code sent to your email.", action: "Continue" }
+      : { title: "Create a Parent PIN", body: "Choose a 4–6 digit PIN to protect subscription, devices and parent tools.", action: "Continue" },
+    confirm: resetting
+      ? { title: "Confirm new PIN", body: "Enter the new PIN again, then verify the code we email you.", action: "Reset PIN" }
+      : { title: "Confirm your PIN", body: "Enter the same PIN again to confirm.", action: "Save PIN" },
   }[step];
 
   const slots = Math.max(MIN_PIN, pin.length);
-  const ready = pin.length >= MIN_PIN;
+  const needsPassword = step === "confirm" && resetting;
+  const ready =
+    pin.length >= MIN_PIN && (!needsPassword || Boolean(verificationToken) || password.length > 0);
 
   return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={cancel}>
       <ScrollView style={styles.backdropScroll} contentContainerStyle={styles.backdrop} bounces={false}>
         <View style={styles.card}>
           <LinearGradient
@@ -139,7 +196,7 @@ export function ParentGateModal({ visible, onClose, onUnlocked }: Props) {
             end={{ x: 1, y: 1 }}
             style={styles.header}
           >
-            <Pressable onPress={onClose} style={styles.close} accessibilityLabel="Close" hitSlop={10}>
+            <Pressable onPress={cancel} style={styles.close} accessibilityLabel="Close" hitSlop={10}>
               <Ionicons name="close" size={20} color="#fff" />
             </Pressable>
             <View style={styles.badge}>
@@ -162,6 +219,26 @@ export function ParentGateModal({ visible, onClose, onUnlocked }: Props) {
           <View style={styles.content}>
             {step === "loading" ? (
               <ActivityIndicator color={colors.primary} style={{ marginVertical: 40 }} />
+            ) : step === "error" ? (
+              <>
+                <Text style={[styles.hint, styles.errorText, styles.statusError]}>{error}</Text>
+                <Pressable
+                  onPress={() => void loadStatus()}
+                  style={({ pressed }) => [styles.btnWrap, pressed && { transform: [{ scale: 0.98 }] }]}
+                >
+                  <LinearGradient
+                    colors={[colors.primary, colors.primaryDark]}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
+                    style={styles.btn}
+                  >
+                    <Text style={styles.btnText}>{copy.action}</Text>
+                  </LinearGradient>
+                </Pressable>
+                <Pressable onPress={cancel} style={styles.linkBtn}>
+                  <Text style={styles.linkText}>Cancel</Text>
+                </Pressable>
+              </>
             ) : (
               <>
                 <Animated.View style={[styles.slotsRow, { transform: [{ translateX: shake }] }]}>
@@ -199,6 +276,34 @@ export function ParentGateModal({ visible, onClose, onUnlocked }: Props) {
                     <Text style={styles.revealText}>{reveal ? "Hide" : "Show"}</Text>
                   </Pressable>
                 </View>
+
+                {needsPassword ? (
+                  <View style={styles.proof}>
+                    {verificationToken ? (
+                      <Text style={styles.proofOk}>Email verified. Tap Reset PIN.</Text>
+                    ) : (
+                      <>
+                        {email ? (
+                          <EmailOtpVerify email={email} purpose="RESET_PIN" onVerified={setVerificationToken} />
+                        ) : null}
+                        <Text style={styles.proofOr}>or use your account password</Text>
+                        <TextInput
+                          value={password}
+                          onChangeText={(v) => {
+                            setPassword(v);
+                            setError(null);
+                          }}
+                          placeholder="Account password"
+                          secureTextEntry
+                          autoCapitalize="none"
+                          autoCorrect={false}
+                          accessibilityLabel="Account password"
+                          style={styles.passwordInput}
+                        />
+                      </>
+                    )}
+                  </View>
+                ) : null}
 
                 <View style={styles.keypad}>
                   {KEYS.map((k, i) =>
@@ -254,10 +359,25 @@ export function ParentGateModal({ visible, onClose, onUnlocked }: Props) {
                     <Text style={styles.linkText}>← Start over</Text>
                   </Pressable>
                 ) : (
-                  <Pressable onPress={onClose} style={styles.linkBtn}>
+                  <Pressable onPress={cancel} style={styles.linkBtn}>
                     <Text style={styles.linkText}>Cancel</Text>
                   </Pressable>
                 )}
+                {step === "unlock" ? (
+                  <Pressable
+                    onPress={() => {
+                      setResetting(true);
+                      setStep("create");
+                      setPin("");
+                      setFirstPin("");
+                      setPassword("");
+                      setError(null);
+                    }}
+                    style={styles.linkBtn}
+                  >
+                    <Text style={styles.linkText}>Forgot PIN?</Text>
+                  </Pressable>
+                ) : null}
               </>
             )}
           </View>
@@ -265,12 +385,6 @@ export function ParentGateModal({ visible, onClose, onUnlocked }: Props) {
       </ScrollView>
     </Modal>
   );
-}
-
-let parentGateUnlockUntil = 0;
-
-export function isParentGateUnlocked() {
-  return parentGateUnlockUntil > Date.now();
 }
 
 const KEY_SIZE = 64;
@@ -361,6 +475,7 @@ const styles = StyleSheet.create({
   },
   hint: { flex: 1, color: colors.textMuted, fontSize: 12.5, fontWeight: "700" },
   errorText: { color: colors.danger },
+  statusError: { flex: 0, textAlign: "center", marginTop: 8, marginBottom: 18 },
   revealBtn: {
     flexDirection: "row",
     alignItems: "center",
@@ -397,6 +512,21 @@ const styles = StyleSheet.create({
   btnWrap: { width: "100%", borderRadius: radii.pill, overflow: "hidden" },
   btn: { minHeight: 50, alignItems: "center", justifyContent: "center", borderRadius: radii.pill },
   btnText: { color: "#fff", fontWeight: "800", fontSize: 16, letterSpacing: 0.3 },
+  proof: { width: "100%", gap: 6, marginBottom: 6 },
+  proofOk: { color: colors.success, fontWeight: "800", fontSize: 13, textAlign: "center" },
+  proofOr: { color: colors.textMuted, fontWeight: "700", fontSize: 12, textAlign: "center" },
+  passwordInput: {
+    width: "100%",
+    minHeight: 46,
+    borderRadius: radii.md,
+    borderWidth: 1.5,
+    borderColor: colors.border,
+    backgroundColor: colors.bg,
+    paddingHorizontal: 14,
+    fontSize: 15,
+    color: colors.text,
+    marginBottom: 6,
+  },
   linkBtn: { alignItems: "center", paddingVertical: 10, marginTop: 2 },
   linkText: { color: colors.primary, fontWeight: "800", fontSize: 14 },
 });

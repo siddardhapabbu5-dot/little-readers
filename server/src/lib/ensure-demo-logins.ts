@@ -3,7 +3,8 @@ import { prisma } from "./prisma.js";
 
 /**
  * Keep local demo Parent / Admin / Super Admin logins working.
- * Runs on API boot in non-production unless ENSURE_DEMO_LOGINS=0 or SEED_DEMO=0.
+ * Runs on API boot only when ALLOW_DEMO=1 and NODE_ENV is development
+ * (disable with ENSURE_DEMO_LOGINS=0 or SEED_DEMO=0).
  *
  * Credentials (fixed):
  *   parent@littlereaders.test / ParentDemo1
@@ -38,9 +39,10 @@ export const DEMO_LOGINS = [
 ] as const;
 
 export function shouldEnsureDemoLogins() {
+  if (process.env.ALLOW_DEMO !== "1") return false;
   if (process.env.ENSURE_DEMO_LOGINS === "0") return false;
   if (process.env.SEED_DEMO === "0") return false;
-  if (process.env.NODE_ENV === "production") return false;
+  if (process.env.NODE_ENV !== "development") return false;
   if (process.env.VITEST === "true") return false;
   return true;
 }

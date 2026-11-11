@@ -2,7 +2,7 @@ import { createHash, randomBytes } from "node:crypto";
 import type { User } from "@prisma/client";
 import { env } from "../config/env.js";
 import { AppError } from "../lib/errors.js";
-import { signAccessToken } from "../lib/jwt.js";
+import { passwordVersion, signAccessToken } from "../lib/jwt.js";
 import { prisma } from "../lib/prisma.js";
 import { parseDurationMs } from "./duration.js";
 import { notifySessionRevoked } from "./notify-session-revoked.js";
@@ -152,6 +152,7 @@ export async function activateParentDeviceSession(input: {
     email: input.parent.email,
     role: input.parent.role,
     sid: session.created.id,
+    pwv: passwordVersion(input.parent),
   });
 
   return {
@@ -239,6 +240,7 @@ export async function refreshParentSession(input: {
     email: existing.parent.email,
     role: existing.parent.role,
     sid: existing.id,
+    pwv: passwordVersion(existing.parent),
   });
 
   return {

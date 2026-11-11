@@ -15,17 +15,16 @@ out/
 apps/mobile/android/
 apps/mobile/ios/
 
-# Env & secrets
+# Env & secrets (any .env variant, including backups such as .env.bak-*)
 .env
-.env.local
-.env.*.local
-.env.production
-.env.staging
-apps/mobile/.env
-apps/web/.env
-apps/web/.env.local
+.env.*
+**/.env
+**/.env.*
 !.env.example
-!apps/mobile/.env.example
+!**/.env.example
+
+# Local-only root Expo config (the real app config lives in apps/mobile)
+/app.json
 
 # Store / signing credentials — never commit
 *.jks
@@ -68,6 +67,11 @@ uploads/*
 !uploads/.gitkeep
 server/storage/vocab-uploads/*
 !server/storage/vocab-uploads/.gitkeep
+
+# Database backups contain personal data — never commit
+backups/
+*.dump
+*.dump.json
 
 # Misc
 *.pem

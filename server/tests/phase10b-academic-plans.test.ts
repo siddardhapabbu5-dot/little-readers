@@ -94,9 +94,14 @@ describe.skipIf(!hasDb)("Phase 10B Academic + Subscription Plans", () => {
 
   it("3) Admin deletes unused Level", async () => {
     expect(level4Id).toBeTruthy();
+    const superLogin = await request(app).post("/api/auth/login").send({
+      email: "superadmin@littlereaders.test",
+      password: "SuperDemo1",
+    });
+    expect(superLogin.status).toBe(200);
     const del = await request(app)
       .delete(`/api/admin/academic/levels/${level4Id}`)
-      .set("Authorization", `Bearer ${adminToken}`);
+      .set("Authorization", `Bearer ${superLogin.body.data.tokens.accessToken}`);
     expect(del.status).toBe(200);
     expect(
       del.body.data.deleted === true || del.body.data.archived === true

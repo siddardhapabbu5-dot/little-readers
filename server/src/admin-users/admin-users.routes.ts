@@ -1,10 +1,7 @@
 import { Router } from "express";
 import { z } from "zod";
-import {
-  requireAuth,
-  requireRoles,
-  type AuthenticatedRequest,
-} from "../middleware/auth.js";
+import { requireAuth, type AuthenticatedRequest } from "../middleware/auth.js";
+import { requirePermission } from "../auth/permissions.js";
 import { validateBody } from "../middleware/validate.js";
 import {
   createAdminUser,
@@ -14,7 +11,7 @@ import {
 
 export const adminUsersRouter = Router();
 
-adminUsersRouter.use(requireAuth, requireRoles("ADMIN", "SUPER_ADMIN"));
+adminUsersRouter.use(requireAuth, requirePermission("users.manage"));
 
 adminUsersRouter.get("/", async (req: AuthenticatedRequest, res, next) => {
   try {
@@ -67,7 +64,7 @@ adminUsersRouter.post(
 
 adminUsersRouter.post(
   "/",
-  requireRoles("SUPER_ADMIN"),
+  requirePermission("admins.manage"),
   validateBody(
     z.object({
       name: z.string().min(2).max(80),

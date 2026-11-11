@@ -24,6 +24,7 @@ import {
 import { sendEmailOtp, verifyEmailOtp } from "./email-otp.service.js";
 import { env } from "../config/env.js";
 import { requireAuth, type AuthenticatedRequest } from "../middleware/auth.js";
+import { permissionsForRole } from "./permissions.js";
 import { validateBody } from "../middleware/validate.js";
 
 export const authRouter = Router();
@@ -38,6 +39,20 @@ const emailOtpRateLimit = rateLimit({
     return `email-otp:${req.ip}:${email}`;
   },
   message: { error: "Too many verification requests. Please try again later." },
+  skip: () => process.env.VITEST === "true" || process.env.NODE_ENV === "test",
+});
+
+/** Per IP + email; the per-account lockout in loginUser covers attackers rotating IPs. */
+const passwordAttemptRateLimit = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: env.NODE_ENV === "production" ? 20 : 200,
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req) => {
+    const email = String((req.body as { email?: string })?.email ?? "").toLowerCase();
+    return `pw:${req.path}:${req.ip}:${email}`;
+  },
+  message: { error: "Too many attempts. Please try again later.", code: "RATE_LIMITED" },
   skip: () => process.env.VITEST === "true" || process.env.NODE_ENV === "test",
 });
 
@@ -92,7 +107,7 @@ authRouter.post("/register", validateBody(registerSchema), async (req, res, next
   }
 });
 
-authRouter.post("/login", validateBody(loginSchema), async (req, res, next) => {
+authRouter.post("/login", passwordAttemptRateLimit, validateBody(loginSchema), async (req, res, next) => {
   try {
     const result = await loginUser(req.body);
     res.status(200).json({ data: result });
@@ -103,6 +118,7 @@ authRouter.post("/login", validateBody(loginSchema), async (req, res, next) => {
 
 authRouter.post(
   "/forgot-password",
+  passwordAttemptRateLimit,
   validateBody(forgotPasswordSchema),
   async (req, res, next) => {
     try {
@@ -117,6 +133,7 @@ authRouter.post(
 
 authRouter.post(
   "/reset-password",
+  passwordAttemptRateLimit,
   validateBody(resetPasswordSchema),
   async (req, res, next) => {
     try {
@@ -160,7 +177,7 @@ authRouter.post(
 authRouter.get("/me", requireAuth, async (req: AuthenticatedRequest, res, next) => {
   try {
     const user = await getCurrentUser(req.user!.id);
-    res.status(200).json({ data: user });
+    res.status(200).json({ data: { ...user, permissions: permissionsForRole(user.role) } });
   } catch (error) {
     next(error);
   }

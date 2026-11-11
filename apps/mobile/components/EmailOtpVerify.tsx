@@ -4,7 +4,7 @@ import { apiRequest, ApiError } from "../services/api";
 import { isValidEmail } from "../services/auth-errors";
 import { colors, radii } from "../theme";
 
-type Purpose = "REGISTER" | "RESET_PASSWORD";
+type Purpose = "REGISTER" | "RESET_PASSWORD" | "RESET_PIN";
 
 /**
  * Email OTP step: send code → enter 6 digits → verify. Calls onVerified with the

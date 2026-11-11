@@ -5,6 +5,9 @@
  * Usage: node ./scripts/clean-test-lessons.mjs
  */
 import { PrismaClient } from "@prisma/client";
+import { assertDestructiveAllowed } from "./lib/destructive-guard.mjs";
+
+assertDestructiveAllowed("clean-test-lessons");
 
 const p = new PrismaClient();
 

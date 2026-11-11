@@ -1,6 +1,7 @@
 import type { PublishStatus } from "@prisma/client";
 import { AppError } from "../lib/errors.js";
 import { prisma } from "../lib/prisma.js";
+import { assertChildGradeAccess, effectiveLevelForChild } from "../learning/grade-access.js";
 
 const ALLOWED_ACTIVITIES = new Set(["LISTEN", "SPELL"]);
 
@@ -496,15 +497,19 @@ export async function listPublishedLessonsForChild(
           include: { level: { include: { grade: true } } },
         });
   if (!child) throw new AppError("Child not found", 404);
+  if (role !== "ADMIN" && role !== "SUPER_ADMIN") {
+    await assertChildGradeAccess(parentId, childId);
+  }
 
-  const levelId = child.levelId;
-  const gradeId = child.level?.gradeId ?? null;
+  const level = await effectiveLevelForChild(childId);
+  const levelId = level.id;
+  const gradeId =
+    (await prisma.learningLevel.findUnique({ where: { id: levelId }, select: { gradeId: true } }))
+      ?.gradeId ?? null;
 
-  // Visible if: unscoped, placed on child's level/grade, or attached to a
-  // published learning category the child may practice (never unpublished lessons).
-  // A child with an assigned level only sees categories of that level/grade,
-  // so Learn never lists another level's lessons.
-  const lessons = await prisma.lesson.findMany({
+  // Visible only within the child's Learn Wise grade: placed on its level/grade/category,
+  // or unscoped lessons whose words all belong to that grade.
+  const candidates = await prisma.lesson.findMany({
     where: {
       isPublished: true,
       isActive: true,
@@ -516,7 +521,6 @@ export async function listPublishedLessonsForChild(
           groupId: null,
           learningCategoryId: null,
         },
-        ...(levelId ? [] : [{ learningCategory: { isPublished: true } }]),
         ...(gradeId ? [{ gradeId }] : []),
         ...(levelId ? [{ levelId }, { group: { levelId } }] : []),
         ...(levelId
@@ -538,6 +542,30 @@ export async function listPublishedLessonsForChild(
         select: { id: true, startedAt: true },
       },
     },
+  });
+
+  const unscopedIds = candidates
+    .filter((l) => !l.gradeId && !l.levelId && !l.groupId && !l.learningCategoryId)
+    .map((l) => l.id);
+  const unscopedLevels = new Map<string, Set<string>>();
+  if (unscopedIds.length) {
+    const items = await prisma.lessonVocabItem.findMany({
+      where: { lessonId: { in: unscopedIds }, vocabularyWord: { isActive: true } },
+      select: {
+        lessonId: true,
+        vocabularyWord: { select: { category: { select: { group: { select: { levelId: true } } } } } },
+      },
+    });
+    for (const item of items) {
+      const set = unscopedLevels.get(item.lessonId) ?? new Set<string>();
+      set.add(item.vocabularyWord.category.group.levelId);
+      unscopedLevels.set(item.lessonId, set);
+    }
+  }
+  const lessons = candidates.filter((l) => {
+    if (!unscopedIds.includes(l.id)) return true;
+    const levels = unscopedLevels.get(l.id);
+    return Boolean(levels && levels.size === 1 && levels.has(levelId));
   });
 
   return lessons.map((l) => {

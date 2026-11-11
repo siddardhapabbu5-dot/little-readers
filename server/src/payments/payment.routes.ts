@@ -5,11 +5,13 @@ import {
   requireRoles,
   type AuthenticatedRequest,
 } from "../middleware/auth.js";
+import { requirePermission } from "../auth/permissions.js";
 import { validateBody } from "../middleware/validate.js";
 import * as cashfreeService from "./cashfree.service.js";
 import * as googlePlay from "./google-play.js";
 import * as paymentService from "./payment.service.js";
 import { PRICE_REGIONS } from "./region.js";
+import { adminRevenueSummary } from "./revenue.js";
 
 export const paymentsRouter = Router();
 
@@ -29,6 +31,8 @@ paymentsRouter.get(
 const playPurchaseBody = z.object({
   productId: z.string().min(1).max(100),
   purchaseToken: z.string().min(10).max(4096),
+  /** Child the new purchase is for; ignored when the purchase is already linked. */
+  childId: z.string().min(1).max(64).optional(),
 });
 
 paymentsRouter.post(
@@ -125,6 +129,7 @@ paymentsRouter.post(
         ])
         .optional(),
       planId: z.string().min(1).optional(),
+      childId: z.string().min(1).max(64).optional(),
       seats: z.number().int().min(1).max(20).optional(),
       region: regionField,
     })
@@ -155,6 +160,7 @@ paymentsRouter.post(
     z.object({
       purpose: checkoutPurpose,
       planId: z.string().min(1).optional(),
+      childId: z.string().min(1).max(64).optional(),
       seats: z.number().int().min(1).max(20).optional(),
       phone: z.string().min(10).max(16).optional(),
       returnTo: z.enum(["web", "app", "sdk"]).optional(),
@@ -282,7 +288,7 @@ paymentsRouter.post(
 paymentsRouter.get(
   "/admin",
   requireAuth,
-  requireRoles("ADMIN", "SUPER_ADMIN"),
+  requirePermission("payments.manage"),
   async (req: AuthenticatedRequest, res, next) => {
     try {
       const take = Number(req.query.take ?? 100);
@@ -291,6 +297,19 @@ paymentsRouter.get(
         typeof req.query.provider === "string" ? req.query.provider.slice(0, 40) : undefined;
       const data = await paymentService.listPaymentsForAdmin(take, { q, provider });
       res.json({ data });
+    } catch (e) {
+      next(e);
+    }
+  }
+);
+
+paymentsRouter.get(
+  "/admin/revenue",
+  requireAuth,
+  requirePermission("payments.manage"),
+  async (_req: AuthenticatedRequest, res, next) => {
+    try {
+      res.json({ data: await adminRevenueSummary() });
     } catch (e) {
       next(e);
     }

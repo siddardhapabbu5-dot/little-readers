@@ -3,6 +3,7 @@ import { StyleSheet, Text, TextInput, View } from "react-native";
 import { useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { AuthGate } from "../components/AuthGate";
+import { RequireParentGate } from "../components/RequireParentGate";
 import { Card, ErrorText, KeyboardScroll, SoftButton, Title } from "../components/ui";
 import { apiRequest, ApiError } from "../services/api";
 import { ROLE_SETS } from "../services/auth-errors";
@@ -69,6 +70,7 @@ export default function PrivacyRequestScreen() {
 
   return (
     <AuthGate roles={ROLE_SETS.parentFamily}>
+      <RequireParentGate>
       <SafeAreaView style={styles.safe}>
         <KeyboardScroll contentContainerStyle={styles.content}>
           <SoftButton label="← Back" onPress={() => router.back()} />
@@ -108,6 +110,7 @@ export default function PrivacyRequestScreen() {
           </Card>
         </KeyboardScroll>
       </SafeAreaView>
+      </RequireParentGate>
     </AuthGate>
   );
 }

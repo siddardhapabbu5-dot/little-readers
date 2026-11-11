@@ -28,7 +28,19 @@ describe.skipIf(!hasDb)("Level 1 learning API", () => {
       .get("/api/children")
       .set("Authorization", `Bearer ${token}`);
     expect(kids.status).toBe(200);
-    childId = kids.body.data[0].id as string;
+    const grade1 = (
+      kids.body.data as { id: string; hasLearningSeat: boolean; learnWiseGrade?: { levelCode: string } }[]
+    ).find((k) => k.hasLearningSeat && k.learnWiseGrade?.levelCode === "LEVEL_1");
+    if (grade1) {
+      childId = grade1.id;
+    } else {
+      const created = await request(app)
+        .post("/api/children")
+        .set("Authorization", `Bearer ${token}`)
+        .send({ displayName: `Grade1_${Date.now()}`, birthDate: "15/03/2020", level: "LEVEL_1" });
+      expect(created.status).toBe(201);
+      childId = created.body.data.id as string;
+    }
   });
 
   it("lists learning levels and Level 1 groups/categories/words", async () => {
@@ -64,7 +76,7 @@ describe.skipIf(!hasDb)("Level 1 learning API", () => {
     expect(categories.body.data.length).toBe(5);
 
     const words = await request(app)
-      .get(`/api/learning/categories/${categoryId}/words`)
+      .get(`/api/learning/categories/${categoryId}/words?childId=${childId}`)
       .set("Authorization", `Bearer ${token}`);
     expect(words.status).toBe(200);
     expect(words.body.data.words.length).toBeGreaterThanOrEqual(75);
@@ -76,7 +88,7 @@ describe.skipIf(!hasDb)("Level 1 learning API", () => {
     expect(sample.isActive).toBe(true);
 
     const one = await request(app)
-      .get(`/api/learning/words/${sample.id}`)
+      .get(`/api/learning/words/${sample.id}?childId=${childId}`)
       .set("Authorization", `Bearer ${token}`);
     expect(one.status).toBe(200);
     expect(one.body.data.id).toBe(sample.id);

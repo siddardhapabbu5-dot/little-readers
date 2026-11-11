@@ -11,6 +11,7 @@ import { validateBody } from "../middleware/validate.js";
 import { sendParentOtp } from "./otp.service.js";
 import {
   getParentGateStatus,
+  resetParentPin,
   setParentPin,
   verifyParentPin,
 } from "./parent-gate.service.js";
@@ -188,6 +189,31 @@ parentAuthRouter.post(
   async (req: AuthenticatedRequest, res, next) => {
     try {
       const data = await verifyParentPin(req.user!.id, req.body.pin);
+      res.status(200).json({ data });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+parentAuthRouter.post(
+  "/gate/reset-pin",
+  requireAuth,
+  requireRoles("PARENT", "ADMIN", "SUPER_ADMIN", "SCHOOL_ADMIN"),
+  validateBody(
+    pinBodySchema
+      .extend({
+        verificationToken: z.string().trim().min(20).max(200).optional(),
+        password: z.string().min(1).max(128).optional(),
+      })
+      .refine((b) => Boolean(b.verificationToken || b.password), {
+        message: "Verify your email code or enter your account password",
+      })
+  ),
+  async (req: AuthenticatedRequest, res, next) => {
+    try {
+      const { pin, verificationToken, password } = req.body;
+      const data = await resetParentPin(req.user!.id, { verificationToken, password }, pin);
       res.status(200).json({ data });
     } catch (error) {
       next(error);

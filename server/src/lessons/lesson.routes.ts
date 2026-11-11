@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { z } from "zod";
-import { requireAuth, requireRoles } from "../middleware/auth.js";
+import { requireAuth } from "../middleware/auth.js";
+import { requirePermission } from "../auth/permissions.js";
 import { AppError } from "../lib/errors.js";
 import {
   createAdminLesson,
@@ -17,7 +18,7 @@ import {
 
 export const lessonAdminRouter = Router();
 
-lessonAdminRouter.use(requireAuth, requireRoles("ADMIN", "SUPER_ADMIN"));
+lessonAdminRouter.use(requireAuth, requirePermission("content.manage"));
 
 lessonAdminRouter.get("/", async (req, res, next) => {
   try {

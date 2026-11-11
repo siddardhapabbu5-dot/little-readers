@@ -2,6 +2,9 @@
  * Keep GRADE_1 (+ its level/group/categories/words). Delete other grades.
  */
 import { PrismaClient } from "@prisma/client";
+import { assertDestructiveAllowed } from "./lib/destructive-guard.mjs";
+
+assertDestructiveAllowed("keep-only-grade1");
 
 const prisma = new PrismaClient();
 

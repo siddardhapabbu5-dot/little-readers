@@ -430,6 +430,7 @@ export function CategoryTile({
   stars,
   locked,
   completed,
+  comingSoon,
   image,
   tint,
   onPress,
@@ -441,21 +442,27 @@ export function CategoryTile({
   stars: number;
   locked?: boolean;
   completed?: boolean;
+  comingSoon?: boolean;
   image?: ImageSourcePropType | null;
   tint: string;
   onPress: () => void;
 }) {
   const pct = total > 0 ? Math.min(100, Math.round((learned / total) * 100)) : 0;
+  const disabled = locked || comingSoon;
   return (
     <Pressable
-      disabled={locked}
+      disabled={disabled}
       onPress={onPress}
       accessibilityRole="button"
-      accessibilityLabel={`${title}, ${learned} of ${total} words${locked ? ", locked" : completed ? ", completed" : ""}`}
+      accessibilityLabel={
+        comingSoon
+          ? `${title}, words coming soon`
+          : `${title}, ${learned} of ${total} words${locked ? ", locked" : completed ? ", completed" : ""}`
+      }
       style={({ pressed }) => [
         styles.tile,
         shadow.card,
-        { opacity: locked ? 0.6 : pressed ? 0.9 : 1, transform: [{ scale: pressed ? 0.98 : 1 }] },
+        { opacity: disabled ? 0.6 : pressed ? 0.9 : 1, transform: [{ scale: pressed ? 0.98 : 1 }] },
       ]}
     >
       <View style={[styles.tileArtBox, { backgroundColor: tint }]}>
@@ -464,7 +471,11 @@ export function CategoryTile({
         ) : (
           <Text style={{ fontSize: 56 }}>{emoji}</Text>
         )}
-        {locked ? (
+        {comingSoon ? (
+          <View style={styles.tileBadge}>
+            <Text style={styles.tileBadgeText}>⏳</Text>
+          </View>
+        ) : locked ? (
           <View style={styles.tileBadge}>
             <Text style={styles.tileBadgeText}>🔒</Text>
           </View>
@@ -478,13 +489,19 @@ export function CategoryTile({
         <Text style={styles.tileTitle} numberOfLines={2}>
           {title}
         </Text>
-        <ProgressBar value={learned} max={Math.max(total, 1)} color={completed ? colors.green : colors.primary} />
-        <View style={styles.tileMetaRow}>
-          <Text style={styles.tileMeta}>
-            {learned}/{total} · {pct}%
-          </Text>
-          <Text style={styles.tileStars}>⭐ {stars}</Text>
-        </View>
+        {comingSoon ? (
+          <Text style={styles.tileMeta}>Words coming soon</Text>
+        ) : (
+          <>
+            <ProgressBar value={learned} max={Math.max(total, 1)} color={completed ? colors.green : colors.primary} />
+            <View style={styles.tileMetaRow}>
+              <Text style={styles.tileMeta}>
+                {learned}/{total} · {pct}%
+              </Text>
+              <Text style={styles.tileStars}>⭐ {stars}</Text>
+            </View>
+          </>
+        )}
       </View>
     </Pressable>
   );

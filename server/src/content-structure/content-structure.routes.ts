@@ -5,6 +5,7 @@ import {
   requireRoles,
   type AuthenticatedRequest,
 } from "../middleware/auth.js";
+import { requirePermission } from "../auth/permissions.js";
 import { validateBody } from "../middleware/validate.js";
 import {
   createCategory,
@@ -33,7 +34,7 @@ import { listStarterPackThemes } from "./category-starter-packs.js";
 
 export const contentStructureRouter = Router();
 
-contentStructureRouter.use(requireAuth, requireRoles("ADMIN", "SUPER_ADMIN"));
+contentStructureRouter.use(requireAuth, requirePermission("content.manage"));
 
 const gradeCreateSchema = z.object({
   code: z.string().min(1).max(40),
@@ -159,7 +160,7 @@ contentStructureRouter.post("/grades/:id/deactivate", async (req, res, next) => 
   }
 });
 
-contentStructureRouter.delete("/grades/:id", async (req, res, next) => {
+contentStructureRouter.delete("/grades/:id", requirePermission("content.destroy"), async (req, res, next) => {
   try {
     const force =
       req.query.force === "1" ||
@@ -217,7 +218,7 @@ contentStructureRouter.post("/levels/:id/deactivate", async (req, res, next) => 
   }
 });
 
-contentStructureRouter.delete("/levels/:id", async (req, res, next) => {
+contentStructureRouter.delete("/levels/:id", requirePermission("content.destroy"), async (req, res, next) => {
   try {
     res.status(200).json({ data: await deleteLevel(String(req.params.id)) });
   } catch (e) {
@@ -269,7 +270,7 @@ contentStructureRouter.post("/groups/:id/deactivate", async (req, res, next) => 
   }
 });
 
-contentStructureRouter.delete("/groups/:id", async (req, res, next) => {
+contentStructureRouter.delete("/groups/:id", requirePermission("content.destroy"), async (req, res, next) => {
   try {
     res.status(200).json({ data: await deleteGroup(String(req.params.id)) });
   } catch (e) {
@@ -348,7 +349,7 @@ contentStructureRouter.post("/categories/:id/deactivate", async (req, res, next)
   }
 });
 
-contentStructureRouter.delete("/categories/:id", async (req, res, next) => {
+contentStructureRouter.delete("/categories/:id", requirePermission("content.destroy"), async (req, res, next) => {
   try {
     const force =
       req.query.force === "1" ||

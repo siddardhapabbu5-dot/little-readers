@@ -39,6 +39,15 @@ type Catalog = {
 
 type Gateway = "razorpay" | "cashfree";
 
+/** GET /subscriptions/children — each child's Learn Wise grade and whether it is paid for. */
+type ChildGrade = {
+  childId: string;
+  displayName: string;
+  gradeLabel: string;
+  entitled: boolean;
+  level: { id: string };
+};
+
 type CashfreeCheckoutResult = {
   error?: { message?: string };
   redirect?: boolean;
@@ -110,9 +119,21 @@ export default function ParentCheckoutPage() {
   const [pendingOrderId, setPendingOrderId] = useState<string | null>(null);
   const [gateway, setGateway] = useState<Gateway>("razorpay");
   const [phone, setPhone] = useState("");
+  const [kids, setKids] = useState<ChildGrade[]>([]);
+  // Each subscription is bought for one child, for that child's current grade.
+  const [childId, setChildId] = useState<string | null>(null);
 
-  const load = useCallback(async (t: string) => {
-    const data = await apiRequest<Catalog>("/payments/plans", { token: t });
+  const load = useCallback(async (t: string, forChildId?: string | null) => {
+    const children = await apiRequest<ChildGrade[]>("/subscriptions/children", { token: t }).catch(
+      () => [] as ChildGrade[]
+    );
+    setKids(children);
+    const child = children.find((c) => c.childId === forChildId) ?? children[0] ?? null;
+    setChildId(child?.childId ?? null);
+    const data = await apiRequest<Catalog>(
+      child ? `/payments/plans?levelId=${encodeURIComponent(child.level.id)}` : "/payments/plans",
+      { token: t }
+    );
     setCatalog(data);
     const first = data.plans[0];
     if (first) {
@@ -181,6 +202,7 @@ export default function ParentCheckoutPage() {
         token,
         body: JSON.stringify({
           planId: plan.planId,
+          childId: plan.planId ? childId : undefined,
           purpose: plan.planId ? undefined : plan.purpose,
           seats: plan.purpose === "EXTRA_SEATS" ? extraSeats : undefined,
           phone: phone.trim() || undefined,
@@ -264,6 +286,7 @@ export default function ParentCheckoutPage() {
         token,
         body: JSON.stringify({
           planId: plan.planId,
+          childId: plan.planId ? childId : undefined,
           purpose: plan.planId ? undefined : plan.purpose,
           seats: plan.purpose === "EXTRA_SEATS" ? extraSeats : undefined,
         }),
@@ -427,6 +450,34 @@ export default function ParentCheckoutPage() {
       {catalog?.enabled ? (
         <>
           <div className="panel" style={{ display: "grid", gap: 10 }}>
+            <strong>Who is this subscription for?</strong>
+            <div style={{ fontSize: 13, opacity: 0.75 }}>
+              Each subscription unlocks one child&apos;s current grade.
+            </div>
+            {kids.length ? (
+              kids.map((c) => (
+                <label key={c.childId} style={{ display: "flex", gap: 10, alignItems: "center" }}>
+                  <input
+                    type="radio"
+                    name="child"
+                    checked={childId === c.childId}
+                    onChange={() => {
+                      if (token) void load(token, c.childId);
+                    }}
+                  />
+                  <span>
+                    <strong>{c.displayName}</strong> — {c.gradeLabel}
+                    {c.entitled ? " (active)" : ""}
+                  </span>
+                </label>
+              ))
+            ) : (
+              <div>
+                Add a child first from the <Link href="/parent">parent dashboard</Link>.
+              </div>
+            )}
+          </div>
+          <div className="panel" style={{ display: "grid", gap: 10 }}>
             <strong>Available plans</strong>
             {catalog.plans.map((p) => {
               const key = p.planId ?? p.code ?? p.purpose;
@@ -447,11 +498,8 @@ export default function ParentCheckoutPage() {
                     <div style={{ fontSize: 13, opacity: 0.75 }}>
                       {p.description}
                     </div>
-                    {p.includedSeats ? (
-                      <div style={{ fontSize: 12 }}>
-                        Includes {p.includedSeats} child seat
-                        {p.includedSeats === 1 ? "" : "s"}
-                      </div>
+                    {p.planId ? (
+                      <div style={{ fontSize: 12 }}>For the selected child&apos;s current grade</div>
                     ) : null}
                     {p.taxPaise > 0 ? (
                       <div style={{ fontSize: 12 }}>
@@ -534,7 +582,7 @@ export default function ParentCheckoutPage() {
                 : ""}
             </p>
             <Button
-              disabled={busy || !plan || !catalog.enabled}
+              disabled={busy || !plan || !catalog.enabled || (Boolean(plan?.planId) && !childId)}
               onClick={() =>
                 void (gateway === "cashfree" ? startCashfreeCheckout() : startCheckout())
               }

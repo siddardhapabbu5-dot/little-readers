@@ -16,6 +16,9 @@ import {
   createDictionaryUpload,
   listAssignments,
 } from "../src/dictionary/dictionary.service.ts";
+import { assertDestructiveAllowed } from "./lib/destructive-guard.mjs";
+
+assertDestructiveAllowed("replace-with-kids-starter");
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "../..");
 const csvPath = join(

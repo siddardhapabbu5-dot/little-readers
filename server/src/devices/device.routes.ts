@@ -23,6 +23,13 @@ import {
   revokeExtraSeats,
   unassignLearningSeat,
 } from "../subscriptions/subscription.service.js";
+import {
+  expireChildGradeSubscription,
+  getChildGradeAccessForAdmin,
+  grantChildGradeSubscription,
+  listChildGradeAccess,
+  listChildGradeAccessByParentEmail,
+} from "../subscriptions/grade-subscription.service.js";
 import { validateBody } from "../middleware/validate.js";
 
 export const deviceRouter = Router();
@@ -139,6 +146,80 @@ subscriptionRouter.get("/me", async (req: AuthenticatedRequest, res, next) => {
     next(error);
   }
 });
+
+/** Each child's Learn Wise grade and whether a subscription covers it. */
+subscriptionRouter.get(
+  "/children",
+  requireRoles("PARENT", "ADMIN", "SUPER_ADMIN"),
+  async (req: AuthenticatedRequest, res, next) => {
+    try {
+      const data = await listChildGradeAccess(req.user!.id);
+      res.status(200).json({ data });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+const gradeGrantSchema = z.object({
+  childId: z.string().min(1),
+  levelId: z.string().min(1),
+  months: z.union([z.literal(1), z.literal(3), z.literal(6), z.literal(12)]),
+});
+
+subscriptionRouter.post(
+  "/admin/grade-grant",
+  requireRoles("ADMIN", "SUPER_ADMIN"),
+  validateBody(gradeGrantSchema),
+  async (req: AuthenticatedRequest, res, next) => {
+    try {
+      const data = await grantChildGradeSubscription({ ...req.body, grantedByUserId: req.user!.id });
+      res.status(201).json({ data });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+subscriptionRouter.post(
+  "/admin/grade-subscriptions/:id/expire",
+  requireRoles("ADMIN", "SUPER_ADMIN"),
+  async (req: AuthenticatedRequest, res, next) => {
+    try {
+      const data = await expireChildGradeSubscription(String(req.params.id), req.user!.id);
+      res.status(200).json({ data });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+subscriptionRouter.get(
+  "/admin/grade-access",
+  requireRoles("ADMIN", "SUPER_ADMIN"),
+  async (req, res, next) => {
+    try {
+      const email = typeof req.query.email === "string" ? req.query.email : "";
+      if (!email.trim()) throw new AppError("email is required", 400);
+      res.status(200).json({ data: await listChildGradeAccessByParentEmail(email) });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+subscriptionRouter.get(
+  "/admin/children/:childId/grade-access",
+  requireRoles("ADMIN", "SUPER_ADMIN"),
+  async (req, res, next) => {
+    try {
+      const data = await getChildGradeAccessForAdmin(String(req.params.childId));
+      res.status(200).json({ data });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
 
 subscriptionRouter.post(
   "/seats/assign",

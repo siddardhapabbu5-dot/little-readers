@@ -6,6 +6,9 @@ import path from "path";
 import { fileURLToPath } from "url";
 import { PrismaClient } from "@prisma/client";
 import XLSX from "xlsx";
+import { assertDestructiveAllowed } from "./lib/destructive-guard.mjs";
+
+assertDestructiveAllowed("reimport-fruits-az");
 
 const prisma = new PrismaClient();
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");

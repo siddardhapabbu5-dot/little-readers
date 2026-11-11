@@ -16,7 +16,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { AdminBookLogo } from "../components/AdminBookLogo";
 import { AdminTabBar } from "../components/AdminTabBar";
 import { AdminQuickActionCard } from "../components/admin/AdminQuickActionCard";
-import { AdminRevenueChart } from "../components/admin/AdminRevenueChart";
+import { AdminRevenueChart, type RevenueSummary } from "../components/admin/AdminRevenueChart";
 import { AdminStatsSkeleton } from "../components/admin/AdminSkeleton";
 import { AdminStatCard } from "../components/admin/AdminStatCard";
 import { dash } from "../components/admin/dashboardTheme";
@@ -93,8 +93,12 @@ function formatMoney(amountMinor: number, currency: string) {
   }
 }
 
-function startOfDay(d: Date) {
-  return new Date(d.getFullYear(), d.getMonth(), d.getDate());
+function countText(n: number | null) {
+  return n === null ? "—" : String(n);
+}
+
+function countLabel(label: string, n: number | null) {
+  return n === null ? `${label} · couldn't load` : label;
 }
 
 function formatRelative(iso: string) {
@@ -111,16 +115,6 @@ function formatRelative(iso: string) {
   return `${Math.floor(day / 30)}mo ago`;
 }
 
-function sumSucceeded(rows: PaymentRow[], from: Date, to = new Date()) {
-  return rows
-    .filter((p) => {
-      if (p.status !== "SUCCEEDED" || !p.createdAt) return false;
-      const t = new Date(p.createdAt).getTime();
-      return t >= from.getTime() && t <= to.getTime();
-    })
-    .reduce((n, p) => n + (p.amountCents ?? 0), 0);
-}
-
 export default function AdminScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -130,9 +124,16 @@ export default function AdminScreen() {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [schools, setSchools] = useState<SchoolRow[]>([]);
   const [payments, setPayments] = useState<PaymentRow[]>([]);
+  const [revenue, setRevenue] = useState<RevenueSummary | null>(null);
   const [subs, setSubs] = useState<SubRow[]>([]);
   const [parents, setParents] = useState<ParentRow[]>([]);
-  const [learning, setLearning] = useState({
+  /** null = the count could not be loaded (shown as "—", never as a fake 0). */
+  const [learning, setLearning] = useState<{
+    grades: number | null;
+    pending: number | null;
+    publishedWords: number | null;
+    lessons: number | null;
+  }>({
     grades: 0,
     pending: 0,
     publishedWords: 0,
@@ -163,6 +164,7 @@ export default function AdminScreen() {
     const [
       schoolRows,
       paymentRows,
+      revenueSummary,
       subRows,
       parentRows,
       grades,
@@ -172,30 +174,29 @@ export default function AdminScreen() {
     ] = await Promise.all([
       apiRequest<SchoolRow[]>("/admin/schools"),
       apiRequest<PaymentRow[]>("/payments/admin?take=100"),
+      apiRequest<RevenueSummary>("/payments/admin/revenue"),
       apiRequest<SubRow[]>("/subscriptions/admin"),
       apiRequest<ParentRow[]>("/children/admin/parents").catch(() => [] as ParentRow[]),
       // Same grade records as the Grades (Structure) page; active only, like Published words.
       apiRequest<Array<{ id: string; isActive: boolean }>>("/admin/content/grades")
-        .then((rows) => [...new Set(rows.filter((g) => g.isActive).map((g) => g.id))])
-        .catch(() => [] as string[]),
-      apiRequest<Array<{ id: string }>>(
-        "/admin/dictionary/assignments?status=PENDING&take=200"
-      ).catch(() => []),
-      apiRequest<{ total: number }>("/admin/vocabulary/words?isActive=true&take=1").catch(
-        () => ({ total: 0 })
-      ),
-      apiRequest<{ total: number }>("/admin/lessons?take=1").catch(() => ({ total: 0 })),
+        .then((rows) => new Set(rows.filter((g) => g.isActive).map((g) => g.id)).size)
+        .catch(() => null),
+      apiRequest<Array<{ id: string }>>("/admin/dictionary/assignments?status=PENDING&take=200")
+        .then((rows) => rows.length)
+        .catch(() => null),
+      apiRequest<{ total: number }>("/admin/vocabulary/words?isActive=true&take=1")
+        .then((r) => r.total ?? 0)
+        .catch(() => null),
+      apiRequest<{ total: number }>("/admin/lessons?take=1")
+        .then((r) => r.total ?? 0)
+        .catch(() => null),
     ]);
     setSchools(schoolRows);
     setPayments(paymentRows);
+    setRevenue(revenueSummary);
     setSubs(subRows);
     setParents(parentRows);
-    setLearning({
-      grades: grades.length,
-      pending: pending.length,
-      publishedWords: words.total ?? 0,
-      lessons: lessons.total ?? 0,
-    });
+    setLearning({ grades, pending, publishedWords: words, lessons });
   }, []);
 
   useFocusEffect(
@@ -226,20 +227,6 @@ export default function AdminScreen() {
     }
   }
 
-  // The chart is in INR; Philippine (PHP) payments are totalled separately so currencies never mix.
-  const currency = "INR";
-  const inrPayments = useMemo(
-    () => payments.filter((p) => !p.currency || p.currency === "INR"),
-    [payments]
-  );
-  const phpPaidTotal = useMemo(
-    () =>
-      payments
-        .filter((p) => p.currency === "PHP" && p.status === "SUCCEEDED")
-        .reduce((n, p) => n + (p.amountCents ?? 0), 0),
-    [payments]
-  );
-
   const stats = useMemo(() => {
     const totalStudents =
       schools.reduce((n, s) => n + (s.studentCount ?? 0), 0) ||
@@ -257,48 +244,6 @@ export default function AdminScreen() {
     () => payments.filter((p) => p.status === "PENDING" || p.status === "FAILED").length,
     [payments]
   );
-
-  const revenue = useMemo(() => {
-    const now = new Date();
-    const dayStart = startOfDay(now);
-    const weekStart = new Date(dayStart);
-    weekStart.setDate(weekStart.getDate() - 6);
-    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-    const yearStart = new Date(now.getFullYear(), 0, 1);
-
-    const daily = sumSucceeded(inrPayments, dayStart, now);
-    const weekly = sumSucceeded(inrPayments, weekStart, now);
-    const monthly = sumSucceeded(inrPayments, monthStart, now);
-    const yearly = sumSucceeded(inrPayments, yearStart, now);
-    const total = inrPayments
-      .filter((p) => p.status === "SUCCEEDED")
-      .reduce((n, p) => n + (p.amountCents ?? 0), 0);
-    const pending = inrPayments
-      .filter((p) => p.status === "PENDING")
-      .reduce((n, p) => n + (p.amountCents ?? 0), 0);
-
-    const points = [];
-    for (let i = 6; i >= 0; i -= 1) {
-      const d = new Date(dayStart);
-      d.setDate(d.getDate() - i);
-      const next = new Date(d);
-      next.setDate(next.getDate() + 1);
-      points.push({
-        label: d.toLocaleDateString(undefined, { weekday: "short" }).slice(0, 2),
-        amountMinor: sumSucceeded(inrPayments, d, new Date(next.getTime() - 1)),
-      });
-    }
-
-    return {
-      daily: formatMoney(daily, currency),
-      weekly: formatMoney(weekly, currency),
-      monthly: formatMoney(monthly, currency),
-      yearly: formatMoney(yearly, currency),
-      total: formatMoney(total, currency),
-      pending: formatMoney(pending, currency),
-      points,
-    };
-  }, [inrPayments, currency]);
 
   const activity = useMemo(() => {
     const items: ActivityItem[] = [];
@@ -389,6 +334,14 @@ export default function AdminScreen() {
       icon: "checkmark-done" as const,
       tint: dash.purple,
       soft: dash.purpleSoft,
+    },
+    {
+      title: "Curriculum workflow",
+      subtitle: "Grades 1–4 topics · approve, publish, Excel",
+      href: "/admin-curriculum",
+      icon: "git-network" as const,
+      tint: dash.green,
+      soft: dash.greenSoft,
     },
     {
       title: "Manage categories",
@@ -588,8 +541,8 @@ export default function AdminScreen() {
             ) : (
               <View style={styles.statsGrid}>
                 <AdminStatCard
-                  value={String(stats.grades)}
-                  label="Grades"
+                  value={countText(stats.grades)}
+                  label={countLabel("Grades", stats.grades)}
                   icon="layers"
                   tint={dash.blue}
                   soft={dash.blueSoft}
@@ -597,8 +550,8 @@ export default function AdminScreen() {
                   onPress={() => router.push("/admin-structure" as never)}
                 />
                 <AdminStatCard
-                  value={String(stats.pending)}
-                  label="Pending review"
+                  value={countText(stats.pending)}
+                  label={countLabel("Pending review", stats.pending)}
                   icon="hourglass"
                   tint={dash.orange}
                   soft={dash.orangeSoft}
@@ -606,8 +559,8 @@ export default function AdminScreen() {
                   onPress={() => router.push("/admin-dictionary" as never)}
                 />
                 <AdminStatCard
-                  value={String(stats.publishedWords)}
-                  label="Published words"
+                  value={countText(stats.publishedWords)}
+                  label={countLabel("Published words", stats.publishedWords)}
                   icon="book"
                   tint={dash.green}
                   soft={dash.greenSoft}
@@ -615,8 +568,8 @@ export default function AdminScreen() {
                   onPress={() => router.push("/admin-words" as never)}
                 />
                 <AdminStatCard
-                  value={String(stats.lessons)}
-                  label="Lessons"
+                  value={countText(stats.lessons)}
+                  label={countLabel("Lessons", stats.lessons)}
                   icon="school"
                   tint={dash.purple}
                   soft={dash.purpleSoft}
@@ -713,21 +666,7 @@ export default function AdminScreen() {
             </View>
 
             {/* ===== REVENUE ANALYTICS ===== */}
-            <AdminRevenueChart
-              points={revenue.points}
-              currency={currency}
-              daily={revenue.daily}
-              weekly={revenue.weekly}
-              monthly={revenue.monthly}
-              yearly={revenue.yearly}
-              total={revenue.total}
-              pending={revenue.pending}
-            />
-            {phpPaidTotal > 0 ? (
-              <Text style={{ color: "#6B7280", fontWeight: "600", fontSize: 13 }}>
-                Philippines payments (not in the ₹ chart): {formatMoney(phpPaidTotal, "PHP")} received
-              </Text>
-            ) : null}
+            {revenue ? <AdminRevenueChart summary={revenue} /> : null}
           </View>
         </ScrollView>
 

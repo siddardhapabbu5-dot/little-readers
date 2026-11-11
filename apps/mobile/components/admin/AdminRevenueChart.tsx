@@ -2,95 +2,127 @@ import { StyleSheet, Text, View } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { dash } from "./dashboardTheme";
 
-export type RevenuePoint = { label: string; amountMinor: number };
-
-type Props = {
-  points: RevenuePoint[];
-  currency: string;
-  daily: string;
-  weekly: string;
-  monthly: string;
-  yearly: string;
-  total: string;
-  pending: string;
+export type CurrencyRevenue = {
+  daily: number;
+  weekly: number;
+  monthly: number;
+  yearly: number;
+  total: number;
+  succeededCount: number;
+  pending: number;
+  pendingCount: number;
+  stalePendingCount: number;
+  points: Array<{ date: string; amountMinor: number }>;
 };
+
+/** `GET /payments/admin/revenue` — totals over every payment row, per currency, India time. */
+export type RevenueSummary = {
+  timezone: string;
+  generatedAt: string;
+  currencies: Record<string, CurrencyRevenue>;
+};
+
+const WEEKDAYS = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
 
 function formatMinor(amountMinor: number, currency: string) {
   const major = amountMinor / 100;
   try {
     return new Intl.NumberFormat("en-IN", {
       style: "currency",
-      currency: currency || "INR",
-      maximumFractionDigits: 0,
+      currency,
+      maximumFractionDigits: major % 1 === 0 ? 0 : 2,
     }).format(major);
   } catch {
-    return `${currency} ${(amountMinor / 100).toFixed(0)}`;
+    return `${currency} ${major.toFixed(2)}`;
   }
 }
 
+function weekday(date: string) {
+  const [y, m, d] = date.split("-").map(Number);
+  return WEEKDAYS[new Date(Date.UTC(y, m - 1, d)).getUTCDay()];
+}
+
 /** Lightweight bar chart — no extra chart dependency required. */
-export function AdminRevenueChart({
-  points,
-  currency,
-  daily,
-  weekly,
-  monthly,
-  yearly,
-  total,
-  pending,
-}: Props) {
-  const max = Math.max(1, ...points.map((p) => p.amountMinor));
+export function AdminRevenueChart({ summary }: { summary: RevenueSummary }) {
+  const inr = summary.currencies.INR;
+  const php = summary.currencies.PHP;
+  const max = Math.max(1, ...inr.points.map((p) => p.amountMinor));
+  const stale = Object.values(summary.currencies).reduce((n, c) => n + c.stalePendingCount, 0);
 
   return (
     <View style={styles.wrap}>
       <Text style={styles.heading}>Revenue Analytics</Text>
-      <Text style={styles.hint}>From live payment records (SUCCEEDED / PENDING)</Text>
+      <Text style={styles.hint}>
+        Successful payments, all records · days in India time · pending = checkouts started in the
+        last 24 h
+      </Text>
 
-      <View style={styles.kpiGrid}>
-        <Kpi label="Daily" value={daily} />
-        <Kpi label="Weekly" value={weekly} />
-        <Kpi label="Monthly" value={monthly} />
-        <Kpi label="Yearly" value={yearly} />
-        <Kpi label="Total collections" value={total} wide />
-        <Kpi label="Pending payments" value={pending} wide muted />
-      </View>
+      <CurrencyKpis data={inr} currency="INR" />
 
       <View style={styles.chart}>
-        {points.map((p) => {
-          const h = Math.max(6, Math.round((p.amountMinor / max) * 88));
+        {inr.points.map((p) => {
+          const h = p.amountMinor > 0 ? Math.max(6, Math.round((p.amountMinor / max) * 88)) : 0;
           return (
-            <View key={p.label} style={styles.barCol}>
+            <View key={p.date} style={styles.barCol}>
               <Text style={styles.barValue} numberOfLines={1}>
-                {p.amountMinor > 0 ? formatMinor(p.amountMinor, currency).replace(/\.00$/, "") : "—"}
+                {p.amountMinor > 0 ? formatMinor(p.amountMinor, "INR") : "—"}
               </Text>
               <View style={styles.barTrack}>
-                <LinearGradient
-                  colors={[dash.headerStart, dash.headerEnd]}
-                  style={[styles.barFill, { height: h }]}
-                />
+                {h > 0 ? (
+                  <LinearGradient
+                    colors={[dash.headerStart, dash.headerEnd]}
+                    style={[styles.barFill, { height: h }]}
+                  />
+                ) : (
+                  <View style={styles.barEmpty} />
+                )}
               </View>
-              <Text style={styles.barLabel}>{p.label}</Text>
+              <Text style={styles.barLabel}>{weekday(p.date)}</Text>
             </View>
           );
         })}
       </View>
+
+      {php ? (
+        <>
+          <Text style={styles.subheading}>Philippines (₱) — separate, not added to ₹</Text>
+          <CurrencyKpis data={php} currency="PHP" />
+        </>
+      ) : null}
+
+      {stale > 0 ? (
+        <Text style={styles.hint}>
+          {stale} checkout{stale === 1 ? "" : "s"} left unpaid for over 24 h (abandoned) — not counted
+          as pending.
+        </Text>
+      ) : null}
     </View>
   );
 }
 
-function Kpi({
-  label,
-  value,
-  wide,
-  muted,
-}: {
-  label: string;
-  value: string;
-  wide?: boolean;
-  muted?: boolean;
-}) {
+function CurrencyKpis({ data, currency }: { data: CurrencyRevenue; currency: string }) {
   return (
-    <View style={[styles.kpi, wide && styles.kpiWide, muted && styles.kpiMuted]}>
+    <View style={styles.kpiGrid}>
+      <Kpi label="Today" value={formatMinor(data.daily, currency)} />
+      <Kpi label="Last 7 days" value={formatMinor(data.weekly, currency)} />
+      <Kpi label="This month" value={formatMinor(data.monthly, currency)} />
+      <Kpi label="This year" value={formatMinor(data.yearly, currency)} />
+      <Kpi
+        label={`Total collections (${data.succeededCount})`}
+        value={formatMinor(data.total, currency)}
+      />
+      <Kpi
+        label={`Pending payments (${data.pendingCount})`}
+        value={formatMinor(data.pending, currency)}
+        muted
+      />
+    </View>
+  );
+}
+
+function Kpi({ label, value, muted }: { label: string; value: string; muted?: boolean }) {
+  return (
+    <View style={[styles.kpi, muted && styles.kpiMuted]}>
       <Text style={styles.kpiLabel}>{label}</Text>
       <Text style={styles.kpiValue} numberOfLines={1} adjustsFontSizeToFit>
         {value}
@@ -112,6 +144,7 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   heading: { fontSize: 17, fontWeight: "800", color: dash.text },
+  subheading: { fontSize: 13, fontWeight: "800", color: dash.text, marginTop: 4 },
   hint: { fontSize: 11, color: dash.textSoft, marginTop: -6 },
   kpiGrid: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   kpi: {
@@ -121,7 +154,6 @@ const styles = StyleSheet.create({
     padding: 10,
     gap: 4,
   },
-  kpiWide: { width: "48%" },
   kpiMuted: { backgroundColor: "#FFF7ED" },
   kpiLabel: { fontSize: 11, fontWeight: "600", color: dash.textMuted },
   kpiValue: { fontSize: 15, fontWeight: "800", color: dash.text },
@@ -144,8 +176,8 @@ const styles = StyleSheet.create({
     width: "70%",
     borderTopLeftRadius: 8,
     borderTopRightRadius: 8,
-    minHeight: 6,
   },
+  barEmpty: { width: "70%", height: 2, borderRadius: 1, backgroundColor: dash.pageBg },
   barLabel: { fontSize: 10, fontWeight: "700", color: dash.textMuted },
   barValue: { fontSize: 8, color: dash.textSoft, height: 12 },
 });

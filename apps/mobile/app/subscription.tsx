@@ -13,6 +13,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Card, ErrorText, PrimaryButton, SoftButton, Title } from "../components/ui";
 import { AuthGate } from "../components/AuthGate";
 import { GooglePlaySubscribe } from "../components/GooglePlaySubscribe";
+import { RequireParentGate } from "../components/RequireParentGate";
 import { RegistrationSteps } from "../components/RegistrationSteps";
 import { apiRequest, ApiError } from "../services/api";
 import { ROLE_SETS } from "../services/auth-errors";
@@ -107,12 +108,14 @@ type Catalog = {
   regions?: Region[];
 };
 
-type PublishedLevel = {
-  id: string;
-  code: string;
-  label: string;
-  startGrade: number | null;
-  endGrade: number | null;
+/** GET /subscriptions/children — each child's Learn Wise grade and whether it is paid for. */
+type ChildGrade = {
+  childId: string;
+  displayName: string;
+  gradeLabel: string;
+  entitled: boolean;
+  expiresAt: string | null;
+  level: { id: string; code: string };
 };
 
 type Pay = {
@@ -137,8 +140,9 @@ export default function SubscriptionScreen() {
   const [selectedPlanId, setSelectedPlanId] = useState<string | null>(null);
   const [data, setData] = useState<any>(null);
   const [catalog, setCatalog] = useState<Catalog | null>(null);
-  const [levels, setLevels] = useState<PublishedLevel[]>([]);
-  const [selectedLevelId, setSelectedLevelId] = useState<string | null>(null);
+  const [kids, setKids] = useState<ChildGrade[]>([]);
+  // A subscription is bought for one child, for that child's current grade.
+  const [selectedChildId, setSelectedChildId] = useState<string | null>(null);
   // null until the server suggests one from the parent's mobile number.
   const [region, setRegion] = useState<Region | null>(null);
   const [payments, setPayments] = useState<Pay[]>([]);
@@ -162,17 +166,14 @@ export default function SubscriptionScreen() {
           const me = await apiRequest("/subscriptions/me");
           setData(me);
           setLoadingCatalog(WEB_CHECKOUT);
-          const [pubLevels, history] = await Promise.all([
-            WEB_CHECKOUT
-              ? apiRequest<PublishedLevel[]>("/parent/catalog/levels").catch(() => [])
-              : Promise.resolve([] as PublishedLevel[]),
+          const [childGrades, history] = await Promise.all([
+            apiRequest<ChildGrade[]>("/subscriptions/children").catch(() => [] as ChildGrade[]),
             apiRequest<Pay[]>("/payments/me").catch(() => []),
           ]);
-          setLevels(pubLevels);
-          const levelId = selectedLevelId ?? pubLevels[0]?.id ?? undefined;
-          if (!selectedLevelId && pubLevels[0]?.id) {
-            setSelectedLevelId(pubLevels[0].id);
-          }
+          setKids(childGrades);
+          const child = childGrades.find((c) => c.childId === selectedChildId) ?? childGrades[0];
+          if (child && child.childId !== selectedChildId) setSelectedChildId(child.childId);
+          const levelId = child?.level.id;
           const query = new URLSearchParams();
           if (levelId) query.set("levelId", levelId);
           query.set("region", region ?? "IN");
@@ -201,7 +202,7 @@ export default function SubscriptionScreen() {
           setLoadingCatalog(false);
         }
       })();
-    }, [selectedLevelId, region])
+    }, [selectedChildId, region])
   );
 
   const sub = data?.subscription;
@@ -209,18 +210,25 @@ export default function SubscriptionScreen() {
   const selectedPlan = catalog?.plans?.find((p) => planKey(p) === selectedPlanId) ?? null;
 
   function continueToAgreements() {
+    if (!selectedChildId) {
+      setError("Choose which child this subscription is for.");
+      return;
+    }
     if (!selectedPlanId) {
       setError("Choose a subscription plan first.");
       return;
     }
     setError(null);
     router.push(
-      `/agreements?planId=${encodeURIComponent(selectedPlanId)}&region=${region ?? "IN"}`
+      `/agreements?planId=${encodeURIComponent(selectedPlanId)}&childId=${encodeURIComponent(selectedChildId)}&region=${region ?? "IN"}`
     );
   }
 
+  const selectedChild = kids.find((c) => c.childId === selectedChildId) ?? null;
+
   return (
     <AuthGate roles={ROLE_SETS.parentFamily}>
+      <RequireParentGate>
       <SafeAreaView style={styles.safe}>
         <ScrollView contentContainerStyle={styles.content}>
           <SoftButton
@@ -338,9 +346,53 @@ export default function SubscriptionScreen() {
             ) : null}
           </Card>
 
+          {Platform.OS !== "ios" ? (
+            <Card style={{ gap: 10 }}>
+              <Text style={styles.section}>Who is this subscription for?</Text>
+              <Text style={styles.note}>
+                Each subscription unlocks one child's current grade.
+              </Text>
+              {kids.length ? (
+                <View style={styles.chipRow}>
+                  {kids.map((c) => {
+                    const on = c.childId === selectedChildId;
+                    return (
+                      <Pressable
+                        key={c.childId}
+                        onPress={() => {
+                          setSelectedChildId(c.childId);
+                          setSelectedPlanId(null);
+                        }}
+                        accessibilityRole="radio"
+                        accessibilityState={{ checked: on }}
+                        style={[styles.chip, on && styles.chipOn]}
+                      >
+                        <Text style={[styles.chipTitle, on && styles.chipTitleOn]}>{c.displayName}</Text>
+                        <Text style={[styles.chipMeta, on && styles.chipMetaOn]}>
+                          {c.gradeLabel.split(" – ")[0]}
+                          {c.entitled && c.expiresAt
+                            ? ` · until ${new Date(c.expiresAt).toLocaleDateString()}`
+                            : c.entitled
+                              ? " · active"
+                              : ""}
+                        </Text>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+              ) : (
+                <>
+                  <Text style={styles.note}>Add a child first, then choose a plan for them.</Text>
+                  <SoftButton label="Add a child" onPress={() => router.push("/parent")} />
+                </>
+              )}
+            </Card>
+          ) : null}
+
           {Platform.OS === "android" ? (
             <GooglePlaySubscribe
               currentProductId={sub?.provider === "google_play" ? sub.productId ?? null : null}
+              childId={selectedChildId}
               onEntitlementChanged={refreshEntitlement}
             />
           ) : null}
@@ -360,7 +412,9 @@ export default function SubscriptionScreen() {
             <View style={{ gap: 4 }}>
               <Text style={styles.section}>Choose a plan</Text>
               <Text style={styles.note}>
-                Pick a learning level, then select a subscription duration.
+                {selectedChild
+                  ? `Plans for ${selectedChild.displayName} · ${selectedChild.gradeLabel}.`
+                  : "Choose a child above, then select a subscription duration."}
               </Text>
             </View>
 
@@ -389,44 +443,6 @@ export default function SubscriptionScreen() {
                 </View>
               </View>
             ) : null}
-
-            {levels.length ? (
-              <View style={{ gap: 8 }}>
-                <Text style={styles.fieldLabel}>Learning level</Text>
-                <View style={styles.chipRow}>
-                  {levels.map((l) => {
-                    const on = selectedLevelId === l.id;
-                    const range =
-                      l.startGrade != null
-                        ? `Grades ${l.startGrade}–${l.endGrade}`
-                        : null;
-                    return (
-                      <Pressable
-                        key={l.id}
-                        onPress={() => setSelectedLevelId(l.id)}
-                        style={[styles.chip, on && styles.chipOn]}
-                      >
-                        <Text style={[styles.chipTitle, on && styles.chipTitleOn]}>
-                          {l.label}
-                        </Text>
-                        {range ? (
-                          <Text
-                            style={[styles.chipMeta, on && styles.chipMetaOn]}
-                          >
-                            {range}
-                          </Text>
-                        ) : null}
-                      </Pressable>
-                    );
-                  })}
-                </View>
-              </View>
-            ) : (
-              <Text style={styles.note}>
-                No published levels yet. Ask Admin to publish Academic Setup
-                levels.
-              </Text>
-            )}
 
             {catalog?.plans?.length ? (
               <View style={{ gap: 10 }}>
@@ -500,7 +516,7 @@ export default function SubscriptionScreen() {
             <PrimaryButton
               label="Continue"
               onPress={continueToAgreements}
-              disabled={!selectedPlanId || catalog?.enabled === false}
+              disabled={!selectedPlanId || !selectedChildId || catalog?.enabled === false}
             />
             {catalog?.enabled === false ? (
               <Text style={styles.checkoutHint}>Online payments are not open yet.</Text>
@@ -552,6 +568,7 @@ export default function SubscriptionScreen() {
           ) : null}
         </ScrollView>
       </SafeAreaView>
+      </RequireParentGate>
     </AuthGate>
   );
 }

@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useState } from "react";
 import {
   RefreshControl,
   ScrollView,
@@ -10,56 +10,24 @@ import { useFocusEffect } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { AdminTabBar } from "../components/AdminTabBar";
-import { AdminRevenueChart } from "../components/admin/AdminRevenueChart";
+import { AdminRevenueChart, type RevenueSummary } from "../components/admin/AdminRevenueChart";
 import { dash } from "../components/admin/dashboardTheme";
 import { AuthGate } from "../components/AuthGate";
 import { ErrorText, LoadingSlot } from "../components/ui";
 import { apiRequest, ApiError } from "../services/api";
 import { ROLE_SETS } from "../services/auth-errors";
 
-type PaymentRow = {
-  amountCents: number;
-  currency: string;
-  status: string;
-  createdAt: string;
-};
-
-function formatMoney(amountMinor: number, currency: string) {
-  const major = amountMinor / 100;
-  try {
-    return new Intl.NumberFormat("en-IN", {
-      style: "currency",
-      currency: currency || "INR",
-      maximumFractionDigits: 0,
-    }).format(major);
-  } catch {
-    return `₹${major.toFixed(0)}`;
-  }
-}
-
-function sumSucceeded(rows: PaymentRow[], from: Date, to = new Date()) {
-  return rows
-    .filter((p) => {
-      if (p.status !== "SUCCEEDED" || !p.createdAt) return false;
-      const t = new Date(p.createdAt).getTime();
-      return t >= from.getTime() && t <= to.getTime();
-    })
-    .reduce((n, p) => n + (p.amountCents ?? 0), 0);
-}
-
 /**
- * Reports tab — no dedicated reports API yet.
- * Shows live revenue analytics from payments (real data only).
+ * Reports tab — revenue analytics from `GET /payments/admin/revenue` (real data only).
  */
 export default function AdminReportsScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [payments, setPayments] = useState<PaymentRow[]>([]);
+  const [revenue, setRevenue] = useState<RevenueSummary | null>(null);
 
   const load = useCallback(async () => {
-    const data = await apiRequest<PaymentRow[]>("/payments/admin?take=100");
-    setPayments(data);
+    setRevenue(await apiRequest<RevenueSummary>("/payments/admin/revenue"));
   }, []);
 
   useFocusEffect(
@@ -77,52 +45,6 @@ export default function AdminReportsScreen() {
       })();
     }, [load])
   );
-
-  // The chart is in INR; Philippine (PHP) payments are totalled separately so currencies never mix.
-  const currency = "INR";
-  const phpPaidTotal = payments
-    .filter((p) => p.currency === "PHP" && p.status === "SUCCEEDED")
-    .reduce((n, p) => n + p.amountCents, 0);
-
-  const revenue = useMemo(() => {
-    const rows = payments.filter((p) => !p.currency || p.currency === "INR");
-    const now = new Date();
-    const dayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const weekStart = new Date(dayStart);
-    weekStart.setDate(weekStart.getDate() - 6);
-    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-    const yearStart = new Date(now.getFullYear(), 0, 1);
-    const daily = sumSucceeded(rows, dayStart, now);
-    const weekly = sumSucceeded(rows, weekStart, now);
-    const monthly = sumSucceeded(rows, monthStart, now);
-    const yearly = sumSucceeded(rows, yearStart, now);
-    const total = rows
-      .filter((p) => p.status === "SUCCEEDED")
-      .reduce((n, p) => n + p.amountCents, 0);
-    const pending = rows
-      .filter((p) => p.status === "PENDING")
-      .reduce((n, p) => n + p.amountCents, 0);
-    const points = [];
-    for (let i = 6; i >= 0; i -= 1) {
-      const d = new Date(dayStart);
-      d.setDate(d.getDate() - i);
-      const next = new Date(d);
-      next.setDate(next.getDate() + 1);
-      points.push({
-        label: d.toLocaleDateString(undefined, { weekday: "short" }).slice(0, 2),
-        amountMinor: sumSucceeded(rows, d, new Date(next.getTime() - 1)),
-      });
-    }
-    return {
-      daily: formatMoney(daily, currency),
-      weekly: formatMoney(weekly, currency),
-      monthly: formatMoney(monthly, currency),
-      yearly: formatMoney(yearly, currency),
-      total: formatMoney(total, currency),
-      pending: formatMoney(pending, currency),
-      points,
-    };
-  }, [payments, currency]);
 
   return (
     <AuthGate roles={ROLE_SETS.admin}>
@@ -158,28 +80,12 @@ export default function AdminReportsScreen() {
           <View style={styles.note}>
             <Ionicons name="information-circle" size={18} color={dash.blue} />
             <Text style={styles.noteText}>
-              No dedicated Admin reports endpoint exists yet. This screen shows revenue
-              derived from `GET /payments/admin` only — no fabricated KPIs.
+              Revenue is totalled on the server from every payment record, per currency, using
+              India time. No fabricated KPIs.
             </Text>
           </View>
 
-          {!loading ? (
-            <AdminRevenueChart
-              points={revenue.points}
-              currency={currency}
-              daily={revenue.daily}
-              weekly={revenue.weekly}
-              monthly={revenue.monthly}
-              yearly={revenue.yearly}
-              total={revenue.total}
-              pending={revenue.pending}
-            />
-          ) : null}
-          {!loading && phpPaidTotal > 0 ? (
-            <Text style={styles.noteText}>
-              Philippines payments (not in the ₹ chart): {formatMoney(phpPaidTotal, "PHP")} received
-            </Text>
-          ) : null}
+          {!loading && revenue ? <AdminRevenueChart summary={revenue} /> : null}
         </ScrollView>
 
         <AdminTabBar />

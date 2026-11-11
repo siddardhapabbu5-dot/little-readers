@@ -61,7 +61,7 @@ describe.skipIf(!hasDb)("Child learning seats (base 2 + add-ons)", () => {
     });
 
     const cat = await prisma.learningCategory.findFirst({
-      where: { isPublished: true },
+      where: { isPublished: true, group: { level: { code: "LEVEL_1" } } },
     });
     expect(cat).toBeTruthy();
     categoryId = cat!.id;
@@ -92,7 +92,7 @@ describe.skipIf(!hasDb)("Child learning seats (base 2 + add-ons)", () => {
       const res = await request(app)
         .post("/api/children")
         .set("Authorization", `Bearer ${parentToken}`)
-        .send({ displayName: name, birthDate: "15/03/2021" });
+        .send({ displayName: name, birthDate: "15/03/2021", level: "LEVEL_1" });
       expect(res.status).toBe(201);
       return res.body.data as { id: string; hasLearningSeat: boolean };
     };

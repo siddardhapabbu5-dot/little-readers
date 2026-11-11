@@ -51,7 +51,7 @@ export async function sendEmailOtp(input: { email: string; purpose: EmailOtpPurp
   };
 
   // Unknown or inactive account on reset: same response, nothing sent.
-  if (input.purpose === "RESET_PASSWORD" && (!user || !user.isActive)) {
+  if (input.purpose !== "REGISTER" && (!user || !user.isActive)) {
     return response;
   }
 

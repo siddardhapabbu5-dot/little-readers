@@ -8,6 +8,9 @@
  */
 import { prisma } from "../src/lib/prisma.js";
 import { LEVEL1_CATEGORIES, assertLevel1Vocabulary } from "../prisma/data/level1-vocabulary.js";
+import { assertDestructiveAllowed } from "./lib/destructive-guard.mjs";
+
+assertDestructiveAllowed("restore-local-level1-vocab");
 
 const TEST_WORD =
   /^(playfix_|seatfix_|dicttest|prog_|pub_|vis_)|^(uploadtest|wmhist|wmword|wmreclass|wmbulk|wmmean|sheetword|lsn|bew|b8w)(\d+|[a-j]{10,})|^w_\d+_/i;

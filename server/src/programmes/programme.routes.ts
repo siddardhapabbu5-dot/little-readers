@@ -5,6 +5,7 @@ import {
   requireRoles,
   type AuthenticatedRequest,
 } from "../middleware/auth.js";
+import { requirePermission } from "../auth/permissions.js";
 import { validateBody } from "../middleware/validate.js";
 import {
   activateProgramme,
@@ -18,7 +19,7 @@ import {
 
 export const programmeRouter = Router();
 
-programmeRouter.use(requireAuth, requireRoles("ADMIN", "SUPER_ADMIN"));
+programmeRouter.use(requireAuth, requirePermission("content.manage"));
 
 programmeRouter.get("/", async (_req, res, next) => {
   try {

@@ -246,13 +246,15 @@ async function main() {
     });
   }
 
-  // Demo accounts, sample lessons, free yearly seat — local/tests only.
-  // Client / fresh DB: SEED_DEMO=0
-  const seedDemo = process.env.SEED_DEMO !== "0";
+  // Demo accounts, sample lessons, free yearly seat — local/tests only, explicit opt-in.
+  const seedDemo =
+    process.env.ALLOW_DEMO === "1" &&
+    process.env.SEED_DEMO !== "0" &&
+    (process.env.NODE_ENV === "development" || process.env.NODE_ENV === "test");
 
   if (!seedDemo) {
     console.log(
-      "Seed complete (structure only — SEED_DEMO=0, no demo users, sample lessons, or free trials)."
+      "Seed complete (structure only — no demo users, sample lessons, or free trials; set ALLOW_DEMO=1 in development/test to add them)."
     );
     return;
   }
@@ -533,7 +535,7 @@ async function main() {
   console.log("Demo admin:       admin@littlereaders.test / AdminDemo1");
   console.log("Demo super admin: superadmin@littlereaders.test / SuperDemo1");
   console.log("Note: TEACHER/STUDENT User roles are deferred (Child profiles = student learning identity).");
-  console.log("Client handoff: run `npm run db:prepare-client --workspace=@little-readers/server` and seed with SEED_DEMO=0.");
+  console.log("Client handoff: run `npm run db:prepare-client --workspace=@little-readers/server` and seed without ALLOW_DEMO.");
 }
 
 main()

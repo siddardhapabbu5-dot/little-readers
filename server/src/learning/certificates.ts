@@ -2,6 +2,7 @@ import { randomInt } from "node:crypto";
 import { APP_NAME, CERTIFICATE_PREFIX } from "@little-readers/shared";
 import { AppError } from "../lib/errors.js";
 import { prisma } from "../lib/prisma.js";
+import { certificateAchievementCode } from "./grade-access.js";
 
 const NO_ALPHABET = "23456789ABCDEFGHJKLMNPQRSTUVWXYZ";
 
@@ -92,7 +93,13 @@ export async function issueCertificateIfMastered(childId: string, categoryId: st
 
   const category = await prisma.learningCategory.findUnique({
     where: { id: categoryId },
-    select: { id: true, code: true, label: true, words: { where: { isActive: true }, select: { id: true } } },
+    select: {
+      id: true,
+      code: true,
+      label: true,
+      group: { select: { level: { select: { code: true } } } },
+      words: { where: { isActive: true }, select: { id: true } },
+    },
   });
   if (!category || category.words.length === 0) return null;
 
@@ -123,11 +130,12 @@ export async function issueCertificateIfMastered(childId: string, categoryId: st
         },
         include: { child: { select: CHILD_SELECT } },
       });
+      const achievementCode = certificateAchievementCode(category.group.level.code, category.code);
       await prisma.achievement.upsert({
-        where: { childId_code: { childId, code: `cert_${category.code}` } },
+        where: { childId_code: { childId, code: achievementCode } },
         create: {
           childId,
-          code: `cert_${category.code}`,
+          code: achievementCode,
           title: `${category.label} Champion`,
           description: `Earned the ${category.label} certificate`,
         },

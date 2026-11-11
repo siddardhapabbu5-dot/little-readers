@@ -26,6 +26,32 @@ function assertAgeRange(ageMin: number, ageMax: number) {
   }
 }
 
+/** Grades 2–4 publish only through Draft → Pending → Approved; Grade 1 (live) keeps its existing behaviour. */
+const APPROVAL_LEVELS = new Set(["LEVEL_2", "LEVEL_3", "LEVEL_4"]);
+
+async function usesApprovalWorkflow(groupId: string) {
+  const group = await prisma.learningGroup.findUnique({
+    where: { id: groupId },
+    select: { level: { select: { code: true } } },
+  });
+  return APPROVAL_LEVELS.has(group?.level.code ?? "");
+}
+
+export type TopicFields = {
+  symbol?: string | null;
+  dailyConversation?: string | null;
+  exampleSentence?: string | null;
+};
+
+function topicFieldData(input: TopicFields) {
+  const clean = (v: string | null | undefined) => (v === undefined ? undefined : v?.trim() || null);
+  return {
+    ...(input.symbol !== undefined ? { symbol: clean(input.symbol) } : {}),
+    ...(input.dailyConversation !== undefined ? { dailyConversation: clean(input.dailyConversation) } : {}),
+    ...(input.exampleSentence !== undefined ? { exampleSentence: clean(input.exampleSentence) } : {}),
+  };
+}
+
 // ——— Grades ———
 
 export async function listGradesAdmin(includeInactive = true) {
@@ -518,7 +544,7 @@ export async function createCategory(input: {
   isPublished?: boolean;
   /** When true, seed curated starter words + emoji for known themes. */
   fillStarters?: boolean;
-}) {
+} & TopicFields) {
   const code = assertCode(input.code, "category code");
   const label = input.label.trim();
   if (!label) throw new AppError("label is required", 400);
@@ -530,6 +556,7 @@ export async function createCategory(input: {
     ? resolveStarterPack(code, label)
     : null;
 
+  // A new category has no words yet, so it always starts hidden from children.
   const category = await prisma.learningCategory.create({
     data: {
       groupId: input.groupId,
@@ -539,7 +566,9 @@ export async function createCategory(input: {
       emoji: input.emoji?.trim() || pack?.emoji || "📚",
       sortOrder: input.sortOrder ?? 0,
       unlockOrder: input.unlockOrder ?? 0,
-      isPublished: input.isPublished ?? true,
+      isPublished: false,
+      status: "DRAFT",
+      ...topicFieldData(input),
     },
   });
 
@@ -547,6 +576,13 @@ export async function createCategory(input: {
     // Only fill when a known theme matches — any custom name still creates fine.
     if (resolveStarterPack(code, label)) {
       const filled = await fillCategoryStarterWords(category.id);
+      if ((input.isPublished ?? true) && filled.created > 0 && !(await usesApprovalWorkflow(input.groupId))) {
+        const published = await prisma.learningCategory.update({
+          where: { id: category.id },
+          data: { isPublished: true, status: "PUBLISHED" },
+        });
+        return { ...published, starterFill: filled };
+      }
       return { ...category, starterFill: filled };
     }
     return {
@@ -641,12 +677,22 @@ export async function updateCategory(
     sortOrder?: number;
     unlockOrder?: number;
     isPublished?: boolean;
-  }
+  } & TopicFields
 ) {
   const existing = await prisma.learningCategory.findUnique({ where: { id } });
   if (!existing) throw new AppError("Category not found", 404);
 
   if (patch.isPublished === true && !existing.isPublished) {
+    if (
+      (await usesApprovalWorkflow(existing.groupId)) &&
+      existing.status !== "APPROVED" &&
+      existing.status !== "UNPUBLISHED"
+    ) {
+      throw new AppError("Approve this topic in the curriculum workflow before publishing it", 409, {
+        code: "APPROVAL_REQUIRED",
+        status: existing.status,
+      });
+    }
     await assertCategoryReadyToPublish(id);
   }
 
@@ -679,7 +725,14 @@ export async function updateCategory(
       ...(patch.emoji !== undefined ? { emoji: patch.emoji.trim() || "📚" } : {}),
       ...(patch.sortOrder !== undefined ? { sortOrder: patch.sortOrder } : {}),
       ...(patch.unlockOrder !== undefined ? { unlockOrder: patch.unlockOrder } : {}),
-      ...(patch.isPublished !== undefined ? { isPublished: patch.isPublished } : {}),
+      ...(patch.isPublished === true ? { isPublished: true, status: "PUBLISHED" as const } : {}),
+      ...(patch.isPublished === false
+        ? {
+            isPublished: false,
+            ...(existing.status === "PUBLISHED" ? { status: "UNPUBLISHED" as const } : {}),
+          }
+        : {}),
+      ...topicFieldData(patch),
     },
   });
 }

@@ -6,6 +6,7 @@ import {
   requireRoles,
   type AuthenticatedRequest,
 } from "../middleware/auth.js";
+import { requirePermission } from "../auth/permissions.js";
 import { AppError } from "../lib/errors.js";
 import { MAX_VOCAB_UPLOAD_BYTES } from "../vocab-import/file-security.js";
 import { validateBody } from "../middleware/validate.js";
@@ -31,7 +32,7 @@ const upload = multer({
 
 export const dictionaryRouter = Router();
 
-dictionaryRouter.use(requireAuth, requireRoles("ADMIN", "SUPER_ADMIN"));
+dictionaryRouter.use(requireAuth, requirePermission("content.manage"));
 
 dictionaryRouter.get("/grades", async (_req, res, next) => {
   try {

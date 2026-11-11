@@ -3,6 +3,9 @@
  * so Admin can create/upload a fresh structure.
  */
 import { PrismaClient } from "@prisma/client";
+import { assertDestructiveAllowed } from "./lib/destructive-guard.mjs";
+
+assertDestructiveAllowed("wipe-grades-categories");
 
 const prisma = new PrismaClient();
 

@@ -48,13 +48,14 @@ export function seatCapacity(
 /**
  * The subscription row that currently decides a parent's access, across all providers
  * (google_play, razorpay, manual_admin): the eligible row that runs longest, else the newest row.
+ * Family (seat-based) rows only; grade-wise rows (childId set) never count here.
  */
 export async function entitlementSubscription(
   userId: string,
   tx: Prisma.TransactionClient | typeof prisma = prisma
 ) {
   const rows = await tx.subscription.findMany({
-    where: { userId },
+    where: { userId, childId: null },
     orderBy: { createdAt: "desc" },
     take: 25,
   });
@@ -499,7 +500,7 @@ export async function grantManualSubscription(input: {
     // Manual grants live on their own manual_admin row so gateway-paid rows are never relabelled.
     const current = await latestSubscription(parent.id, tx);
     const existing = await tx.subscription.findFirst({
-      where: { userId: parent.id, provider: "manual_admin" },
+      where: { userId: parent.id, provider: "manual_admin", childId: null },
       orderBy: { createdAt: "desc" },
     });
     const base =
@@ -617,6 +618,8 @@ const ADMIN_SUBSCRIPTION_SELECT = {
   acknowledgedAt: true,
   includedSeats: true,
   extraSeats: true,
+  childId: true,
+  levelId: true,
   createdAt: true,
   updatedAt: true,
 } satisfies Prisma.SubscriptionSelect;
@@ -643,7 +646,7 @@ export async function listSubscriptionsForAdmin(take = 50, query?: string) {
     : null;
 
   const rows = await prisma.subscription.findMany({
-    where: userIds ? { userId: { in: userIds } } : undefined,
+    where: userIds ? { userId: { in: userIds }, childId: null } : { childId: null },
     orderBy: { updatedAt: "desc" },
     take: Math.min(take * 3, 500),
     select: {

@@ -1,0 +1,585 @@
+{
+  "_note": "DRAFT vocabulary suggestions for Grades 2-4 topics. Not from an approved source: every topic is imported with Needs Review = YES and stays unpublished until an admin approves and publishes it. Format per word: [word, meaning, example sentence, emoji, difficulty].",
+  "LEVEL_2": {
+    "NOUNS": { "symbol": "🏫", "words": [
+      ["school", "a place where children learn", "I go to school every day.", "🏫", 1],
+      ["teacher", "a person who helps you learn", "My teacher reads us a story.", "👩‍🏫", 1],
+      ["book", "pages with words and pictures", "I read a book with my mom.", "📖", 1],
+      ["park", "an outdoor place to play", "We play in the park.", "🌳", 1],
+      ["ball", "a round toy you can throw", "Throw the ball to me.", "⚽", 1],
+      ["library", "a room full of books to borrow", "Our school has a big library.", "📚", 2]
+    ]},
+    "COMMON_AND_PROPER_NOUNS": { "symbol": "🏷️", "words": [
+      ["name", "what someone is called", "My name is Ana.", "🏷️", 1],
+      ["city", "a big town with many people", "Manila is a busy city.", "🏙️", 2],
+      ["country", "a land with its own people and flag", "India is a big country.", "🗺️", 2],
+      ["girl", "a young female child", "The girl is my friend.", "👧", 1],
+      ["river", "a long stream of water", "The river is very long.", "🏞️", 1],
+      ["dog", "an animal that barks", "Our dog is called Max.", "🐶", 1]
+    ]},
+    "PRONOUNS": { "symbol": "🙋", "words": [
+      ["he", "a word for a boy or a man", "He is my brother.", "👦", 1],
+      ["she", "a word for a girl or a woman", "She is my best friend.", "👩", 1],
+      ["we", "a word for me and other people", "We play together.", "👫", 1],
+      ["they", "a word for other people", "They are in my class.", "👨‍👩‍👧", 1],
+      ["it", "a word for a thing or an animal", "It is a red balloon.", "🎈", 1],
+      ["you", "the person I am talking to", "You are kind.", "🫵", 1]
+    ]},
+    "ACTION_VERBS": { "symbol": "🏃", "words": [
+      ["run", "move fast with your legs", "I run in the garden.", "🏃", 1],
+      ["jump", "push yourself up off the ground", "Frogs jump high.", "🐸", 1],
+      ["brush", "clean with a brush", "I brush my teeth every morning.", "🪥", 1],
+      ["eat", "put food in your mouth", "We eat lunch at noon.", "🍽️", 1],
+      ["swim", "move through water", "Fish swim in the sea.", "🏊", 1],
+      ["sing", "make music with your voice", "We sing a happy song.", "🎤", 1]
+    ]},
+    "ADJECTIVES": { "symbol": "🌈", "words": [
+      ["big", "large in size", "An elephant is big.", "🐘", 1],
+      ["small", "little in size", "A mouse is small.", "🐭", 1],
+      ["clean", "not dirty", "Our classroom is clean.", "🧽", 1],
+      ["bright", "full of light", "The sun is bright.", "☀️", 1],
+      ["happy", "feeling good and glad", "I feel happy today.", "😊", 1],
+      ["soft", "nice to touch and not hard", "My teddy bear is soft.", "🧸", 1]
+    ]},
+    "ADVERBS": { "symbol": "⚡", "words": [
+      ["slowly", "not fast", "The turtle walks slowly.", "🐢", 2],
+      ["quickly", "very fast", "The rabbit runs quickly.", "🐇", 2],
+      ["carefully", "with care", "I read the story carefully.", "🔍", 2],
+      ["loudly", "with a big sound", "The lion roars loudly.", "🦁", 2],
+      ["quietly", "with a small sound", "We whisper quietly in the library.", "🤫", 2],
+      ["gently", "in a soft and kind way", "Pat the cat gently.", "🐱", 2]
+    ]},
+    "SUBJECT_AND_PREDICATE": { "symbol": "🧩", "words": [
+      ["brother", "a boy in your family", "My brother plays basketball.", "👦", 1],
+      ["plays", "has fun with a game", "She plays with blocks.", "🧱", 1],
+      ["bird", "an animal with wings and feathers", "The bird sings.", "🐦", 1],
+      ["flies", "moves through the air", "The kite flies high.", "🪁", 1],
+      ["baby", "a very young child", "The baby sleeps.", "👶", 1],
+      ["sleeps", "rests with eyes closed", "The cat sleeps all day.", "😴", 1]
+    ]},
+    "TYPES_OF_SENTENCES": { "symbol": "❓", "words": [
+      ["question", "words you say to ask something", "Can you ask me a question?", "❓", 2],
+      ["answer", "what you say back to a question", "I know the answer.", "💡", 1],
+      ["ask", "say words to find something out", "Ask your teacher for help.", "🙋", 1],
+      ["tell", "say something to someone", "Tell me a story.", "🗣️", 1],
+      ["please", "a kind word when you ask for something", "Please pass the book.", "🙏", 1],
+      ["wow", "a word that shows surprise", "Wow, what a big cake!", "🤩", 1]
+    ]},
+    "SYNONYMS_AND_ANTONYMS": { "symbol": "🔄", "words": [
+      ["glad", "happy", "Glad is another word for happy.", "😄", 1],
+      ["sad", "not happy", "Sad is the opposite of happy.", "😢", 1],
+      ["hot", "very warm", "The soup is hot.", "🔥", 1],
+      ["cold", "not warm", "Ice is cold.", "🧊", 1],
+      ["up", "toward the sky", "The balloon goes up.", "⬆️", 1],
+      ["down", "toward the ground", "The leaf falls down.", "🍂", 1]
+    ]},
+    "PREFIXES_AND_SUFFIXES": { "symbol": "🧱", "words": [
+      ["unhappy", "not happy", "The lost puppy looks unhappy.", "😟", 2],
+      ["undo", "take back what was done", "I can undo my knot.", "🪢", 2],
+      ["redo", "do again", "Let us redo the puzzle.", "🔁", 2],
+      ["helpful", "giving help", "My sister is helpful.", "🤝", 2],
+      ["careful", "taking care", "Be careful on the stairs.", "⚠️", 2],
+      ["kindness", "being kind to others", "Kindness makes friends smile.", "💖", 2]
+    ]},
+    "READING_COMPREHENSION": { "symbol": "📖", "words": [
+      ["story", "words that tell what happened", "Mom tells me a bedtime story.", "📕", 1],
+      ["picture", "an image you can look at", "Look at the picture.", "🖼️", 1],
+      ["first", "before all the others", "First, the boy woke up.", "🥇", 1],
+      ["next", "coming after", "Next, he ate breakfast.", "➡️", 1],
+      ["end", "the last part", "The end of the story was happy.", "🏁", 1],
+      ["helped", "gave help", "The boy helped an old woman.", "🧓", 2]
+    ]},
+    "WRITING_A_PARAGRAPH": { "symbol": "✍️", "words": [
+      ["write", "make letters and words", "I write my name.", "✍️", 1],
+      ["pencil", "a tool for writing", "My pencil is sharp.", "✏️", 1],
+      ["word", "letters that mean something", "Cat is a short word.", "🔤", 1],
+      ["sentence", "words that tell a full idea", "I wrote one sentence.", "📝", 2],
+      ["family", "people who love and care for you", "I love my family.", "👨‍👩‍👧", 1],
+      ["love", "a strong caring feeling", "I love my grandma.", "❤️", 1]
+    ]},
+    "TYPES_OF_NOUNS": { "symbol": "🐦", "words": [
+      ["flock", "a group of birds", "A flock of birds flew over the trees.", "🕊️", 2],
+      ["herd", "a group of cows or other animals", "A herd of cows eats grass.", "🐄", 2],
+      ["team", "a group that plays or works together", "Our team won the game.", "🏅", 1],
+      ["class", "a group of pupils who learn together", "Our class goes on a trip.", "🧑‍🎓", 1],
+      ["bunch", "things held together", "I have a bunch of grapes.", "🍇", 2],
+      ["crowd", "many people together", "A crowd watched the show.", "👥", 2]
+    ]},
+    "ABSTRACT_AND_CONCRETE_NOUNS": { "symbol": "💭", "words": [
+      ["joy", "a big happy feeling", "Puppies bring us joy.", "😃", 2],
+      ["hope", "wishing for something good", "I hope it is sunny.", "🌤️", 2],
+      ["peace", "a calm and quiet feeling", "We want peace at home.", "🕊️", 2],
+      ["toy", "a thing to play with", "My toy is a car.", "🚗", 1],
+      ["chair", "a seat with legs", "Sit on the chair.", "🪑", 1],
+      ["courage", "being brave", "It takes courage to try.", "🦸", 2]
+    ]},
+    "PRONOUN_ANTECEDENT_AGREEMENT": { "symbol": "🔗", "words": [
+      ["their", "belonging to them", "The pupils brought their books.", "🎒", 2],
+      ["his", "belonging to him", "Tom lost his cap.", "🧢", 1],
+      ["her", "belonging to her", "Mia hugs her cat.", "🐈", 1],
+      ["our", "belonging to us", "This is our house.", "🏠", 1],
+      ["its", "belonging to it", "The dog wags its tail.", "🐕", 1],
+      ["my", "belonging to me", "This is my bag.", "👜", 1]
+    ]},
+    "VERB_TENSES": { "symbol": "⏰", "words": [
+      ["visited", "went to see someone", "I visited my grandmother yesterday.", "👵", 2],
+      ["played", "had fun before now", "We played tag after school.", "🤸", 1],
+      ["will", "a word for something that happens later", "I will draw a cat.", "🔮", 1],
+      ["yesterday", "the day before today", "It rained yesterday.", "📆", 2],
+      ["today", "this day", "Today is sunny.", "🌞", 1],
+      ["tomorrow", "the day after today", "We go to the zoo tomorrow.", "🗓️", 2]
+    ]},
+    "SUBJECT_VERB_AGREEMENT": { "symbol": "⚖️", "words": [
+      ["explains", "tells how something works", "Our teacher explains the lesson clearly.", "🧑‍🏫", 2],
+      ["is", "a word used for one person or thing", "The cat is sleepy.", "😺", 1],
+      ["are", "a word used for more than one", "The cats are sleepy.", "🐈‍⬛", 1],
+      ["has", "owns, when we talk about one", "She has a kite.", "🪁", 1],
+      ["have", "own, when we talk about many or I", "We have two dogs.", "🐕‍🦺", 1],
+      ["runs", "moves fast, when we talk about one", "The horse runs fast.", "🐎", 1]
+    ]},
+    "PREPOSITIONS": { "symbol": "📍", "words": [
+      ["under", "below something", "My bag is under the table.", "⬇️", 1],
+      ["on", "touching the top of something", "The cup is on the table.", "☕", 1],
+      ["in", "inside something", "The fish is in the bowl.", "🐠", 1],
+      ["behind", "at the back of", "The cat hides behind the box.", "📦", 2],
+      ["between", "in the middle of two things", "I sit between my friends.", "🧍", 2],
+      ["near", "close to", "The shop is near my house.", "🏪", 1]
+    ]},
+    "CONJUNCTIONS": { "symbol": "➕", "words": [
+      ["and", "a word that joins two things", "I like apples and bananas.", "🍎", 1],
+      ["or", "a word that shows a choice", "Would you like rice or bread?", "🍚", 1],
+      ["but", "a word that shows something different", "I am small but strong.", "💪", 1],
+      ["so", "a word that shows a result", "I studied hard, so I passed.", "✅", 1],
+      ["because", "a word that gives a reason", "I smile because I am happy.", "😁", 2],
+      ["then", "after that", "Wash your hands, then eat.", "🧼", 1]
+    ]},
+    "DIRECT_AND_INDIRECT_SPEECH": { "symbol": "💬", "words": [
+      ["said", "spoke words", "Ana said, \"I am ready.\"", "💬", 1],
+      ["asked", "spoke to find something out", "Ben asked for water.", "🥤", 1],
+      ["replied", "answered", "Mom replied with a smile.", "🙂", 2],
+      ["shouted", "said very loudly", "He shouted, \"Goal!\"", "📣", 2],
+      ["whispered", "said very softly", "She whispered a secret.", "🤐", 2],
+      ["told", "said something to someone", "Dad told me a joke.", "😂", 1]
+    ]},
+    "CONTEXT_CLUES": { "symbol": "🔎", "words": [
+      ["clue", "a hint that helps you find an answer", "The picture is a clue.", "🔎", 2],
+      ["guess", "think of an answer when you are not sure", "Can you guess the word?", "🤔", 1],
+      ["hint", "a small help", "Give me a hint, please.", "🪄", 1],
+      ["meaning", "what a word tells us", "What is the meaning of tiny?", "📘", 2],
+      ["tiny", "very small", "An ant is tiny.", "🐜", 1],
+      ["huge", "very big", "A whale is huge.", "🐋", 1]
+    ]},
+    "FIGURATIVE_LANGUAGE": { "symbol": "🐝", "words": [
+      ["busy", "having lots to do", "My mother is as busy as a bee.", "🐝", 1],
+      ["brave", "not afraid", "He is as brave as a lion.", "🦁", 1],
+      ["light", "not heavy", "The bag is as light as a feather.", "🎈", 1],
+      ["feather", "a soft thing that covers a bird", "The feather floats down.", "🪶", 2],
+      ["snow", "cold white flakes from the sky", "Her hands are as cold as snow.", "❄️", 1],
+      ["bee", "an insect that makes honey", "A bee buzzes near the flower.", "🌼", 1]
+    ]},
+    "MAIN_IDEA_AND_SUPPORTING_DETAILS": { "symbol": "🎯", "words": [
+      ["main", "the most important", "The main idea is caring for plants.", "🎯", 2],
+      ["detail", "a small fact", "Each detail helps the story.", "🧷", 2],
+      ["topic", "what something is about", "The topic is the environment.", "🗂️", 2],
+      ["plant", "a living thing that grows in soil", "Water the plant every day.", "🌱", 1],
+      ["earth", "the planet we live on", "We take care of the Earth.", "🌍", 1],
+      ["recycle", "use something again", "We recycle paper.", "♻️", 2]
+    ]},
+    "WRITING_A_SUMMARY": { "symbol": "📝", "words": [
+      ["short", "not long", "Tell the story in a short way.", "✂️", 1],
+      ["honest", "telling the truth", "The child learns to be honest.", "😇", 2],
+      ["truth", "what is real", "Always tell the truth.", "🙌", 2],
+      ["begin", "start", "The story begins at home.", "🚪", 1],
+      ["middle", "the centre part", "The middle of the story is exciting.", "🎢", 1],
+      ["retell", "tell again in your own words", "Can you retell the story?", "🔄", 2]
+    ]},
+    "PARTS_OF_SPEECH_REVIEW": { "symbol": "🧩", "words": [
+      ["cheerful", "happy and bright", "A cheerful child greeted the visitors.", "😀", 2],
+      ["greeted", "said hello to", "We greeted our new friend.", "👋", 2],
+      ["visitor", "someone who comes to see you", "A visitor came to our class.", "🧳", 2],
+      ["noun", "a word for a person, place or thing", "Dog is a noun.", "🏷️", 2],
+      ["verb", "an action word", "Jump is a verb.", "🤾", 2],
+      ["adjective", "a word that describes", "Red is an adjective.", "🎨", 3]
+    ]},
+    "PERFECT_TENSES": { "symbol": "⏳", "words": [
+      ["finished", "done", "Have you finished your homework?", "✔️", 2],
+      ["completed", "all done", "I have completed my homework.", "📒", 2],
+      ["eaten", "already ate", "I have eaten my snack.", "🍪", 2],
+      ["seen", "already looked at", "I have seen a rainbow.", "👀", 2],
+      ["gone", "left a place", "The bus has gone.", "🚌", 2],
+      ["homework", "school work you do at home", "I do my homework after lunch.", "📓", 2]
+    ]},
+    "MODALS": { "symbol": "🚦", "words": [
+      ["should", "the right thing to do", "We should follow safety rules.", "🚦", 2],
+      ["can", "able to", "I can ride a bike.", "🚲", 1],
+      ["may", "allowed to", "May I come in?", "🚪", 1],
+      ["must", "have to", "We must wear a seatbelt.", "🚗", 2],
+      ["safe", "not in danger", "Stay safe near the road.", "🦺", 1],
+      ["rule", "something we must follow", "Our class has a rule.", "📏", 1]
+    ]},
+    "ACTIVE_AND_PASSIVE_VOICE": { "symbol": "🌳", "words": [
+      ["planted", "put in the ground to grow", "The trees were planted by the pupils.", "🌳", 2],
+      ["tree", "a tall plant with a trunk", "A tree gives us shade.", "🌲", 1],
+      ["seed", "a tiny thing that grows into a plant", "I put a seed in the soil.", "🌰", 1],
+      ["garden", "a place where plants grow", "Our garden has flowers.", "🌷", 1],
+      ["water", "a clear drink that plants need", "Plants need water.", "💧", 1],
+      ["grow", "get bigger", "Plants grow in sunlight.", "🌻", 1]
+    ]},
+    "TYPES_OF_CLAUSES": { "symbol": "🧱", "words": [
+      ["late", "after the right time", "Why were you late?", "⏰", 1],
+      ["bus", "a big vehicle that carries many people", "The bus arrived slowly.", "🚍", 1],
+      ["arrived", "came to a place", "The bus arrived at nine.", "🚏", 2],
+      ["when", "at the time that", "I smile when I see you.", "🕒", 1],
+      ["while", "during the time that", "I sing while I paint.", "🖌️", 2],
+      ["early", "before the right time", "I came early today.", "🌅", 1]
+    ]},
+    "COMPOUND_AND_COMPLEX_SENTENCES": { "symbol": "🌧️", "words": [
+      ["rain", "water falling from clouds", "If it rains, we will stay inside.", "🌧️", 1],
+      ["inside", "in a room or a house", "We play inside.", "🛋️", 1],
+      ["if", "a word that shows something might happen", "If it is hot, we swim.", "🤷", 1],
+      ["cloud", "a white or grey shape in the sky", "A cloud covers the sun.", "☁️", 1],
+      ["puddle", "a small pool of water", "I jump in the puddle.", "💦", 2],
+      ["rainbow", "colours in the sky after rain", "We saw a rainbow.", "🌈", 1]
+    ]},
+    "IDIOMS_AND_PROVERBS": { "symbol": "🗝️", "words": [
+      ["practice", "do again and again to get better", "Practice makes perfect.", "🎹", 2],
+      ["perfect", "with no mistakes", "Her drawing is perfect.", "💯", 2],
+      ["habit", "something you do often", "Reading is a good habit.", "📅", 2],
+      ["patience", "waiting calmly", "Patience helps us learn.", "⏳", 3],
+      ["teamwork", "working together", "Teamwork makes it easy.", "🙌", 2],
+      ["try", "do your best at something", "Try again if you fall.", "🧗", 1]
+    ]},
+    "DENOTATION_AND_CONNOTATION": { "symbol": "🏡", "words": [
+      ["home", "the place where you live and feel loved", "The word home makes me think of love.", "🏡", 1],
+      ["comfort", "a calm and safe feeling", "A hug gives comfort.", "🤗", 2],
+      ["cozy", "warm and snug", "My bed is cozy.", "🛏️", 2],
+      ["warm", "a little hot", "The soup is warm.", "🍲", 1],
+      ["feeling", "how you feel inside", "Happy is a good feeling.", "💗", 2],
+      ["house", "a building where people live", "Our house is blue.", "🏠", 1]
+    ]},
+    "FACT_AND_OPINION": { "symbol": "⚖️", "words": [
+      ["fact", "something true you can check", "It is a fact that fish live in water.", "📏", 2],
+      ["opinion", "what someone thinks or feels", "Pizza is the best food is an opinion.", "💭", 2],
+      ["true", "real and not made up", "It is true that birds can fly.", "✔️", 1],
+      ["think", "use your mind", "I think cats are cute.", "🧠", 1],
+      ["sun", "the bright star in our sky", "The sun gives us light.", "☀️", 1],
+      ["best", "better than all the others", "This is my best drawing.", "🏆", 1]
+    ]},
+    "AUTHORS_PURPOSE_AND_POINT_OF_VIEW": { "symbol": "🖊️", "words": [
+      ["author", "a person who writes a book", "The author wrote a fun story.", "🖊️", 2],
+      ["inform", "tell people facts", "This book will inform you about bees.", "🗞️", 3],
+      ["entertain", "make people enjoy themselves", "Jokes entertain us.", "🎭", 3],
+      ["persuade", "try to make someone agree", "The poster tries to persuade us to read.", "📢", 3],
+      ["reader", "a person who reads", "Every reader likes a good story.", "👓", 2],
+      ["article", "a short piece of writing with facts", "I read an article about frogs.", "📰", 2]
+    ]},
+    "INFERENCE_AND_EVIDENCE": { "symbol": "🕵️", "words": [
+      ["umbrella", "a cover that keeps the rain off", "The wet umbrella shows it rained.", "☂️", 2],
+      ["wet", "covered with water", "My shoes are wet.", "🌊", 1],
+      ["evidence", "something that shows what is true", "Muddy shoes are evidence of rain.", "🧾", 3],
+      ["infer", "work something out from clues", "I infer that he is sleepy.", "🧐", 3],
+      ["footprint", "a mark made by a foot", "We saw a footprint in the sand.", "👣", 2],
+      ["detective", "a person who solves mysteries", "Be a word detective!", "🕵️", 2]
+    ]},
+    "ESSAY_WRITING": { "symbol": "📃", "words": [
+      ["essay", "a piece of writing about one idea", "I wrote an essay about trees.", "📃", 3],
+      ["suggest", "give an idea", "I suggest we plant more trees.", "🗨️", 2],
+      ["cooler", "less hot", "Trees make our school cooler.", "🌬️", 2],
+      ["title", "the name of a piece of writing", "My essay has a title.", "🔖", 2],
+      ["reason", "why something happens", "Give one reason for your idea.", "❔", 2],
+      ["conclusion", "the ending part", "My conclusion is short.", "🔚", 3]
+    ]}
+  },
+  "LEVEL_3": {
+    "SUBJECT_VERB_AGREEMENT": { "symbol": "⚖️", "words": [
+      ["either", "one or the other of two", "Either the teacher or the students will present.", "🔄", 3],
+      ["neither", "not one and not the other", "Neither answer is wrong.", "🚫", 3],
+      ["each", "every one in a group", "Each student has a book.", "🧑‍🎓", 2],
+      ["everyone", "all the people", "Everyone is ready for the test.", "🙌", 2],
+      ["present", "show or talk to a group", "We present our project today.", "📊", 2],
+      ["agree", "match or go together", "The verb must agree with the subject.", "🤝", 2]
+    ]},
+    "ACTIVE_AND_PASSIVE_VOICE": { "symbol": "📰", "words": [
+      ["article", "a piece of writing in a newspaper or magazine", "The article was written by a student.", "📰", 2],
+      ["written", "put down in words", "The note was written in pencil.", "✍️", 2],
+      ["impressive", "so good that people admire it", "Her painting is impressive.", "🌟", 3],
+      ["talented", "very good at something", "He is a talented singer.", "🎤", 3],
+      ["reporter", "a person who writes the news", "The reporter asked many questions.", "🎙️", 3],
+      ["headline", "the title of a news story", "Read the headline first.", "🗞️", 3]
+    ]},
+    "DIRECT_AND_INDIRECT_SPEECH": { "symbol": "📢", "words": [
+      ["announce", "tell everyone officially", "The principal will announce the winner.", "📢", 3],
+      ["principal", "the head of a school", "Our principal greets us every morning.", "🏫", 3],
+      ["quote", "the exact words someone said", "Put the quote inside quotation marks.", "💬", 3],
+      ["suspended", "stopped for a while", "Classes were suspended because of the storm.", "⏸️", 3],
+      ["reported", "told what someone said or did", "She reported the news to the class.", "🗒️", 3],
+      ["speech", "spoken words", "His speech was short and clear.", "🗣️", 2]
+    ]},
+    "TYPES_OF_SENTENCES_BY_STRUCTURE": { "symbol": "🧱", "words": [
+      ["simple", "easy, with one part", "A simple sentence has one main idea.", "🟢", 2],
+      ["compound", "made of two or more parts", "A compound sentence joins two ideas.", "🔗", 3],
+      ["complex", "having many connected parts", "A complex sentence has a because part.", "🧩", 3],
+      ["clause", "a group of words with a subject and a verb", "Because it rained is a clause.", "📎", 3],
+      ["comma", "a mark that shows a short pause", "Put a comma before but.", "✒️", 2],
+      ["join", "put together", "Join the two sentences with and.", "🧷", 2]
+    ]},
+    "LIBRARY_AND_RESEARCH_SKILLS": { "symbol": "📚", "words": [
+      ["catalog", "a list of all the books in a library", "The catalog helps us find books.", "🗂️", 3],
+      ["source", "where information comes from", "Use a reliable source.", "🔗", 3],
+      ["reliable", "can be trusted", "A good dictionary is reliable.", "✔️", 3],
+      ["research", "look for facts to learn about something", "We research animals for our project.", "🔬", 3],
+      ["librarian", "a person who looks after a library", "The librarian helped me find a book.", "👩‍💼", 3],
+      ["borrow", "take something and give it back later", "I borrow two books every week.", "📚", 2]
+    ]},
+    "ANALOGY": { "symbol": "🎻", "words": [
+      ["conductor", "a person who leads an orchestra", "The conductor waves a baton.", "🎼", 3],
+      ["orchestra", "a big group of musicians playing together", "The orchestra played softly.", "🎻", 3],
+      ["pilot", "a person who flies a plane", "A pilot is to a plane as a captain is to a ship.", "✈️", 2],
+      ["compare", "find how things are alike", "Compare the two pictures.", "⚖️", 2],
+      ["similar", "almost the same", "The twins look similar.", "👯", 3],
+      ["relationship", "how two things are connected", "Find the relationship between the words.", "🔗", 3]
+    ]},
+    "CONTEXT_CLUES": { "symbol": "🔎", "words": [
+      ["unfamiliar", "not known to you", "This word is unfamiliar to me.", "❔", 3],
+      ["surrounding", "all around something", "Read the surrounding sentences.", "🔄", 3],
+      ["define", "tell what a word means", "Can you define the word brave?", "📖", 3],
+      ["hint", "a small help", "The picture gives a hint.", "💡", 2],
+      ["figure out", "find the answer by thinking", "I can figure out the meaning.", "🧠", 2],
+      ["definition", "the meaning of a word", "Look up the definition.", "📘", 3]
+    ]},
+    "COHESIVE_DEVICES": { "symbol": "🔗", "words": [
+      ["however", "but; on the other hand", "She studied hard; however, the test was difficult.", "🔀", 3],
+      ["therefore", "because of that", "It rained; therefore, we stayed inside.", "➡️", 3],
+      ["also", "too; as well", "I also like music.", "➕", 2],
+      ["finally", "at the end", "Finally, we went home.", "🏁", 2],
+      ["firstly", "to begin with", "Firstly, read the question.", "🥇", 2],
+      ["meanwhile", "at the same time", "Meanwhile, Dad cooked dinner.", "🍳", 3]
+    ]},
+    "MODALS_ABILITY_AND_OBLIGATION": { "symbol": "🧭", "words": [
+      ["must", "have to", "You must submit your project tomorrow.", "📌", 2],
+      ["should", "the right or best thing to do", "You should drink water.", "🥤", 2],
+      ["could", "was able to", "I could swim when I was six.", "🏊", 2],
+      ["might", "maybe will", "It might rain later.", "🌦️", 2],
+      ["submit", "hand in", "Submit your work before noon.", "📤", 3],
+      ["required", "needed", "A pencil is required for the test.", "✏️", 3]
+    ]},
+    "PROPAGANDA_TECHNIQUES": { "symbol": "📺", "words": [
+      ["advertisement", "a message that tries to sell something", "The advertisement shows a new toy.", "📺", 3],
+      ["bandwagon", "joining in because everyone else does", "The bandwagon trick says everyone buys it.", "🚌", 3],
+      ["celebrity", "a famous person", "A celebrity smiles in the advert.", "⭐", 3],
+      ["persuade", "try to make someone agree", "Adverts try to persuade us.", "📣", 3],
+      ["slogan", "a short phrase that is easy to remember", "The slogan is catchy.", "🏷️", 3],
+      ["customer", "a person who buys something", "The customer paid at the counter.", "🛒", 2]
+    ]},
+    "ELEMENTS_OF_SHORT_STORIES": { "symbol": "📕", "words": [
+      ["character", "a person or animal in a story", "The main character is brave.", "🧑", 2],
+      ["setting", "where and when a story happens", "The setting is a dark forest.", "🌲", 3],
+      ["plot", "what happens in a story", "The plot has a surprise ending.", "🗺️", 3],
+      ["conflict", "a problem in a story", "The conflict is a lost key.", "⚔️", 3],
+      ["protagonist", "the main character", "The protagonist tells the truth.", "🦸", 3],
+      ["dilemma", "a hard choice", "She faced a difficult dilemma.", "🤷", 3]
+    ]},
+    "PARALLEL_STRUCTURE": { "symbol": "🟰", "words": [
+      ["reading", "looking at and understanding words", "I like reading, writing and drawing.", "📖", 2],
+      ["playing", "having fun with a game or music", "Playing guitar is fun.", "🎸", 2],
+      ["swimming", "moving through water", "Swimming keeps me fit.", "🏊", 2],
+      ["list", "things written one after another", "Make a list of your hobbies.", "📝", 2],
+      ["weekend", "Saturday and Sunday", "We rest on the weekend.", "🛋️", 2],
+      ["balance", "equal on both sides", "Keep your sentence in balance.", "⚖️", 3]
+    ]},
+    "CONDITIONALS_ZERO_TO_THIRD": { "symbol": "🔀", "words": [
+      ["condition", "something that must happen first", "The condition is to finish your homework.", "📋", 3],
+      ["scholarship", "money given to help pay for school", "She won a scholarship.", "🎓", 3],
+      ["unless", "except if", "We will play outside unless it rains.", "☔", 3],
+      ["would", "a word for an imagined result", "I would fly if I had wings.", "🕊️", 2],
+      ["result", "what happens after something", "The result was great.", "📈", 2],
+      ["imagine", "make a picture in your mind", "Imagine a purple cow.", "🐮", 2]
+    ]},
+    "COMMUNICATIVE_STYLES": { "symbol": "🗣️", "words": [
+      ["formal", "polite and serious", "Use formal words with the principal.", "🎩", 3],
+      ["informal", "relaxed and friendly", "We use informal words with friends.", "🧢", 3],
+      ["polite", "kind and respectful", "Be polite to visitors.", "🙇", 2],
+      ["address", "speak to someone", "Address the teacher politely.", "🎤", 3],
+      ["assembly", "a meeting of the whole school", "We sing at the school assembly.", "🏫", 3],
+      ["respect", "care for other people's feelings", "Show respect to everyone.", "🤝", 2]
+    ]},
+    "TYPES_OF_BIAS_AND_PREJUDICE": { "symbol": "⚖️", "words": [
+      ["fair", "treating everyone the same way", "The game must be fair.", "⚖️", 2],
+      ["bias", "liking one side unfairly", "The report showed bias.", "🙈", 3],
+      ["judge", "decide what you think about something", "Do not judge a book by its cover.", "🧑‍⚖️", 3],
+      ["opinion", "what someone thinks", "Everyone has an opinion.", "💭", 2],
+      ["equal", "the same in value", "All children are equal.", "🟰", 2],
+      ["stereotype", "an unfair idea about a group of people", "Avoid a stereotype about others.", "🚫", 3]
+    ]},
+    "LITERARY_DEVICES_METAPHOR_IMAGERY": { "symbol": "🎨", "words": [
+      ["metaphor", "saying one thing is another to compare them", "Her words were a warm blanket.", "🧣", 3],
+      ["simile", "a comparison using like or as", "He runs like the wind.", "🌬️", 3],
+      ["imagery", "words that make pictures in your mind", "The imagery shows a stormy night.", "🌩️", 3],
+      ["stormy", "with strong wind and rain", "It was a stormy night.", "⛈️", 2],
+      ["blanket", "a warm cover for a bed", "A blanket keeps me warm.", "🛏️", 2],
+      ["describe", "tell what something is like", "Describe your favourite place.", "🖌️", 2]
+    ]},
+    "GERUNDS_AND_INFINITIVES": { "symbol": "🏊", "words": [
+      ["hobby", "something you enjoy doing in free time", "Drawing is my hobby.", "🎨", 2],
+      ["enjoy", "like doing something", "I enjoy swimming in the lake.", "😊", 2],
+      ["favorite", "liked the most", "Summer is my favorite season.", "⭐", 2],
+      ["lake", "a big area of water with land around it", "We swim in the lake.", "🏞️", 2],
+      ["drawing", "making pictures", "Drawing helps me relax.", "✏️", 2],
+      ["decide", "choose after thinking", "I decided to learn the piano.", "🎹", 2]
+    ]},
+    "ACTIVE_LISTENING_STRATEGIES": { "symbol": "👂", "words": [
+      ["listen", "pay attention to sounds or words", "Listen carefully to the speaker.", "👂", 2],
+      ["summarize", "say the main points briefly", "Summarize what you heard.", "📝", 3],
+      ["paraphrase", "say it again in your own words", "Paraphrase the speaker's idea.", "🔁", 3],
+      ["speaker", "a person who talks to a group", "The speaker was clear.", "🎤", 2],
+      ["nod", "move your head up and down", "Nod to show you understand.", "🙂", 1],
+      ["focus", "give all your attention", "Focus on the speaker.", "🎯", 2]
+    ]}
+  },
+  "LEVEL_4": {
+    "ARGUMENTATIVE_ESSAY_WRITING": { "symbol": "🧠", "words": [
+      ["argument", "reasons given to support a view", "Her argument was convincing.", "🗣️", 3],
+      ["claim", "a statement you try to prove", "State your claim clearly.", "📌", 3],
+      ["evidence", "facts that support a claim", "Strong evidence supports the claim.", "🧾", 3],
+      ["counterclaim", "an opposing view", "Answer the counterclaim politely.", "🔄", 4],
+      ["logic", "clear and sensible thinking", "Use logic to explain your answer.", "🧩", 3],
+      ["stand", "your position on a topic", "What is your stand on homework?", "🧍", 3]
+    ]},
+    "ANALYTICAL_LISTENING": { "symbol": "🎧", "words": [
+      ["credible", "believable and trustworthy", "Is the speaker credible?", "✅", 4],
+      ["evaluate", "judge how good something is", "Evaluate the speech fairly.", "📊", 4],
+      ["distinguish", "tell the difference", "Distinguish facts from opinions.", "🔍", 4],
+      ["fact", "something that can be proven", "A fact can be checked.", "📏", 2],
+      ["opinion", "a personal belief", "That is only an opinion.", "💭", 2],
+      ["analyze", "study something closely", "Analyze the speaker's message.", "🔬", 4]
+    ]},
+    "PUBLIC_SPEAKING_AND_ORATORY": { "symbol": "🎤", "words": [
+      ["audience", "people who watch or listen", "The audience clapped loudly.", "👏", 3],
+      ["confident", "sure of yourself", "Stand tall and be confident.", "🦸", 3],
+      ["eye contact", "looking at people's eyes", "Eye contact builds connection.", "👀", 3],
+      ["stage fright", "a nervous feeling before performing", "Breathe deeply to beat stage fright.", "😰", 3],
+      ["posture", "the way you hold your body", "Good posture shows confidence.", "🧍", 3],
+      ["rehearse", "practise before performing", "Rehearse your speech twice.", "🔁", 3]
+    ]},
+    "CRITIQUING_A_LITERARY_SELECTION": { "symbol": "📚", "words": [
+      ["critique", "a careful review of a work", "Write a critique of the novel.", "📝", 4],
+      ["novel", "a long story book", "I finished a novel this week.", "📕", 3],
+      ["perspective", "a way of looking at something", "Try a new perspective.", "🔭", 4],
+      ["theme", "the main message of a story", "The theme is courage.", "🎯", 3],
+      ["heroine", "a female hero", "The heroine saves her village.", "🦸‍♀️", 3],
+      ["empower", "give strength and confidence", "Books can empower readers.", "💪", 4]
+    ]},
+    "IMPLICIT_VS_EXPLICIT_SIGNALS": { "symbol": "🤫", "words": [
+      ["implicit", "suggested but not said directly", "His silence was an implicit no.", "🤐", 4],
+      ["explicit", "clearly stated", "The rules are explicit.", "📢", 4],
+      ["subtle", "not obvious", "She gave a subtle hint.", "🌫️", 4],
+      ["signal", "a sign that gives a message", "A wave is a friendly signal.", "🚦", 3],
+      ["reaction", "what you do in response", "His reaction was a smile.", "😮", 3],
+      ["tone", "the feeling in a voice", "Her tone was calm.", "🎵", 3]
+    ]},
+    "RESEARCH_PAPER_WRITING": { "symbol": "📑", "words": [
+      ["cite", "name the source you used", "Always cite your sources.", "🔗", 4],
+      ["source", "where facts come from", "Check every source carefully.", "📂", 3],
+      ["publication", "something printed or posted for readers", "Note the publication year.", "🗞️", 4],
+      ["bibliography", "a list of sources used", "Add a bibliography at the end.", "📚", 4],
+      ["summary", "a short version of a longer text", "Write a summary of each article.", "📝", 3],
+      ["plagiarism", "copying someone's work as your own", "Plagiarism is not allowed.", "🚫", 4]
+    ]},
+    "SPEECH_CONTEXTS_AND_STYLES": { "symbol": "🗨️", "words": [
+      ["register", "how formal your language is", "Use the right register for each listener.", "🎚️", 4],
+      ["formal", "serious and polite", "Formal language suits a job interview.", "👔", 3],
+      ["casual", "relaxed", "Casual talk is fine with friends.", "👟", 3],
+      ["peer", "someone your own age", "I asked a peer for help.", "🧑‍🤝‍🧑", 3],
+      ["context", "the situation around words", "Context changes meaning.", "🧭", 4],
+      ["intimate", "very close and personal", "Intimate talk happens with family.", "💞", 4]
+    ]},
+    "PATTERNS_OF_TEXT_DEVELOPMENT": { "symbol": "🧭", "words": [
+      ["problem", "something that needs fixing", "First, state the problem.", "❗", 2],
+      ["solution", "a way to fix a problem", "Propose a solution that works.", "💡", 3],
+      ["cause", "what makes something happen", "Heavy rain was the cause.", "🌧️", 3],
+      ["effect", "what happens because of a cause", "Flooding was the effect.", "🌊", 3],
+      ["sequence", "an order of events", "Follow the sequence of steps.", "🔢", 3],
+      ["contrast", "show how things are different", "Contrast city life and village life.", "🌗", 3]
+    ]},
+    "HYPERTEXT_AND_INTERTEXT": { "symbol": "🌐", "words": [
+      ["hyperlink", "clickable text that opens another page", "Click the hyperlink to read more.", "🔗", 4],
+      ["website", "pages on the internet", "The website has a quiz.", "💻", 3],
+      ["navigate", "find your way", "Navigate the menu carefully.", "🧭", 3],
+      ["reference", "a mention of another work", "The poem makes a reference to a fairy tale.", "📎", 4],
+      ["connect", "join or link", "Connect the two stories.", "🧷", 3],
+      ["online", "on the internet", "We read the article online.", "🌐", 3]
+    ]},
+    "SPEECH_ACTS_LOCUTIONARY_ILLOCUTIONARY": { "symbol": "⚡", "words": [
+      ["request", "politely ask for something", "It's cold in here can be a request to close the window.", "🙏", 3],
+      ["promise", "say you will surely do something", "I promise to help you.", "🤞", 3],
+      ["apologize", "say sorry", "Apologize when you make a mistake.", "🙇", 3],
+      ["indirect", "not said directly", "Her hint was indirect.", "🌀", 4],
+      ["intention", "what you mean to do", "His intention was kind.", "🎯", 4],
+      ["statement", "something said as a fact", "Make a clear statement.", "🗒️", 3]
+    ]},
+    "ACADEMIC_TEXT_STRUCTURE": { "symbol": "🏛️", "words": [
+      ["abstract", "a short summary at the start of a paper", "Read the abstract first.", "📄", 4],
+      ["introduction", "the opening part", "The introduction states the topic.", "🚪", 3],
+      ["method", "the way something is done", "Explain your method.", "🧪", 3],
+      ["findings", "what was discovered", "The findings were surprising.", "🔎", 4],
+      ["conclusion", "the closing part", "The conclusion sums up the paper.", "🏁", 3],
+      ["heading", "a title for a section", "Each section has a heading.", "🔖", 3]
+    ]},
+    "PRINCIPLES_OF_EFFECTIVE_SPEECH_WRITING": { "symbol": "✍️", "words": [
+      ["compelling", "very interesting and powerful", "Choose a compelling topic.", "✨", 4],
+      ["resonate", "connect with people's feelings", "The story resonates with listeners.", "💫", 4],
+      ["outline", "a plan of the main points", "Write an outline first.", "🗒️", 3],
+      ["draft", "a first version", "Revise your draft.", "📝", 3],
+      ["revise", "change to improve", "Revise the ending.", "🔁", 3],
+      ["purpose", "the reason for something", "Know the purpose of your speech.", "🎯", 3]
+    ]},
+    "CONCEPT_PAPER_WRITING": { "symbol": "💡", "words": [
+      ["proposal", "a plan offered for approval", "The proposal was approved.", "📋", 4],
+      ["rationale", "the reasons behind a plan", "Explain the rationale.", "🧠", 4],
+      ["objective", "a goal", "List two objectives.", "🎯", 4],
+      ["budget", "a plan for spending money", "The budget is small.", "💰", 3],
+      ["donor", "a person who gives money or help", "The donor supports the school.", "🤲", 4],
+      ["pitch", "present an idea to persuade", "Pitch your idea in one minute.", "🎤", 3]
+    ]},
+    "POSITION_PAPER_WRITING": { "symbol": "📜", "words": [
+      ["position", "your view on an issue", "State your position clearly.", "📍", 3],
+      ["thesis", "the main point you argue", "Your thesis needs evidence.", "🧩", 4],
+      ["stance", "a firm opinion", "Explain your stance politely.", "🛡️", 4],
+      ["climate", "the usual weather of a place", "Climate change affects everyone.", "🌍", 3],
+      ["policy", "a set of rules or plans", "The school has a recycling policy.", "📜", 4],
+      ["defend", "support with reasons", "Defend your answer with facts.", "🏰", 3]
+    ]},
+    "CRITIQUE_AND_REACTION_PAPERS": { "symbol": "🎬", "words": [
+      ["review", "an opinion about a film or book", "Her review was fair.", "⭐", 3],
+      ["director", "the person who leads a film", "The director chose bright lighting.", "🎬", 3],
+      ["lighting", "the use of light", "The lighting created a happy mood.", "💡", 3],
+      ["reaction", "your response to something", "Write your reaction to the film.", "😮", 3],
+      ["artistic", "showing creative skill", "The film is very artistic.", "🎨", 4],
+      ["strength", "a good point", "Name one strength of the story.", "💪", 3]
+    ]},
+    "TECHNICAL_AND_BUSINESS_REPORTS": { "symbol": "📊", "words": [
+      ["report", "a written account of facts", "The report is due on Friday.", "📄", 3],
+      ["survey", "questions asked to many people", "We did a class survey.", "📋", 3],
+      ["quarterly", "every three months", "Read the quarterly results.", "📅", 4],
+      ["metric", "a measurement", "Track one metric each week.", "📏", 4],
+      ["recommendation", "a suggestion for action", "End with a recommendation.", "👍", 4],
+      ["executive summary", "the short overview at the start of a report", "The executive summary lists the key points.", "📌", 4]
+    ]},
+    "MULTIMODAL_TEXT_ANALYSIS": { "symbol": "🖼️", "words": [
+      ["infographic", "a picture that explains information", "The infographic shows rainfall.", "📊", 4],
+      ["visual", "something you can see", "Add a visual to your slide.", "👁️", 3],
+      ["caption", "words under a picture", "Read the caption.", "🏷️", 3],
+      ["layout", "how things are arranged on a page", "The layout is neat.", "🗂️", 3],
+      ["audio", "sound you can hear", "The audio explains the map.", "🔊", 3],
+      ["symbol", "a sign that stands for something", "A heart is a symbol of love.", "❤️", 3]
+    ]},
+    "CREATIVE_NONFICTION_AND_MEMOIR": { "symbol": "📔", "words": [
+      ["memoir", "a true story about your own life", "She wrote a memoir about her village.", "📔", 4],
+      ["memory", "something you remember", "My best memory is our trip.", "🧠", 3],
+      ["reflection", "careful thinking about the past", "Write a short reflection.", "🪞", 4],
+      ["sensory", "related to the five senses", "Use sensory details.", "👃", 4],
+      ["nonfiction", "writing about real events", "A biography is nonfiction.", "📰", 4],
+      ["personal", "about yourself", "Share a personal story.", "🙋", 3]
+    ]}
+  }
+}

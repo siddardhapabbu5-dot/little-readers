@@ -73,13 +73,14 @@ describe.skipIf(!hasDb)("Admin policy documents (PDF upload/view/edit/replace/do
       res.on("end", () => cb(null, Buffer.concat(chunks)));
     });
 
-  it("lists the three default documents as Not Uploaded", async () => {
+  it("lists the four default documents as Not Uploaded", async () => {
     const res = await admin(request(app).get(base));
     expect(res.status).toBe(200);
     expect(res.body.data.map((d: { title: string }) => d.title)).toEqual([
       "LEARN WISE Privacy Policy",
       "LEARN WISE Terms of Service",
       "LEARN WISE Parental Consent",
+      "LEARN WISE Subscription & Refund Policy",
     ]);
     expect(res.body.data.every((d: { uploaded: boolean }) => !d.uploaded)).toBe(true);
     expect(JSON.stringify(res.body)).not.toContain("fileData");

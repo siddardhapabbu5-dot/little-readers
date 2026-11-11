@@ -8,6 +8,7 @@ import { AppError } from "../lib/errors.js";
 import { sendPasswordResetEmail } from "../lib/email.js";
 import { hashPassword } from "../lib/password.js";
 import { prisma } from "../lib/prisma.js";
+import { setPasswordAndRevokeSessions } from "../auth/auth.service.js";
 
 const GENERIC_FORGOT_MESSAGE =
   "If an admin account exists for this email, a reset link has been sent.";
@@ -111,19 +112,11 @@ export async function resetAdminPasswordWithToken(
   }
 
   const passwordHash = await hashPassword(input.password);
-  const passwordChangedAt = new Date();
 
   await prisma.$transaction(async (tx) => {
-    await tx.user.update({
-      where: { id: admin.id },
-      data: { passwordHash, passwordChangedAt },
-    });
-    await tx.adminPasswordResetToken.update({
-      where: { id: record.id },
-      data: { usedAt: new Date() },
-    });
+    await setPasswordAndRevokeSessions(tx, admin.id, passwordHash, "PASSWORD_RESET");
     await tx.adminPasswordResetToken.updateMany({
-      where: { adminId: admin.id, usedAt: null, id: { not: record.id } },
+      where: { adminId: admin.id, usedAt: null },
       data: { usedAt: new Date() },
     });
   });

@@ -45,7 +45,7 @@ describe.skipIf(!hasDb)("Vocabulary grade/level CSV export & import", () => {
     expect(exported.text).toContain("grade_code");
     expect(exported.text).toContain("word");
 
-    const stamp = `sheetword${String(Date.now()).replace(/\d/g, (d) => "abcdefghij"[Number(d)])}`;
+    const stamp = `sheetword${String(Date.now()).replace(/\d/g, (d, at: number) => (at % 2 ? "klmnopqrst" : "abcdefghij")[Number(d)])}`;
     const csv = [
       "grade_code,level_code,category_code,category_label,word,meaning,emoji,difficulty,sort_order,is_active",
       `GRADE_1,${levelCode},${categoryCode},"${categoryLabel}",${stamp},sheet meaning,book,1,1,true`,
@@ -67,7 +67,7 @@ describe.skipIf(!hasDb)("Vocabulary grade/level CSV export & import", () => {
   });
 
   it("imports rows with an outdated group_code and reports failures per category", async () => {
-    const stamp = `groupword${String(Date.now()).replace(/\d/g, (d) => "abcdefghij"[Number(d)])}`;
+    const stamp = `groupword${String(Date.now()).replace(/\d/g, (d, at: number) => (at % 2 ? "klmnopqrst" : "abcdefghij")[Number(d)])}`;
     const csv = [
       "grade_code,level_code,group_code,category_code,category_label,word,meaning",
       `GRADE_1,${levelCode},ZZ_OLD_GROUP,${categoryCode},"${categoryLabel}",${stamp},group meaning`,

@@ -37,9 +37,12 @@ const PURCHASE_SAFE_MSG =
 
 export function GooglePlaySubscribe({
   currentProductId,
+  childId,
   onEntitlementChanged,
 }: {
   currentProductId: string | null;
+  /** The child (and so the grade) a new purchase unlocks. */
+  childId: string | null;
   onEntitlementChanged: () => Promise<void> | void;
 }) {
   const router = useRouter();
@@ -51,6 +54,9 @@ export function GooglePlaySubscribe({
   const [error, setError] = useState<string | null>(null);
   const changed = useRef(onEntitlementChanged);
   changed.current = onEntitlementChanged;
+  // The purchase listener is registered once; it must see the child selected at purchase time.
+  const childRef = useRef(childId);
+  childRef.current = childId;
 
   const loadConfig = useCallback(async () => {
     try {
@@ -67,7 +73,11 @@ export function GooglePlaySubscribe({
     try {
       const res = await apiRequest<VerifyResult>("/payments/google-play/verify", {
         method: "POST",
-        body: JSON.stringify({ productId: p.productId, purchaseToken: p.purchaseToken }),
+        body: JSON.stringify({
+          productId: p.productId,
+          purchaseToken: p.purchaseToken,
+          childId: childRef.current ?? undefined,
+        }),
       });
       if (res.pending) {
         setNotice("Your payment is pending with Google Play. Access starts automatically once it completes.");
@@ -142,6 +152,10 @@ export function GooglePlaySubscribe({
     if (!config) return;
     setError(null);
     setNotice(null);
+    if (!childId) {
+      setError("Choose which child this subscription is for.");
+      return;
+    }
     if (config.requiresAgreements) {
       router.push("/agreements?store=google_play");
       return;
@@ -172,7 +186,11 @@ export function GooglePlaySubscribe({
         {
           method: "POST",
           body: JSON.stringify({
-            purchases: ready.map((p) => ({ productId: p.productId, purchaseToken: p.purchaseToken })),
+            purchases: ready.map((p) => ({
+              productId: p.productId,
+              purchaseToken: p.purchaseToken,
+              childId: childId ?? undefined,
+            })),
           }),
         }
       );
@@ -243,13 +261,12 @@ export function GooglePlaySubscribe({
       ) : null}
 
       {offers.map((o) => {
-        const seats = config.products.find((p) => p.productId === o.productId)?.includedSeats;
         return (
           <View key={o.productId} style={[styles.planCard, shadow.soft]}>
             <View style={{ flexDirection: "row", gap: 12 }}>
               <View style={{ flex: 1, gap: 4 }}>
                 <Text style={styles.planName}>{o.title.replace(/\s*\(.*\)\s*$/, "")}</Text>
-                {seats ? <Text style={styles.planDesc}>Includes {seats} child seats</Text> : null}
+                <Text style={styles.planDesc}>For the selected child's current grade</Text>
                 {o.introText ? <Text style={styles.planDesc}>{o.introText}, then:</Text> : null}
               </View>
               <View style={{ alignItems: "flex-end" }}>
@@ -261,7 +278,7 @@ export function GooglePlaySubscribe({
               label={config.requiresAgreements ? "Review agreements" : "Subscribe"}
               onPress={() => void subscribe(o)}
               loading={busy === o.productId}
-              disabled={!config.canPurchase || busy !== null}
+              disabled={!config.canPurchase || !childId || busy !== null}
             />
           </View>
         );

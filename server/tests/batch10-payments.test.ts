@@ -18,8 +18,12 @@ describe.skipIf(!hasDb)("Batch 10 — Razorpay checkout + activation", () => {
   let adminToken = "";
   let teacherToken = "";
   let yearlyPlanId = "";
+  let childId = "";
   const stamp = Date.now();
-  const yearly = () => ({ planId: yearlyPlanId });
+  const yearly = () => ({ planId: yearlyPlanId, childId });
+  /** Grade-wise purchases create one row per payment for this child; the newest is the current one. */
+  const latestGradeRow = () =>
+    prisma.subscription.findFirst({ where: { userId: parentId, childId }, orderBy: { createdAt: "desc" } });
 
   beforeAll(async () => {
     process.env.JWT_SECRET =
@@ -54,6 +58,13 @@ describe.skipIf(!hasDb)("Batch 10 — Razorpay checkout + activation", () => {
     expect(reg.status).toBe(201);
     parentToken = reg.body.data.tokens.accessToken;
     parentId = reg.body.data.user.id;
+
+    const child = await request(app)
+      .post("/api/children")
+      .set("Authorization", `Bearer ${parentToken}`)
+      .send({ displayName: "Pay Kid", birthDate: "10/02/2023", level: "LEVEL_1" });
+    expect(child.status).toBe(201);
+    childId = child.body.data.id;
 
     // Teacher from batch9 may not exist — create via admin school quickly
     const school = await request(app)
@@ -162,7 +173,7 @@ describe.skipIf(!hasDb)("Batch 10 — Razorpay checkout + activation", () => {
     expect(verify.status).toBe(200);
     expect(verify.body.data.alreadyProcessed).toBe(false);
     expect(verify.body.data.subscription.status).toBe("ACTIVE");
-    expect(verify.body.data.subscription.includedSeats).toBe(2);
+    expect(verify.body.data.subscription.includedSeats).toBe(1);
 
     const again = await request(app)
       .post("/api/payments/verify")
@@ -170,9 +181,22 @@ describe.skipIf(!hasDb)("Batch 10 — Razorpay checkout + activation", () => {
       .send({ orderId, paymentId: paid.id, signature });
     expect(again.status).toBe(200);
     expect(again.body.data.alreadyProcessed).toBe(true);
+    expect(await prisma.subscription.count({ where: { userId: parentId } })).toBe(1);
 
+    // Extra seats only apply to grandfathered family plans.
+    await prisma.subscription.create({
+      data: {
+        userId: parentId,
+        plan: "YEARLY",
+        status: "ACTIVE",
+        startedAt: new Date(),
+        expiresAt: new Date(Date.now() + 365 * 86_400_000),
+        provider: "manual_admin",
+        providerRef: `legacy_family_${stamp}`,
+      },
+    });
     const before = await prisma.subscription.findFirst({
-      where: { userId: parentId },
+      where: { userId: parentId, childId: null },
       orderBy: { createdAt: "desc" },
     });
     expect(before?.extraSeats).toBe(0);
@@ -198,7 +222,7 @@ describe.skipIf(!hasDb)("Batch 10 — Razorpay checkout + activation", () => {
       .send({ orderId: seatOrderId, paymentId: seatPay.id, signature: seatSig });
     expect(seatAgain.body.data.alreadyProcessed).toBe(true);
     const after = await prisma.subscription.findFirst({
-      where: { userId: parentId },
+      where: { userId: parentId, childId: null },
       orderBy: { createdAt: "desc" },
     });
     expect(after?.extraSeats).toBe(1);
@@ -250,7 +274,7 @@ describe.skipIf(!hasDb)("Batch 10 — Razorpay checkout + activation", () => {
     expect(dup.status).toBe(200);
 
     const sub = await prisma.subscription.findFirst({
-      where: { userId: parentId },
+      where: { userId: parentId, childId: null },
       orderBy: { createdAt: "desc" },
     });
     // Yearly + one seat from previous test + one from webhook = 2 extras if previous ran
@@ -271,10 +295,7 @@ describe.skipIf(!hasDb)("Batch 10 — Razorpay checkout + activation", () => {
     expect(order.status).toBe(201);
     const orderId = order.body.data.orderId as string;
     const paid = stubMarkOrderPaid(orderId, `pay_race_${stamp}`);
-    const before = await prisma.subscription.findFirst({
-      where: { userId: parentId },
-      orderBy: { createdAt: "desc" },
-    });
+    const before = await latestGradeRow();
     const body = JSON.stringify({
       id: `evt_race_${stamp}`,
       event: "payment.captured",
@@ -307,10 +328,7 @@ describe.skipIf(!hasDb)("Batch 10 — Razorpay checkout + activation", () => {
       [verify.body.data.alreadyProcessed, hook.body.data.alreadyProcessed].filter(Boolean)
     ).toHaveLength(1);
 
-    const after = await prisma.subscription.findFirst({
-      where: { userId: parentId },
-      orderBy: { createdAt: "desc" },
-    });
+    const after = await latestGradeRow();
     const days =
       (after!.expiresAt!.getTime() - before!.expiresAt!.getTime()) / 86_400_000;
     expect(days).toBeGreaterThanOrEqual(365);
@@ -321,10 +339,7 @@ describe.skipIf(!hasDb)("Batch 10 — Razorpay checkout + activation", () => {
   });
 
   it("records cancelled and failed payments without activating anything", async () => {
-    const before = await prisma.subscription.findFirst({
-      where: { userId: parentId },
-      orderBy: { createdAt: "desc" },
-    });
+    const before = await latestGradeRow();
 
     const cancelled = await request(app)
       .post("/api/payments/orders")
@@ -361,10 +376,7 @@ describe.skipIf(!hasDb)("Batch 10 — Razorpay checkout + activation", () => {
       where: { razorpayOrderId: { in: [cancelledId, failedId] } },
     });
     expect(rows.map((r) => r.status)).toEqual(["FAILED", "FAILED"]);
-    const after = await prisma.subscription.findFirst({
-      where: { userId: parentId },
-      orderBy: { createdAt: "desc" },
-    });
+    const after = await latestGradeRow();
     expect(after?.expiresAt?.getTime()).toBe(before?.expiresAt?.getTime());
   });
 
@@ -379,7 +391,7 @@ describe.skipIf(!hasDb)("Batch 10 — Razorpay checkout + activation", () => {
     const order = await request(app)
       .post("/api/payments/orders")
       .set("Authorization", `Bearer ${parentToken}`)
-      .send({ planId: yearlyPlanId, amountPaise: 100, amount: 100, totalPaise: 100 });
+      .send({ ...yearly(), amountPaise: 100, amount: 100, totalPaise: 100 });
     expect(order.status).toBe(201);
     expect(order.body.data.amountPaise).toBe(49900);
     const row = await prisma.payment.findFirst({
@@ -412,10 +424,7 @@ describe.skipIf(!hasDb)("Batch 10 — Razorpay checkout + activation", () => {
       .send({ orderId, paymentId: paid.id, signature: signCheckout(orderId, paid.id) });
     expect(verify.status).toBe(200);
     const paymentId = order.body.data.paymentId as string;
-    const subBefore = await prisma.subscription.findFirst({
-      where: { userId: parentId },
-      orderBy: { createdAt: "desc" },
-    });
+    const subBefore = await latestGradeRow();
 
     const reprice = await request(app)
       .patch(`/api/admin/academic/subscription-plans/${yearlyPlanId}`)
@@ -437,10 +446,7 @@ describe.skipIf(!hasDb)("Batch 10 — Razorpay checkout + activation", () => {
       new Date(r.subscriptionEndsAt).getTime()
     );
 
-    const subAfter = await prisma.subscription.findFirst({
-      where: { userId: parentId },
-      orderBy: { createdAt: "desc" },
-    });
+    const subAfter = await latestGradeRow();
     expect(subAfter?.expiresAt.getTime()).toBe(subBefore?.expiresAt.getTime());
 
     const next = await request(app)

@@ -47,7 +47,7 @@ const TABS: Array<{
 
 function activeKey(pathname: string | null): TabKey {
   const path = pathname ?? "";
-  if (path.includes("admin-structure")) return "structure";
+  if (path.includes("admin-structure") || path.includes("admin-curriculum")) return "structure";
   if (
     path.includes("admin-vocabulary") ||
     path.includes("admin-dictionary") ||

@@ -22,6 +22,7 @@ import {
   purposeForDuration,
 } from "../academic/subscription-plan.service.js";
 import { assertAgreementsAccepted } from "../agreements/agreements.service.js";
+import { effectiveLevelForChild, productGradeNumber } from "../learning/grade-access.js";
 import { cashfreeEnabled, cashfreeMode } from "./cashfree.js";
 import {
   getRazorpayClient,
@@ -184,7 +185,7 @@ export const WEB_PAYMENT_PROVIDERS = new Set(["razorpay", "cashfree"]);
 
 async function latestWebSubscription(userId: string, tx: Prisma.TransactionClient) {
   return tx.subscription.findFirst({
-    where: { userId, provider: { in: [...WEB_PAYMENT_PROVIDERS] } },
+    where: { userId, provider: { in: [...WEB_PAYMENT_PROVIDERS] }, childId: null },
     orderBy: { createdAt: "desc" },
   });
 }
@@ -194,7 +195,41 @@ export type CheckoutInput = {
   seats?: number;
   planId?: string;
   region?: PriceRegion;
+  /** Subscription plans are bought for exactly one child, for that child's current grade. */
+  childId?: string;
 };
+
+/** The one child + Learn Wise grade a subscription purchase unlocks. */
+export async function resolvePurchaseTarget(userId: string, childId: string | undefined) {
+  if (!childId) {
+    throw new AppError("Choose which child this subscription is for", 400, { code: "CHILD_REQUIRED" });
+  }
+  const child = await prisma.child.findFirst({
+    where: { id: childId, parentId: userId, isActive: true },
+    select: { id: true, displayName: true },
+  });
+  if (!child) throw new AppError("Child not found", 404);
+  const level = await effectiveLevelForChild(child.id);
+  if (!productGradeNumber(level.code)) {
+    throw new AppError("This child is not in a Learn Wise grade", 400, { code: "GRADE_REQUIRED" });
+  }
+  return { child, level };
+}
+
+function assertPlanFitsGrade(
+  plan: { levelId: string | null; applicableLevel: string },
+  level: { id: string; code: string }
+) {
+  const fits =
+    (plan.levelId ? plan.levelId === level.id : true) &&
+    (!plan.applicableLevel || plan.applicableLevel === "ALL" || plan.applicableLevel === level.code);
+  if (!fits) {
+    throw new AppError("This plan is for a different grade than the selected child", 400, {
+      code: "PLAN_GRADE_MISMATCH",
+      levelCode: level.code,
+    });
+  }
+}
 
 /** Shared website-checkout guards and price lookup; the caller creates the gateway order. */
 export async function resolveCheckoutPlan(
@@ -246,6 +281,8 @@ export async function resolveCheckoutPlan(
         { code: "PLAN_UNAVAILABLE" }
       );
     }
+    const target = await resolvePurchaseTarget(userId, input.childId);
+    assertPlanFitsGrade(dbPlan, target.level);
     durationMonths = dbPlan.durationMonths;
     plan = {
       purpose: purposeForDuration(dbPlan.durationMonths) as PlanPurpose,
@@ -273,6 +310,10 @@ export async function resolveCheckoutPlan(
       totalPaise: dbPlan.totalPaise,
       currency: dbPlan.currency,
       applicableLevel: dbPlan.applicableLevel,
+      childId: target.child.id,
+      childName: target.child.displayName,
+      levelId: target.level.id,
+      levelCode: target.level.code,
     };
   } else {
     const purpose = input.purpose;
@@ -301,7 +342,7 @@ export async function resolveCheckoutPlan(
 
   if (plan.purpose === "EXTRA_SEATS") {
     const sub = await prisma.subscription.findFirst({
-      where: { userId },
+      where: { userId, childId: null },
       orderBy: { createdAt: "desc" },
     });
     if (!sub) {
@@ -409,27 +450,13 @@ export async function activateVerifiedPayment(
     const isRazorpay = provider === "razorpay";
     const now = new Date();
 
-    // Family plans extend the website row; add-on seats attach to the row that grants access.
-    let subscription =
-      purpose === "EXTRA_SEATS"
-        ? await entitlementSubscription(payment.userId, tx)
-        : await latestWebSubscription(payment.userId, tx);
-    if (subscription) {
-      await tx.$executeRaw`SELECT id FROM "Subscription" WHERE id = ${subscription.id} FOR UPDATE`;
-      subscription = await tx.subscription.findUnique({ where: { id: subscription.id } });
-    }
-    const previousStatus = subscription?.status ?? null;
-    const webRows = await tx.subscription.findMany({
-      where: { userId: payment.userId, provider: { not: "google_play" } },
-    });
-    const latestWebExpiry = webRows
-      .filter((r) => isSubscriptionRecordEligible(r, now) && r.expiresAt > now)
-      .reduce<Date | null>((max, r) => (!max || r.expiresAt > max ? r.expiresAt : max), null);
     let meta: {
       durationMonths?: number;
       planCode?: string;
       planName?: string;
       includedSeats?: number;
+      childId?: string;
+      levelId?: string;
       [key: string]: unknown;
     } = {};
     try {
@@ -446,8 +473,89 @@ export async function activateVerifiedPayment(
       "FAMILY_3_MONTH",
       "FAMILY_6_MONTH",
     ]);
+    // Orders created since grade-wise checkout carry exactly one child + grade.
+    const gradeTarget =
+      familyPurposes.has(purpose) && meta.childId && meta.levelId
+        ? { childId: String(meta.childId), levelId: String(meta.levelId) }
+        : null;
 
-    if (familyPurposes.has(purpose)) {
+    // Legacy family orders extend the website row; add-on seats attach to the row that grants access.
+    let subscription = gradeTarget
+      ? null
+      : purpose === "EXTRA_SEATS"
+        ? await entitlementSubscription(payment.userId, tx)
+        : await latestWebSubscription(payment.userId, tx);
+    if (subscription) {
+      await tx.$executeRaw`SELECT id FROM "Subscription" WHERE id = ${subscription.id} FOR UPDATE`;
+      subscription = await tx.subscription.findUnique({ where: { id: subscription.id } });
+    }
+    let previousStatus = subscription?.status ?? null;
+    const webRows = await tx.subscription.findMany({
+      where: { userId: payment.userId, provider: { not: "google_play" }, childId: null },
+    });
+    const latestWebExpiry = webRows
+      .filter((r) => isSubscriptionRecordEligible(r, now) && r.expiresAt > now)
+      .reduce<Date | null>((max, r) => (!max || r.expiresAt > max ? r.expiresAt : max), null);
+
+    if (gradeTarget) {
+      await tx.$executeRaw`SELECT id FROM "Child" WHERE id = ${gradeTarget.childId} FOR UPDATE`;
+      const child = await tx.child.findUnique({
+        where: { id: gradeTarget.childId },
+        select: { id: true, parentId: true, displayName: true },
+      });
+      if (!child || child.parentId !== payment.userId) {
+        throw new AppError("The child for this purchase no longer exists", 409, {
+          code: "PURCHASE_TARGET_MISSING",
+        });
+      }
+      const current = (
+        await tx.subscription.findMany({
+          where: { childId: child.id, levelId: gradeTarget.levelId },
+          orderBy: { expiresAt: "desc" },
+          take: 10,
+        })
+      ).find((r) => isSubscriptionRecordEligible(r, now));
+      previousStatus = current?.status ?? null;
+      const base = current && current.expiresAt > now ? current.expiresAt : now;
+      const expiresAt = addPeriod(base, purpose, meta.durationMonths);
+      meta = {
+        ...meta,
+        periodStartsAt: base.toISOString(),
+        periodEndsAt: expiresAt.toISOString(),
+        childNames: [child.displayName],
+      };
+      const paid = {
+        plan: meta.planCode || payment.planCode || purpose,
+        status: "ACTIVE" as const,
+        expiresAt,
+        graceEndsAt: null,
+        cancelledAt: null,
+        provider,
+        providerRef: gatewayPaymentId,
+        productId: payment.planCode,
+        autoRenewing: false,
+        verificationStatus: "VERIFIED",
+        verifiedAt: now,
+      };
+      // Website purchases extend this child's website row (so a refund can take its period back off);
+      // store-managed and admin-granted rows are never relabelled.
+      if (current && WEB_PAYMENT_PROVIDERS.has(current.provider)) {
+        await tx.$executeRaw`SELECT id FROM "Subscription" WHERE id = ${current.id} FOR UPDATE`;
+        subscription = await tx.subscription.update({ where: { id: current.id }, data: paid });
+      } else {
+        subscription = await tx.subscription.create({
+          data: {
+            ...paid,
+            userId: payment.userId,
+            childId: child.id,
+            levelId: gradeTarget.levelId,
+            startedAt: now,
+            includedSeats: 1,
+            extraSeats: 0,
+          },
+        });
+      }
+    } else if (familyPurposes.has(purpose)) {
       const base = latestWebExpiry ?? now;
       const expiresAt = addPeriod(base, purpose, meta.durationMonths);
       // Preserve purchased plan code/label on the subscription row (history).
@@ -564,6 +672,8 @@ export async function activateVerifiedPayment(
           currency: payment.currency,
           planCode: payment.planCode,
           expiresAt: subscription?.expiresAt?.toISOString() ?? null,
+          childId: gradeTarget?.childId ?? null,
+          levelId: gradeTarget?.levelId ?? null,
         },
       },
       tx

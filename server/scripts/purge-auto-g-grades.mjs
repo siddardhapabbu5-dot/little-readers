@@ -5,6 +5,9 @@
  * Usage (from server/): node scripts/purge-auto-g-grades.mjs
  */
 import { PrismaClient } from "@prisma/client";
+import { assertDestructiveAllowed } from "./lib/destructive-guard.mjs";
+
+assertDestructiveAllowed("purge-auto-g-grades");
 
 const prisma = new PrismaClient();
 const AUTO_CODES = Array.from({ length: 12 }, (_, i) => `G${i + 1}`);

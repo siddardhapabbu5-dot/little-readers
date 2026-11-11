@@ -3,6 +3,9 @@
  * leftover payments/subs) while keeping curriculum + 3 demo logins.
  */
 import { PrismaClient } from "@prisma/client";
+import { assertDestructiveAllowed } from "./lib/destructive-guard.mjs";
+
+assertDestructiveAllowed("clear-sample-data-pass2");
 
 const prisma = new PrismaClient();
 

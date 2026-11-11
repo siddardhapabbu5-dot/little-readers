@@ -14,6 +14,7 @@ import { Card, ErrorText, Field, KeyboardScroll, SoftButton, Title, LoadingSlot 
 import { AuthGate } from "../components/AuthGate";
 import { apiRequest, ApiError } from "../services/api";
 import { ROLE_SETS } from "../services/auth-errors";
+import { getAdminGrade, isAdminProductGrade, setAdminGrade } from "../services/admin-grade";
 import { colors } from "../theme";
 
 type Grade = {
@@ -119,7 +120,7 @@ export default function AdminStructureScreen() {
 
   const sortedGrades = useMemo(
     () =>
-      [...grades].sort((a, b) => {
+      grades.filter((g) => isAdminProductGrade(g.code)).sort((a, b) => {
         if (a.sortOrder !== b.sortOrder) return a.sortOrder - b.sortOrder;
         return a.code.localeCompare(b.code, undefined, { numeric: true });
       }),
@@ -190,12 +191,9 @@ export default function AdminStructureScreen() {
       setLevels(l);
       setGroups(gr);
       setCategories(c);
-      const ordered = [...g].sort((a, b) => a.sortOrder - b.sortOrder);
       const first =
-        ordered.find((x) => x.code === "GRADE_1") ?? ordered[0] ?? null;
-      setSelectedGradeId((cur) =>
-        cur && g.some((x) => x.id === cur) ? cur : first?.id ?? ""
-      );
+        g.find((x) => x.code === getAdminGrade()) ?? g.find((x) => x.code === "GRADE_1") ?? null;
+      setSelectedGradeId(first?.id ?? "");
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Load failed");
     } finally {
@@ -773,14 +771,12 @@ export default function AdminStructureScreen() {
                   key={g.id}
                   onPress={() => {
                     setSelectedGradeId(g.id);
+                    setAdminGrade(g.code);
                     setSelectedLevelId("");
                     setPanel({ kind: "view-grade", id: g.id });
                   }}
                   style={[styles.gradeCard, on && styles.gradeCardOn]}
                 >
-                  <Text style={[styles.gradeCode, on && styles.gradeOnText]}>
-                    {g.code}
-                  </Text>
                   <Text style={[styles.gradeLabel, on && styles.gradeOnText]}>
                     {g.label}
                   </Text>

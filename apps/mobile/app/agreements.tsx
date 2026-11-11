@@ -65,10 +65,11 @@ function formatWhen(value: string | null) {
 }
 
 export default function AgreementsScreen() {
-  const params = useLocalSearchParams<{ planId?: string; store?: string; region?: string }>();
+  const params = useLocalSearchParams<{ planId?: string; childId?: string; store?: string; region?: string }>();
   // Razorpay / Cashfree run only on the website; Android sells through Google Play Billing
   // (Play payments policy) and the iPhone app has no purchase path.
   const planId = Platform.OS === "web" ? params.planId : undefined;
+  const childId = params.childId || undefined;
   const region = params.region === "PH" ? "PH" : "IN";
   const storeFlow = params.store === "google_play" || (Platform.OS !== "web" && Boolean(params.planId));
   const router = useRouter();
@@ -111,6 +112,7 @@ export default function AgreementsScreen() {
         method: "POST",
         body: JSON.stringify({
           planId,
+          childId,
           region,
           phone: phone.trim() || undefined,
           returnTo: Platform.OS === "web" ? "app" : "sdk",
@@ -186,7 +188,7 @@ export default function AgreementsScreen() {
     try {
       order = await apiRequest<Order>("/payments/orders", {
         method: "POST",
-        body: JSON.stringify({ planId, region }),
+        body: JSON.stringify({ planId, childId, region }),
       });
       const user = await getUser<{ email?: string; name?: string }>();
       const months = order.plan?.durationMonths;

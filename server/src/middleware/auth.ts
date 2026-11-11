@@ -1,7 +1,7 @@
 import type { NextFunction, Request, Response } from "express";
 import type { UserRole } from "@prisma/client";
 import { AppError } from "../lib/errors.js";
-import { verifyAccessToken } from "../lib/jwt.js";
+import { passwordVersion, verifyAccessToken } from "../lib/jwt.js";
 import { prisma } from "../lib/prisma.js";
 import { assertActiveParentSession } from "../parent-auth/session.service.js";
 
@@ -46,12 +46,15 @@ export async function requireAuth(
       throw new AppError("Invalid or inactive account", 401);
     }
 
-    // Admin password reset revokes prior JWTs by bumping passwordChangedAt.
-    if (
-      user.passwordChangedAt &&
-      typeof payload.iat === "number" &&
-      payload.iat * 1000 < user.passwordChangedAt.getTime()
-    ) {
+    // Any password change or reset revokes prior JWTs by bumping passwordChangedAt.
+    const revoked =
+      typeof payload.pwv === "number"
+        ? payload.pwv !== passwordVersion(user)
+        : Boolean(
+            user.passwordChangedAt &&
+              (typeof payload.iat !== "number" || payload.iat * 1000 < user.passwordChangedAt.getTime())
+          );
+    if (revoked) {
       throw new AppError("Session expired. Please sign in again.", 401, {
         code: "SESSION_REVOKED",
       });

@@ -8,12 +8,18 @@ export interface JwtPayload {
   role: UserRole;
   /** Parent device session id — required for PARENT single-device enforcement. */
   sid?: string;
-  /** Issued-at (seconds) — used to revoke JWTs after Admin password reset. */
+  /** Password version (passwordChangedAt in ms, 0 if never changed); any mismatch revokes the token. */
+  pwv?: number;
+  /** Issued-at (seconds) — fallback revocation check for tokens issued before `pwv` existed. */
   iat?: number;
 }
 
+export function passwordVersion(user: { passwordChangedAt: Date | null }): number {
+  return user.passwordChangedAt?.getTime() ?? 0;
+}
+
 export function signAccessToken(
-  payload: JwtPayload,
+  payload: JwtPayload & { pwv: number },
   expiresIn?: string
 ): string {
   return jwt.sign(payload, env.JWT_SECRET, {

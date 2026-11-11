@@ -12,6 +12,7 @@
 import { MIX_MODES } from "@little-readers/shared";
 import { prisma } from "../lib/prisma.js";
 import { AppError } from "../lib/errors.js";
+import { effectiveLevelForChild } from "./grade-access.js";
 
 /** Calendar day bounds in Asia/Kolkata (IST). Kept local to avoid circular imports. */
 function kolkataDayBounds(now = new Date()) {
@@ -604,6 +605,7 @@ export async function getChildProgressDashboard(
       ? Math.round((totalCorrectAttempts / totalAttempts) * 100)
       : 0;
 
+  const gradeLevel = await effectiveLevelForChild(childId);
   const [mixedAgg, certificateRows, levelCategories, dailyChallenge] = await Promise.all([
     prisma.learningSession.aggregate({
       where: { childId, status: "COMPLETED", mode: { in: [...MIX_MODES] } },
@@ -617,7 +619,7 @@ export async function getChildProgressDashboard(
     prisma.learningCategory.findMany({
       where: {
         isPublished: true,
-        group: { level: { children: { some: { id: childId } } } },
+        group: { levelId: gradeLevel.id },
       },
       orderBy: { sortOrder: "asc" },
       select: { id: true, code: true, label: true, emoji: true },
@@ -665,7 +667,7 @@ export async function getChildProgressDashboard(
       description: a.description,
       emoji: a.code.startsWith("cert_")
         ? "🎓"
-        : emojiByCode.get(a.code.slice(4)) ?? "🏅",
+        : emojiByCode.get(a.code.slice(4).replace(/^LEVEL_\d+_/, "")) ?? "🏅",
       unlocked: true,
       earnedAt: a.earnedAt,
     }));

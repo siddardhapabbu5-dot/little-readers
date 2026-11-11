@@ -8,9 +8,13 @@ import { prisma } from "../lib/prisma.js";
 import { resolveAlphabetEmoji } from "../vocab-import/alphabet-emoji.js";
 import { assertStudentDeviceAllowed } from "../devices/device.service.js";
 import {
-  assertChildHasLearningSeat,
-  assertParentSubscriptionEligible,
-} from "../subscriptions/subscription.service.js";
+  assertChildGradeAccess,
+  assertSameGrade,
+  getChildGradeAccess,
+  categoryAchievementCode,
+  effectiveLevelForChild,
+  productGradeLabel,
+} from "./grade-access.js";
 import {
   awardMilestoneAchievements,
   getChildProgressDashboard,
@@ -19,6 +23,36 @@ import { assertActivityModeEnabled } from "./activity-settings.js";
 import { issueCertificateIfMastered } from "./certificates.js";
 import { awardSessionPoints } from "../challenges/challenges.service.js";
 import { MIX_MODES, type MixMode } from "@little-readers/shared";
+
+/**
+ * Grade a lesson belongs to: its level, else its category's level, else (unscoped lessons)
+ * the single level shared by all of its active words. Null when it spans grades or has no words.
+ */
+export async function lessonLevelId(lessonId: string): Promise<string | null> {
+  const lesson = await prisma.lesson.findUnique({
+    where: { id: lessonId },
+    select: {
+      levelId: true,
+      learningCategory: { select: { group: { select: { levelId: true } } } },
+      vocabItems: {
+        select: {
+          vocabularyWord: {
+            select: { isActive: true, category: { select: { group: { select: { levelId: true } } } } },
+          },
+        },
+      },
+    },
+  });
+  if (!lesson) throw new AppError("Lesson not found or not published", 404);
+  if (lesson.levelId) return lesson.levelId;
+  if (lesson.learningCategory) return lesson.learningCategory.group.levelId;
+  const levels = new Set(
+    lesson.vocabItems
+      .filter((i) => i.vocabularyWord.isActive)
+      .map((i) => i.vocabularyWord.category.group.levelId)
+  );
+  return levels.size === 1 ? [...levels][0] : null;
+}
 
 function isMixMode(mode: string | null | undefined): mode is MixMode {
   return Boolean(mode) && (MIX_MODES as readonly string[]).includes(mode!);
@@ -142,6 +176,8 @@ export async function getLevel1Curriculum(parentId: string, childId: string) {
   if (!level) {
     throw new AppError("Level 1 curriculum is not seeded. Run db:seed.", 500);
   }
+  const access = await assertChildGradeAccess(parentId, childId);
+  if (access.via !== "STAFF") assertSameGrade(level.id, access.level);
 
   const ordered = level.groups.flatMap((g) => g.categories);
 
@@ -198,6 +234,9 @@ export async function getLevel1Curriculum(parentId: string, childId: string) {
           label: cat.label,
           description: cat.description,
           emoji: cat.emoji,
+          symbol: cat.symbol,
+          dailyConversation: cat.dailyConversation,
+          exampleSentence: cat.exampleSentence,
           wordCount: cat._count.words,
           unlockOrder: cat.unlockOrder,
           unlocked,
@@ -402,8 +441,20 @@ export async function startLearningSession(
   role?: string
 ) {
   await assertChildOwnedByParent(parentId, input.childId, role);
-  await assertParentSubscriptionEligible(parentId);
-  await assertChildHasLearningSeat(parentId, input.childId);
+  const access = await assertChildGradeAccess(parentId, input.childId);
+  const enforceGrade = access.via !== "STAFF";
+
+  if (enforceGrade && input.categoryId && !input.lessonId) {
+    const cat = await prisma.learningCategory.findUnique({
+      where: { id: input.categoryId },
+      select: { group: { select: { levelId: true } } },
+    });
+    if (!cat) throw new AppError("Category not found", 404);
+    assertSameGrade(cat.group.levelId, access.level);
+  }
+  if (enforceGrade && input.lessonId) {
+    assertSameGrade(await lessonLevelId(input.lessonId), access.level);
+  }
 
   if (mobile?.enforceDevice) {
     if (!mobile.installationId) {
@@ -419,7 +470,13 @@ export async function startLearningSession(
   await assertActivityModeEnabled(activityMode);
 
   if (input.mix) {
-    return startMixedSession(input.childId, input.mix, activityMode, input.questionCount);
+    return startMixedSession(
+      input.childId,
+      input.mix,
+      activityMode,
+      input.questionCount,
+      access.level.code
+    );
   }
 
   // --- Lesson-backed session (Listen/Spell reuse) ---
@@ -788,13 +845,9 @@ async function startMixedSession(
   childId: string,
   mix: MixMode,
   activityMode: ActivityMode,
-  questionCount?: number
+  questionCount: number | undefined,
+  levelCode: string
 ) {
-  const child = await prisma.child.findUniqueOrThrow({
-    where: { id: childId },
-    select: { level: { select: { code: true } } },
-  });
-  const levelCode = child.level?.code ?? "LEVEL_1";
   const categories = await prisma.learningCategory.findMany({
     where: { isPublished: true, group: { level: { code: levelCode } } },
     orderBy: { unlockOrder: "asc" },
@@ -1028,7 +1081,19 @@ export async function completeLearningSession(
     where: { id: sessionId },
     include: {
       child: { select: { id: true, parentId: true, displayName: true } },
-      category: { select: { id: true, label: true, emoji: true, code: true } },
+      category: {
+        select: {
+          id: true,
+          label: true,
+          emoji: true,
+          code: true,
+          group: {
+            select: {
+              level: { select: { id: true, code: true, label: true, ageMin: true, ageMax: true } },
+            },
+          },
+        },
+      },
       attempts: true,
     },
   });
@@ -1036,6 +1101,26 @@ export async function completeLearningSession(
   if (!session || session.child.parentId !== parentId) {
     throw new AppError("Session not found", 404);
   }
+  const sessionLevel = session.category.group.level;
+  const nextCategoryInLevel = () =>
+    prisma.learningCategory.findFirst({
+      where: {
+        isPublished: true,
+        unlockOrder: { gt: 0 },
+        group: { levelId: sessionLevel.id },
+        NOT: { id: session.categoryId },
+        progress: { none: { childId: session.childId, completed: true } },
+        words: { some: { isActive: true } },
+      },
+      orderBy: { unlockOrder: "asc" },
+      select: { id: true, label: true, emoji: true, code: true },
+    });
+  const categoryForResult = {
+    id: session.category.id,
+    label: session.category.label,
+    emoji: session.category.emoji,
+    code: session.category.code,
+  };
 
   const listenAttempts = session.attempts.filter((a) => a.round === "LISTEN");
   const spellAttempts = session.attempts.filter(
@@ -1067,7 +1152,7 @@ export async function completeLearningSession(
     childName: session.child.displayName,
     category: mix && MIX_META[mix]
       ? { id: mix, code: mix, label: MIX_META[mix].label, emoji: MIX_META[mix].emoji }
-      : session.category,
+      : categoryForResult,
     mix,
     newCertificates: newCertificates.filter((c): c is NonNullable<typeof c> => Boolean(c)),
     questionsAttempted: session.attempts.length,
@@ -1088,17 +1173,7 @@ export async function completeLearningSession(
   if (session.status === "COMPLETED") {
     // Still refresh milestone achievements (upsert) for older completed sessions.
     await awardMilestoneAchievements(session.childId);
-    const nextCategory = await prisma.learningCategory.findFirst({
-      where: {
-        isPublished: true,
-        unlockOrder: { gt: 0 },
-        group: { level: { code: "LEVEL_1" } },
-        NOT: { id: session.categoryId },
-        progress: { none: { childId: session.childId, completed: true } },
-      },
-      orderBy: { unlockOrder: "asc" },
-      select: { id: true, label: true, emoji: true, code: true },
-    });
+    const nextCategory = await nextCategoryInLevel();
     const categoryWordsLearned = await countDistinctWordsLearned(
       session.childId,
       session.categoryId
@@ -1247,18 +1322,17 @@ export async function completeLearningSession(
     });
 
     if (completed) {
+      const code = categoryAchievementCode(sessionLevel.code, session.category.code);
       await tx.achievement.upsert({
-        where: {
-          childId_code: {
-            childId: session.childId,
-            code: `cat_${session.category.code}`,
-          },
-        },
+        where: { childId_code: { childId: session.childId, code } },
         create: {
           childId: session.childId,
-          code: `cat_${session.category.code}`,
+          code,
           title: `${session.category.label} complete`,
-          description: `Finished ${session.category.label} in Level 1`,
+          description:
+            sessionLevel.code === "LEVEL_1"
+              ? `Finished ${session.category.label} in Level 1`
+              : `Finished ${session.category.label} in ${productGradeLabel(sessionLevel).split(" – ")[0]}`,
         },
         update: {},
       });
@@ -1300,17 +1374,7 @@ export async function completeLearningSession(
     return { closed, nextWords };
   });
 
-  const nextCategory = await prisma.learningCategory.findFirst({
-    where: {
-      isPublished: true,
-      unlockOrder: { gt: 0 },
-      group: { level: { code: "LEVEL_1" } },
-      NOT: { id: session.categoryId },
-      progress: { none: { childId: session.childId, completed: true } },
-    },
-    orderBy: { unlockOrder: "asc" },
-    select: { id: true, label: true, emoji: true, code: true },
-  });
+  const nextCategory = await nextCategoryInLevel();
 
   const certificate = await issueCertificateIfMastered(session.childId, session.categoryId);
 
@@ -1362,6 +1426,7 @@ type WordWithRelations = {
   imageUrl: string | null;
   audioUrl: string | null;
   phonetic: string | null;
+  exampleSentence: string | null;
   firstLetter: string;
   difficulty: number;
   sortOrder: number;
@@ -1394,6 +1459,7 @@ function mapVocabularyRecord(word: WordWithRelations) {
     word: word.text,
     simpleMeaning: word.meaning,
     pronunciation: word.phonetic,
+    exampleSentence: word.exampleSentence,
     imageUrl: word.imageUrl,
     audioUrl: word.audioUrl,
     emoji: word.emoji,
@@ -1482,9 +1548,12 @@ async function listLevelGroupsById(
   parentId?: string,
   childId?: string
 ) {
+  let access: Awaited<ReturnType<typeof getChildGradeAccess>> | null = null;
   if (childId) {
     if (!parentId) throw new AppError("Authentication required", 401);
     await assertChildOwnedByParent(parentId, childId);
+    access = await getChildGradeAccess(parentId, childId);
+    if (access.via !== "STAFF") assertSameGrade(levelId, access.level);
   }
 
   const level = await prisma.learningLevel.findUniqueOrThrow({
@@ -1494,7 +1563,7 @@ async function listLevelGroupsById(
         orderBy: { sortOrder: "asc" },
         include: {
           categories: {
-            where: { isPublished: true },
+            where: { isPublished: true, words: { some: { isActive: true } } },
             orderBy: { sortOrder: "asc" },
             include: {
               _count: { select: { words: { where: { isActive: true } } } },
@@ -1549,7 +1618,7 @@ async function listLevelGroupsById(
       ageMax: level.ageMax,
       description: level.description,
     },
-    groups: level.groups.map((group) => ({
+    groups: (access && !access.entitled ? [] : level.groups).map((group) => ({
       id: group.id,
       code: group.code,
       label: group.label,
@@ -1559,7 +1628,7 @@ async function listLevelGroupsById(
         const wordsLearned =
           learnedByCategory.get(cat.id) ?? progress?.wordsLearned ?? 0;
         const priorCompleted = ordered
-          .filter((c) => c.unlockOrder < cat.unlockOrder)
+          .filter((c) => c.unlockOrder < cat.unlockOrder && c._count.words > 0)
           .every((c) => completedIds.has(c.id));
         const unlocked =
           !childId ||
@@ -1575,6 +1644,9 @@ async function listLevelGroupsById(
           label: cat.label,
           description: cat.description,
           emoji: cat.emoji,
+          symbol: cat.symbol,
+          dailyConversation: cat.dailyConversation,
+          exampleSentence: cat.exampleSentence,
           wordCount: cat._count.words,
           unlockOrder: cat.unlockOrder,
           unlocked,
@@ -1590,6 +1662,16 @@ async function listLevelGroupsById(
         };
       }),
     })),
+    access: access
+      ? {
+          entitled: access.entitled,
+          via: access.via,
+          gradeLabel: access.gradeLabel,
+          levelCode: access.level.code,
+          expiresAt: access.expiresAt,
+          reason: access.reason,
+        }
+      : null,
   };
 }
 
@@ -1600,6 +1682,7 @@ export async function listLearningCategories(filters?: {
   const categories = await prisma.learningCategory.findMany({
     where: {
       isPublished: true,
+      words: { some: { isActive: true } },
       ...(filters?.groupCode || filters?.levelCode
         ? {
             group: {
@@ -1646,7 +1729,20 @@ export async function listLearningCategories(filters?: {
   }));
 }
 
-export async function listCategoryWords(categoryId: string) {
+/** With a childId the child must own an active entitlement for the category's grade. */
+export async function listCategoryWords(
+  categoryId: string,
+  viewer?: { parentId: string; childId?: string }
+) {
+  if (viewer?.childId) {
+    await assertChildOwnedByParent(viewer.parentId, viewer.childId);
+    const access = await assertChildGradeAccess(viewer.parentId, viewer.childId);
+    const target = await prisma.learningCategory.findUnique({
+      where: { id: categoryId },
+      select: { group: { select: { levelId: true } } },
+    });
+    if (target && access.via !== "STAFF") assertSameGrade(target.group.levelId, access.level);
+  }
   const category = await prisma.learningCategory.findFirst({
     where: { id: categoryId, isPublished: true },
     include: {
@@ -1669,6 +1765,10 @@ export async function listCategoryWords(categoryId: string) {
       code: category.code,
       categoryName: category.label,
       emoji: category.emoji,
+      symbol: category.symbol,
+      description: category.description,
+      dailyConversation: category.dailyConversation,
+      exampleSentence: category.exampleSentence,
       groupName: category.group.label,
       levelId: category.group.level.id,
       levelCode: category.group.level.code,
@@ -1678,11 +1778,24 @@ export async function listCategoryWords(categoryId: string) {
   };
 }
 
-export async function getVocabularyWordById(wordId: string) {
+/** With a childId the child must own an active entitlement for the word's grade. */
+export async function getVocabularyWordById(
+  wordId: string,
+  viewer?: { parentId: string; childId?: string }
+) {
   const word = await prisma.vocabularyWord.findFirst({
     where: { id: wordId, isActive: true },
     include: wordInclude,
   });
   if (!word) throw new AppError("Word not found", 404);
+  if (viewer?.childId) {
+    await assertChildOwnedByParent(viewer.parentId, viewer.childId);
+    const access = await assertChildGradeAccess(viewer.parentId, viewer.childId);
+    const owner = await prisma.learningCategory.findUnique({
+      where: { id: word.categoryId },
+      select: { group: { select: { levelId: true } } },
+    });
+    if (access.via !== "STAFF") assertSameGrade(owner?.group.levelId, access.level);
+  }
   return mapVocabularyRecord(word as WordWithRelations);
 }

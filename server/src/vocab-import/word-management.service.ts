@@ -915,6 +915,8 @@ export async function importVocabularySheet(input: {
   filename?: string;
   csvText?: string;
   categoryId?: string;
+  /** Learn Wise grade being edited (LEVEL_n); A–Z tabs then only match that grade's categories. */
+  levelCode?: string;
 }) {
   const name = (input.filename ?? "").toLowerCase();
   const isXlsx = name.endsWith(".xlsx") || name.endsWith(".xls");
@@ -931,8 +933,14 @@ export async function importVocabularySheet(input: {
       if (input.categoryId) {
         const category = await prisma.learningCategory.findUnique({
           where: { id: input.categoryId },
+          include: { group: { select: { level: { select: { code: true } } } } },
         });
         if (!category) throw new AppError("Category not found", 404);
+        if (input.levelCode && category.group.level.code !== input.levelCode) {
+          throw new AppError("This category belongs to a different grade", 400, {
+            code: "GRADE_MISMATCH",
+          });
+        }
         const sheetName = pickAzSheetName(azSheets, category);
         const matrix = sheetToMatrix(wb.Sheets[sheetName]);
         const result = await importAlphabetSheetRows(matrix, category.id);
@@ -941,6 +949,7 @@ export async function importVocabularySheet(input: {
 
       // One workbook → many categories (sheet name ≈ category label)
       const categories = await prisma.learningCategory.findMany({
+        where: input.levelCode ? { group: { level: { code: input.levelCode } } } : undefined,
         select: { id: true, label: true, code: true },
       });
       let created = 0;

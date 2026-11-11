@@ -5,6 +5,7 @@ import {
   requireRoles,
   type AuthenticatedRequest,
 } from "../middleware/auth.js";
+import { requirePermission } from "../auth/permissions.js";
 import { validateBody } from "../middleware/validate.js";
 import * as academic from "./academic.service.js";
 import * as plans from "./subscription-plan.service.js";
@@ -12,7 +13,7 @@ import * as plans from "./subscription-plan.service.js";
 export const academicAdminRouter = Router();
 export const academicParentRouter = Router();
 
-academicAdminRouter.use(requireAuth, requireRoles("ADMIN", "SUPER_ADMIN"));
+academicAdminRouter.use(requireAuth, requirePermission("content.manage"));
 
 const levelBody = z.object({
   code: z.string().min(1).max(40).optional(),
@@ -128,7 +129,7 @@ academicAdminRouter.post("/levels/:id/publish", async (req, res, next) => {
   }
 });
 
-academicAdminRouter.delete("/levels/:id", async (req, res, next) => {
+academicAdminRouter.delete("/levels/:id", requirePermission("content.destroy"), async (req, res, next) => {
   try {
     res.json({
       data: await academic.deleteOrArchiveLevel(String(req.params.id)),
@@ -213,7 +214,7 @@ academicAdminRouter.post("/grades/:id/publish", async (req, res, next) => {
   }
 });
 
-academicAdminRouter.delete("/grades/:id", async (req, res, next) => {
+academicAdminRouter.delete("/grades/:id", requirePermission("content.destroy"), async (req, res, next) => {
   try {
     res.json({
       data: await academic.deleteOrArchiveGrade(String(req.params.id)),

@@ -6,6 +6,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Card, ErrorText, PrimaryButton, SoftButton, Title } from "../../components/ui";
 import { AuthGate } from "../../components/AuthGate";
 import { RegistrationSteps } from "../../components/RegistrationSteps";
+import { RequireParentGate } from "../../components/RequireParentGate";
 import { apiRequest, ApiError } from "../../services/api";
 import { ROLE_SETS } from "../../services/auth-errors";
 import { colors } from "../../theme";
@@ -113,6 +114,7 @@ export default function ReceiptScreen() {
 
   return (
     <AuthGate roles={ROLE_SETS.parentFamily}>
+      <RequireParentGate>
       <SafeAreaView style={styles.safe}>
         <ScrollView contentContainerStyle={styles.content}>
           <RegistrationSteps step={7} />
@@ -153,6 +155,7 @@ export default function ReceiptScreen() {
           <PrimaryButton label="Go to parent dashboard" onPress={() => router.replace("/parent")} />
         </ScrollView>
       </SafeAreaView>
+      </RequireParentGate>
     </AuthGate>
   );
 }

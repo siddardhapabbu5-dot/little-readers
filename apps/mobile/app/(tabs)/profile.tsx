@@ -61,7 +61,7 @@ export default function ProfileTab() {
     role === "ADMIN" ||
     role === "SUPER_ADMIN" ||
     role === "SCHOOL_ADMIN";
-  const isAdmin = role === "ADMIN" || role === "SUPER_ADMIN" || role === "SCHOOL_ADMIN";
+  const isAdmin = role === "ADMIN" || role === "SUPER_ADMIN";
   const isSuperAdmin = role === "SUPER_ADMIN";
   const canPractice = role === "ADMIN" || role === "SUPER_ADMIN";
 
@@ -75,7 +75,7 @@ export default function ProfileTab() {
     }
     router.push("/(tabs)/learn");
   }
-  const isTeacher = role === "TEACHER";
+  const isTeacher = role === "TEACHER" || role === "SCHOOL_ADMIN";
   const isStudent = role === "STUDENT";
 
   return (
@@ -175,6 +175,7 @@ export default function ProfileTab() {
           setGateTarget(null);
         }}
         onUnlocked={() => {
+          setGateOpen(false);
           if (gateTarget) router.push(gateTarget);
           setGateTarget(null);
         }}

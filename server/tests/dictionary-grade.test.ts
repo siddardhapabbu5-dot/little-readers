@@ -1,4 +1,4 @@
-import { beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import request from "supertest";
 import { createApp } from "../src/app.js";
 import { prisma } from "../src/lib/prisma.js";
@@ -11,6 +11,9 @@ const hasDb = Boolean(process.env.DATABASE_URL);
 
 describe.skipIf(!hasDb)("Four-grade dictionary classification", () => {
   let adminToken = "";
+  const tag = String(Date.now()).replace(/\d/g, (d, at: number) => (at % 2 ? "klmnopqrst" : "abcdefghij")[Number(d)]);
+  // Never reuse a real headword: publishing updates the live word with the same text.
+  const headword = `dictfix${tag}`;
 
   beforeAll(async () => {
     process.env.JWT_SECRET =
@@ -22,7 +25,6 @@ describe.skipIf(!hasDb)("Four-grade dictionary classification", () => {
     await seedLevel1Vocabulary(prisma as unknown as Parameters<typeof seedLevel1Vocabulary>[0], {
       includeWords: false,
     });
-    await prisma.learningCategory.updateMany({ data: { isPublished: true } });
 
     const login = await request(app).post("/api/auth/login").send({
       email: "admin@littlereaders.test",
@@ -30,6 +32,11 @@ describe.skipIf(!hasDb)("Four-grade dictionary classification", () => {
     });
     expect(login.status).toBe(200);
     adminToken = login.body.data.tokens.accessToken;
+  });
+
+  afterAll(async () => {
+    await prisma.vocabularyWord.deleteMany({ where: { text: headword } });
+    await prisma.dictionaryEntry.deleteMany({ where: { normalizedHeadword: headword } });
   });
 
   it("classify-v1 uses mixed signals and can suggest multi-grade near boundaries", () => {
@@ -109,8 +116,6 @@ describe.skipIf(!hasDb)("Four-grade dictionary classification", () => {
   });
 
   it("imports JSON dictionary, classifies, approves and publishes without duplicating headword entries", async () => {
-    const headword = "mom";
-    const tag = String(Date.now()).replace(/\d/g, (d) => "abcdefghij"[Number(d)]);
     const payload = [
       {
         headword,

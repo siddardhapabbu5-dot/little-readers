@@ -100,7 +100,7 @@ async function loadCategoryHints(): Promise<Record<GradeCode, CategoryHint[]>> {
       grade: true,
       groups: {
         include: {
-          categories: { where: { isPublished: true }, orderBy: { sortOrder: "asc" } },
+          categories: { orderBy: { sortOrder: "asc" } },
         },
       },
     },
@@ -120,6 +120,9 @@ async function loadCategoryHints(): Promise<Record<GradeCode, CategoryHint[]>> {
     if (!gradeCode || !level.gradeId) continue;
     for (const group of level.groups) {
       for (const cat of group.categories) {
+        // Grades 2–4 topics stay drafts until the approve → publish workflow; children never
+        // see words in them before that. Grade 1 is live, so only its published categories count.
+        if (!cat.isPublished && level.code === GRADE_LEVEL.GRADE_1) continue;
         out[gradeCode].push({
           id: cat.id,
           code: cat.code,

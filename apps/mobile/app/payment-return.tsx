@@ -4,6 +4,7 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Card, ErrorText, PrimaryButton, Title } from "../components/ui";
 import { AuthGate } from "../components/AuthGate";
+import { RequireParentGate } from "../components/RequireParentGate";
 import { apiRequest, ApiError } from "../services/api";
 import { ROLE_SETS } from "../services/auth-errors";
 import { colors } from "../theme";
@@ -45,6 +46,7 @@ export default function PaymentReturnScreen() {
 
   return (
     <AuthGate roles={ROLE_SETS.parentFamily}>
+      <RequireParentGate>
       <SafeAreaView style={styles.safe}>
         <Card style={{ gap: 12, margin: 20 }}>
           <Title>Payment</Title>
@@ -61,6 +63,7 @@ export default function PaymentReturnScreen() {
           ) : null}
         </Card>
       </SafeAreaView>
+      </RequireParentGate>
     </AuthGate>
   );
 }

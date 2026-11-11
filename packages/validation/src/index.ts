@@ -75,7 +75,7 @@ export const loginSchema = z.object({
 
 export const emailOtpSendSchema = z.object({
   email: z.string().trim().email("Valid email is required").max(255),
-  purpose: z.enum(["REGISTER", "RESET_PASSWORD"]),
+  purpose: z.enum(["REGISTER", "RESET_PASSWORD", "RESET_PIN"]),
 });
 
 export const emailOtpVerifySchema = emailOtpSendSchema.extend({

@@ -48,6 +48,8 @@ function handleAuthFailure(
 ) {
   if (status !== 401 || !auth) return;
   const code = errorCode(body);
+  // A wrong Parent PIN is not a dead session; logging out would leave the PIN screen.
+  if (code === "PIN_INVALID") return;
   if (code === "SESSION_REVOKED") {
     void saveSessionRevokedMessage(
       body.error ||
@@ -195,6 +197,26 @@ export async function apiDownloadText(
     throw new ApiError(message, response.status, details, code);
   }
   return text;
+}
+
+/** Authenticated binary download (e.g. .xlsx) — returns a Blob. */
+export async function apiDownloadBlob(
+  path: string,
+  options: { token?: string } = {}
+): Promise<Blob> {
+  const auth = options.token ?? (await getToken()) ?? undefined;
+  const response = await fetch(`${API_URL}${path}`, {
+    headers: {
+      ...(auth ? { Authorization: `Bearer ${auth}` } : {}),
+      "X-Client-Platform": Platform.OS,
+    },
+  });
+  if (!response.ok) {
+    const body = await response.json().catch(() => ({}));
+    handleAuthFailure(response.status, auth, body);
+    throw new ApiError(body.error ?? "Download failed", response.status, body.details, errorCode(body));
+  }
+  return response.blob();
 }
 
 /**

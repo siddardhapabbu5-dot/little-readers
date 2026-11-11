@@ -46,8 +46,8 @@ export function routeForRole(role: string): string {
   switch (role) {
     case "SUPER_ADMIN":
     case "ADMIN":
-    case "SCHOOL_ADMIN":
       return "/admin";
+    case "SCHOOL_ADMIN":
     case "TEACHER":
       return "/teacher";
     case "PARENT":
@@ -63,7 +63,8 @@ export const ROLE_SETS = {
   parentFamily: ["PARENT", "ADMIN", "SUPER_ADMIN", "SCHOOL_ADMIN"] as const,
   kidsLearning: ["PARENT", "STUDENT", "ADMIN", "SUPER_ADMIN", "SCHOOL_ADMIN"] as const,
   teacher: ["TEACHER", "ADMIN", "SUPER_ADMIN", "SCHOOL_ADMIN"] as const,
-  admin: ["ADMIN", "SUPER_ADMIN", "SCHOOL_ADMIN"] as const,
+  admin: ["ADMIN", "SUPER_ADMIN"] as const,
+  schools: ["ADMIN", "SUPER_ADMIN", "SCHOOL_ADMIN"] as const,
   superAdmin: ["SUPER_ADMIN"] as const,
   anyAuthed: [
     "PARENT",

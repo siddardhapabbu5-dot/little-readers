@@ -4,6 +4,7 @@ import { useFocusEffect, useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Card, ErrorText, Field, PrimaryButton, SoftButton, Title, KeyboardScroll } from "../components/ui";
 import { AuthGate } from "../components/AuthGate";
+import { RequireParentGate } from "../components/RequireParentGate";
 import { apiRequest, ApiError } from "../services/api";
 import { ROLE_SETS } from "../services/auth-errors";
 import { clearSession, getUser } from "../services/secure";
@@ -79,6 +80,7 @@ export default function ChangePasswordScreen() {
 
   return (
     <AuthGate roles={ROLE_SETS.anyAuthed}>
+      <RequireParentGate>
       <SafeAreaView style={styles.safe}>
         <KeyboardScroll contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
             <SoftButton label="← Back" onPress={() => router.back()} />
@@ -118,6 +120,7 @@ export default function ChangePasswordScreen() {
             </Text>
           </KeyboardScroll>
       </SafeAreaView>
+      </RequireParentGate>
     </AuthGate>
   );
 }

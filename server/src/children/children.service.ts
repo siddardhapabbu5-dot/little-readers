@@ -4,6 +4,77 @@ import { inferLevelFromBirthYear } from "@little-readers/shared";
 import { AppError } from "../lib/errors.js";
 import { prisma } from "../lib/prisma.js";
 import { tryAssignLearningSeat } from "../subscriptions/subscription.service.js";
+import {
+  LEGACY_DEFAULT_LEVEL_CODE,
+  productGradeLabel,
+  productGradeNumber,
+} from "../learning/grade-access.js";
+
+/** A parent-chosen Learn Wise grade must be a live product grade. */
+function assertSelectableGrade(level: { code: string; isActive: boolean; isPublished: boolean }) {
+  if (!productGradeNumber(level.code)) {
+    throw new AppError("Choose Learn Wise Grade 1–4", 400, { code: "GRADE_NOT_PRODUCT" });
+  }
+  if (!level.isActive || !level.isPublished) {
+    throw new AppError("This grade is coming soon", 400, { code: "GRADE_COMING_SOON" });
+  }
+}
+
+const EFFECTIVE_LEVEL_SELECT = {
+  id: true,
+  code: true,
+  label: true,
+  ageMin: true,
+  ageMax: true,
+  isActive: true,
+  isPublished: true,
+} as const;
+
+type EffectiveLevelRow = {
+  id: string;
+  code: string;
+  label: string;
+  ageMin: number;
+  ageMax: number;
+  isActive: boolean;
+  isPublished: boolean;
+};
+
+function effectiveGradeSummary(level: EffectiveLevelRow | null, fallback: EffectiveLevelRow | null) {
+  const live = level && level.isActive && level.isPublished ? level : fallback;
+  if (!live) return null;
+  return {
+    levelId: live.id,
+    levelCode: live.code,
+    gradeNumber: productGradeNumber(live.code),
+    gradeLabel: productGradeLabel(live),
+  };
+}
+
+/** Learn Wise Grades 1–4 for the parent's grade picker; unpublished grades show as coming soon. */
+export async function listProductGrades() {
+  const levels = await prisma.learningLevel.findMany({
+    where: { code: { in: ["LEVEL_1", "LEVEL_2", "LEVEL_3", "LEVEL_4"] } },
+    select: EFFECTIVE_LEVEL_SELECT,
+    orderBy: { code: "asc" },
+  });
+  return levels.map((l) => ({
+    levelId: l.id,
+    levelCode: l.code,
+    gradeNumber: productGradeNumber(l.code),
+    gradeLabel: productGradeLabel(l),
+    ageMin: l.ageMin,
+    ageMax: l.ageMax,
+    available: l.isActive && l.isPublished,
+  }));
+}
+
+async function legacyDefaultLevel() {
+  return prisma.learningLevel.findUnique({
+    where: { code: LEGACY_DEFAULT_LEVEL_CODE },
+    select: EFFECTIVE_LEVEL_SELECT,
+  });
+}
 
 function resolveBirthFields(input: { birthDate?: string; birthYear?: number }) {
   if (input.birthDate) {
@@ -124,6 +195,7 @@ export async function createChild(parentId: string, input: CreateChildInput) {
   if (!level || !ageGroup) {
     throw new AppError("Learning levels are not seeded. Run db:seed.", 500);
   }
+  if (input.levelId != null || input.level) assertSelectableGrade(level);
 
   const gradeId = await resolveAssignableGradeId(input.gradeId, level.id, {
     forNewAssignment: true,
@@ -173,17 +245,20 @@ export async function createChild(parentId: string, input: CreateChildInput) {
 }
 
 export async function listChildrenForParent(parentId: string) {
-  const children = await prisma.child.findMany({
-    where: { parentId, isActive: true },
-    include: {
-      level: { select: { id: true, code: true, label: true } },
-      grade: {
-        select: { id: true, code: true, label: true, gradeNumber: true },
+  const [children, fallback] = await Promise.all([
+    prisma.child.findMany({
+      where: { parentId, isActive: true },
+      include: {
+        level: { select: EFFECTIVE_LEVEL_SELECT },
+        grade: {
+          select: { id: true, code: true, label: true, gradeNumber: true },
+        },
+        progress: true,
       },
-      progress: true,
-    },
-    orderBy: { createdAt: "asc" },
-  });
+      orderBy: { createdAt: "asc" },
+    }),
+    legacyDefaultLevel(),
+  ]);
 
   return children.map((child) => ({
     id: child.id,
@@ -194,6 +269,7 @@ export async function listChildrenForParent(parentId: string) {
     levelId: child.level?.id ?? null,
     gradeId: child.grade?.id ?? null,
     grade: child.grade,
+    learnWiseGrade: effectiveGradeSummary(child.level, fallback),
     hasLearningSeat: child.hasLearningSeat,
     progress: child.progress,
   }));
@@ -237,10 +313,11 @@ export async function getOrCreateAdminPracticeChild(adminId: string) {
 export async function getChildProfile(userId: string, role: string, childId: string) {
   await assertChildAccess(userId, role, childId);
 
+  const fallback = await legacyDefaultLevel();
   const child = await prisma.child.findFirst({
     where: { id: childId, isActive: true },
     include: {
-      level: { select: { id: true, code: true, label: true } },
+      level: { select: EFFECTIVE_LEVEL_SELECT },
       grade: {
         select: { id: true, code: true, label: true, gradeNumber: true },
       },
@@ -261,6 +338,7 @@ export async function getChildProfile(userId: string, role: string, childId: str
     levelId: child.level?.id ?? null,
     grade: child.grade,
     gradeId: child.grade?.id ?? null,
+    learnWiseGrade: effectiveGradeSummary(child.level, fallback),
     ageGroup: child.ageGroup,
     parent: child.parent,
     hasLearningSeat: child.hasLearningSeat,
@@ -297,9 +375,11 @@ export async function updateChild(
     select: { birthYear: true, levelId: true, gradeId: true },
   });
 
+  // The grade is the parent's choice: a birthday edit only fills a missing level, never changes one.
+  const explicitLevel = Boolean(input.levelId || input.level);
   let levelId: string | undefined;
   let ageGroupId: string | undefined;
-  if (input.levelId || input.level || birthPatch) {
+  if (explicitLevel || (birthPatch && !existing.levelId)) {
     let level =
       input.levelId != null
         ? await prisma.learningLevel.findUnique({ where: { id: input.levelId } })
@@ -317,6 +397,7 @@ export async function updateChild(
     if (!level || !ageGroup) {
       throw new AppError("Learning level not found for update", 400);
     }
+    if (explicitLevel && level.id !== existing.levelId) assertSelectableGrade(level);
     levelId = level.id;
     ageGroupId = ageGroup.id;
   }

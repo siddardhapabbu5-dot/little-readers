@@ -10,7 +10,7 @@ describe.skipIf(!hasDb)("Admin vocabulary word management", () => {
   let adminToken = "";
   let parentToken = "";
   const stamp = Date.now();
-  const tag = String(stamp).replace(/\d/g, (d) => "abcdefghij"[Number(d)]);
+  const tag = String(stamp).replace(/\d/g, (d, at: number) => (at % 2 ? "klmnopqrst" : "abcdefghij")[Number(d)]);
   let categoryA = "";
   let categoryB = "";
   let wrongGradeCategory = "";

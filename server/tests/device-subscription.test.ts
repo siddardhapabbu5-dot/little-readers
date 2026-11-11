@@ -53,7 +53,19 @@ describe.skipIf(!hasDb)("Device lock + subscription enforcement", () => {
     const kids = await request(app)
       .get("/api/children")
       .set("Authorization", `Bearer ${parentToken}`);
-    childId = kids.body.data[0].id;
+    const grade1 = (
+      kids.body.data as { id: string; hasLearningSeat: boolean; learnWiseGrade?: { levelCode: string } }[]
+    ).find((k) => k.hasLearningSeat && k.learnWiseGrade?.levelCode === "LEVEL_1");
+    if (grade1) {
+      childId = grade1.id;
+    } else {
+      const created = await request(app)
+        .post("/api/children")
+        .set("Authorization", `Bearer ${parentToken}`)
+        .send({ displayName: `Grade1_${Date.now()}`, birthDate: "15/03/2020", level: "LEVEL_1" });
+      expect(created.status).toBe(201);
+      childId = created.body.data.id;
+    }
 
     // Clear any prior device for deterministic tests
     await prisma.studentDevice.deleteMany({ where: { childId } });

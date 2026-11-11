@@ -7,6 +7,7 @@ import { Card, ErrorText, PrimaryButton, SoftButton, Title } from "../../compone
 import { AuthGate } from "../../components/AuthGate";
 import { RequireParentGate } from "../../components/RequireParentGate";
 import { RegistrationSteps } from "../../components/RegistrationSteps";
+import { GradePicker, type LearnWiseGrade } from "../../components/GradePicker";
 import { apiRequest, ApiError } from "../../services/api";
 import { ROLE_SETS } from "../../services/auth-errors";
 import { getOrCreateInstallationId, phoneLabel, saveActiveChild } from "../../services/secure";
@@ -15,11 +16,9 @@ import { colors, radii } from "../../theme";
 type ChildRow = {
   id: string;
   displayName: string;
+  birthYear?: number | null;
   levelId?: string | null;
-  gradeId?: string | null;
 };
-type CatalogLevel = { id: string; code: string; label: string };
-type CatalogGrade = { id: string; label: string; assignedLevelId: string | null };
 type DeviceChoice = "this" | "own";
 
 export default function ChildSetupScreen() {
@@ -27,10 +26,8 @@ export default function ChildSetupScreen() {
   const router = useRouter();
   const [step, setStep] = useState<2 | 3>(2);
   const [child, setChild] = useState<ChildRow | null>(null);
-  const [levels, setLevels] = useState<CatalogLevel[]>([]);
-  const [grades, setGrades] = useState<CatalogGrade[]>([]);
+  const [grades, setGrades] = useState<LearnWiseGrade[]>([]);
   const [levelId, setLevelId] = useState<string | null>(null);
-  const [gradeId, setGradeId] = useState<string | null>(null);
   const [device, setDevice] = useState<DeviceChoice | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -40,17 +37,15 @@ export default function ChildSetupScreen() {
     useCallback(() => {
       void (async () => {
         try {
-          const [kids, lv, gr] = await Promise.all([
+          const [kids, gr] = await Promise.all([
             apiRequest<ChildRow[]>("/children"),
-            apiRequest<CatalogLevel[]>("/parent/catalog/levels").catch(() => []),
-            apiRequest<CatalogGrade[]>("/parent/catalog/grades").catch(() => []),
+            apiRequest<LearnWiseGrade[]>("/children/learn-wise-grades"),
           ]);
           const found = kids.find((k) => k.id === id) ?? null;
           setChild(found);
-          setLevels(lv);
           setGrades(gr);
-          setLevelId((cur) => cur ?? found?.levelId ?? lv[0]?.id ?? null);
-          setGradeId((cur) => cur ?? found?.gradeId ?? null);
+          const current = gr.find((g) => g.available && g.levelId === found?.levelId);
+          setLevelId((cur) => cur ?? current?.levelId ?? null);
           if (!found) setError("Child not found.");
         } catch (err) {
           setError(err instanceof ApiError ? err.message : "Could not load");
@@ -61,7 +56,7 @@ export default function ChildSetupScreen() {
 
   async function saveLevel() {
     if (!levelId) {
-      setError("Choose a level.");
+      setError("Choose a Learn Wise grade.");
       return;
     }
     setBusy(true);
@@ -69,12 +64,12 @@ export default function ChildSetupScreen() {
     try {
       const updated = await apiRequest<ChildRow>(`/children/${id}`, {
         method: "PATCH",
-        body: JSON.stringify({ levelId, ...(gradeId ? { gradeId } : {}) }),
+        body: JSON.stringify({ levelId }),
       });
       await saveActiveChild(updated);
       setStep(3);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Could not save level");
+      setError(err instanceof ApiError ? err.message : "Could not save the grade");
     } finally {
       setBusy(false);
     }
@@ -109,7 +104,6 @@ export default function ChildSetupScreen() {
     }
   }
 
-  const levelGrades = grades.filter((g) => !levelId || g.assignedLevelId === levelId);
   const name = child?.displayName ?? "your child";
 
   return (
@@ -126,40 +120,20 @@ export default function ChildSetupScreen() {
 
             {step === 2 ? (
               <Card style={{ gap: 12 }}>
-                <Title>Level & grade</Title>
-                <Text style={styles.meta}>What is {name} learning right now?</Text>
-                <Text style={styles.label}>Level</Text>
-                <View style={styles.chips}>
-                  {levels.map((l) => (
-                    <SoftButton
-                      key={l.id}
-                      label={l.label}
-                      active={levelId === l.id}
-                      onPress={() => {
-                        setLevelId(l.id);
-                        setGradeId(null);
-                      }}
-                    />
-                  ))}
-                </View>
-                {!levels.length ? (
-                  <Text style={styles.meta}>No levels published yet. Ask Admin to publish levels.</Text>
-                ) : null}
-                {levelGrades.length ? (
-                  <>
-                    <Text style={styles.label}>Grade (optional)</Text>
-                    <View style={styles.chips}>
-                      {levelGrades.map((g) => (
-                        <SoftButton
-                          key={g.id}
-                          label={g.label}
-                          active={gradeId === g.id}
-                          onPress={() => setGradeId(gradeId === g.id ? null : g.id)}
-                        />
-                      ))}
-                    </View>
-                  </>
-                ) : null}
+                <Title>Learn Wise grade</Title>
+                <Text style={styles.meta}>
+                  Choose the grade {name} will learn. The age suggestion is only a guide, and
+                  changing a birthday never changes the grade. Each grade needs its own subscription.
+                </Text>
+                <GradePicker
+                  grades={grades}
+                  value={levelId}
+                  onChange={(next) => {
+                    setLevelId(next);
+                    setError(null);
+                  }}
+                  birthYear={child?.birthYear}
+                />
                 <PrimaryButton label="Save" onPress={() => void saveLevel()} loading={busy} />
               </Card>
             ) : (

@@ -1,4 +1,7 @@
 import { PrismaClient } from "@prisma/client";
+import { assertDestructiveAllowed } from "./lib/destructive-guard.mjs";
+
+assertDestructiveAllowed("clean-empty-seed-cats");
 const p = new PrismaClient();
 const cats = await p.learningCategory.findMany({
   include: { _count: { select: { words: true } } },

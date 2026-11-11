@@ -7,7 +7,7 @@ import {
   View,
   type AppStateStatus,
 } from "react-native";
-import { Stack, useRouter, type ErrorBoundaryProps } from "expo-router";
+import { Stack, usePathname, useRouter, type ErrorBoundaryProps } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { KeyboardRoot } from "../components/keyboard";
@@ -15,6 +15,7 @@ import { NetworkBanner } from "../components/NetworkBanner";
 import { PhoneFrame } from "../components/PhoneFrame";
 import { API_URL, checkParentSessionAlive } from "../services/api";
 import { probeApiReachable } from "../services/network";
+import { lockParentGate, shouldLockOnPath } from "../services/parent-gate";
 import { clearSession, ensureClientFreshStart } from "../services/secure";
 import { setUnauthorizedHandler } from "../services/session";
 import { colors } from "../theme";
@@ -67,6 +68,11 @@ export default function RootLayout() {
 function PhoneLayout() {
   const router = useRouter();
   const appState = useRef(AppState.currentState);
+  const pathname = usePathname();
+
+  useEffect(() => {
+    if (shouldLockOnPath(pathname)) lockParentGate();
+  }, [pathname]);
 
   useEffect(() => {
     void ensureClientFreshStart().catch(() => undefined);

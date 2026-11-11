@@ -1,7 +1,7 @@
 import { env } from "../config/env.js";
 
 function logDevOtp(mobileE164: string, otp: string, note: string) {
-  if (env.NODE_ENV === "production") return;
+  if (env.NODE_ENV !== "development" && env.NODE_ENV !== "test") return;
   console.info(`[OTP_DEV] ${note} → ${mobileE164}`);
   if (env.OTP_DEV_MODE) {
     console.info(`[OTP_DEV] OTP for ${mobileE164}: ${otp}`);

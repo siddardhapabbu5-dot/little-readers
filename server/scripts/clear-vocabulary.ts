@@ -1,5 +1,8 @@
 import { PrismaClient } from "@prisma/client";
 import { clearAllVocabularyWords } from "../prisma/seeds/level1-vocabulary.js";
+import { assertDestructiveAllowed } from "./lib/destructive-guard.mjs";
+
+assertDestructiveAllowed("clear-vocabulary");
 
 const prisma = new PrismaClient();
 

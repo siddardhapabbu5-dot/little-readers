@@ -112,14 +112,13 @@ export async function sendParentOtp(input: {
     resendInSec: env.OTP_RESEND_SECONDS,
     message: "OTP sent if the number is registered.",
   };
-  // Never expose OTP in production responses.
+  // OTP is returned only with the explicit OTP_DEV_MODE flag, and never outside development/test.
   // Prefer live process.env so Vitest can enable OTP_DEV_MODE after env module load.
   const otpDevMode =
     env.OTP_DEV_MODE ||
     process.env.OTP_DEV_MODE === "1" ||
-    process.env.OTP_DEV_MODE === "true" ||
-    process.env.VITEST === "true";
-  if (otpDevMode && env.NODE_ENV !== "production") {
+    process.env.OTP_DEV_MODE === "true";
+  if (otpDevMode && (env.NODE_ENV === "development" || env.NODE_ENV === "test")) {
     payload.devOtp = otp;
   }
   return payload;

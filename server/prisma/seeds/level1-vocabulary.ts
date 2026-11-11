@@ -147,6 +147,7 @@ export async function seedLevel1Vocabulary(
         sortOrder: index + 1,
         unlockOrder,
         isPublished: true,
+        status: "PUBLISHED",
       },
       create: {
         groupId,
@@ -159,6 +160,7 @@ export async function seedLevel1Vocabulary(
         sortOrder: index + 1,
         unlockOrder,
         isPublished: true,
+        status: "PUBLISHED",
       },
     });
 
@@ -207,6 +209,7 @@ export async function seedLevel1Vocabulary(
   }
 
   // Mirror empty category shells onto Grades 2–4 so dictionary classification can assign.
+  // Shells start hidden; only the admin approve → publish workflow shows them to children.
   for (const levelCode of ["LEVEL_2", "LEVEL_3", "LEVEL_4"] as const) {
     const level = await prisma.learningLevel.findUnique({ where: { code: levelCode } });
     if (!level) continue;
@@ -236,7 +239,6 @@ export async function seedLevel1Vocabulary(
           emoji: cat.emoji,
           sortOrder: index + 1,
           unlockOrder: uo,
-          isPublished: true,
         },
         create: {
           groupId,
@@ -246,7 +248,7 @@ export async function seedLevel1Vocabulary(
           emoji: cat.emoji,
           sortOrder: index + 1,
           unlockOrder: uo,
-          isPublished: true,
+          isPublished: false,
         },
       });
       uo += 1;

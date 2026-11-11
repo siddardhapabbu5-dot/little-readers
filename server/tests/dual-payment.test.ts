@@ -103,6 +103,24 @@ async function registerParent(tag: string) {
   return { token, id: reg.body.data.user.id as string };
 }
 
+/** Website purchases are bought for one child; returns that child's id. */
+async function addChild(token: string, name: string) {
+  const res = await request(app)
+    .post("/api/children")
+    .set("Authorization", `Bearer ${token}`)
+    .send({ displayName: name, birthDate: "10/02/2023", level: "LEVEL_1" });
+  expect(res.status).toBe(201);
+  return res.body.data.id as string;
+}
+
+async function childAccess(token: string, childId: string) {
+  const res = await request(app).get("/api/subscriptions/children").set("Authorization", `Bearer ${token}`);
+  expect(res.status).toBe(200);
+  return (res.body.data as Array<{ childId: string; entitled: boolean; via: string | null; gradeSubscriptions: Array<{ provider: string }> }>).find(
+    (c) => c.childId === childId
+  )!;
+}
+
 function verify(token: string, productId: string, purchaseToken: string) {
   return request(app)
     .post("/api/payments/google-play/verify")
@@ -454,19 +472,19 @@ describe.skipIf(!hasDb)("Dual payment — Google Play Billing + Razorpay website
 
   // I.13 / I.14 / I.15 / I.16 / I.17 cross-provider entitlement, seats, expiry, privacy
   it("shares one entitlement across app and website, seats two children, and keeps payments private", async () => {
-    // Website (Razorpay) subscriber opens the Android app.
+    // Website (Razorpay) purchase for one child is honoured in the Android app.
     const web = await registerParent("websub");
-    const order = await request(app).post("/api/payments/orders").set("Authorization", `Bearer ${web.token}`).send({ planId });
+    const webChild = await addChild(web.token, `WebKid${stamp}`);
+    const order = await request(app).post("/api/payments/orders").set("Authorization", `Bearer ${web.token}`).send({ planId, childId: webChild });
     const orderId = order.body.data.orderId as string;
     const paid = stubMarkOrderPaid(orderId, `pay_websub_${stamp}`);
     expect(
       (await request(app).post("/api/payments/verify").set("Authorization", `Bearer ${web.token}`).send({ orderId, paymentId: paid.id, signature: signCheckout(orderId, paid.id) })).status
     ).toBe(200);
-    const onAndroid = await request(app).get("/api/subscriptions/me").set("Authorization", `Bearer ${web.token}`).set("X-Client-Platform", "android");
-    expect(onAndroid.body.data.eligible).toBe(true);
-    expect(onAndroid.body.data.subscription.provider).toBe("razorpay");
-    const cfg = await request(app).get("/api/payments/google-play/config").set("Authorization", `Bearer ${web.token}`).set("X-Client-Platform", "android");
-    expect(cfg.body.data).toMatchObject({ canPurchase: false, blockedReason: "ACTIVE_SUBSCRIPTION_OTHER_PROVIDER" });
+    const onAndroid = await request(app).get("/api/subscriptions/children").set("Authorization", `Bearer ${web.token}`).set("X-Client-Platform", "android");
+    const webAccess = (onAndroid.body.data as Array<{ childId: string; entitled: boolean; via: string; gradeSubscriptions: Array<{ provider: string }> }>).find((c) => c.childId === webChild)!;
+    expect(webAccess).toMatchObject({ entitled: true, via: "GRADE" });
+    expect(webAccess.gradeSubscriptions[0].provider).toBe("razorpay");
 
     // Google Play subscriber opens the website.
     const gp = await registerParent("gpweb");
@@ -509,31 +527,33 @@ describe.skipIf(!hasDb)("Dual payment — Google Play Billing + Razorpay website
 
   it("allows Razorpay checkout from Android and refuses it from iOS", async () => {
     const p = await registerParent("native");
+    const childId = await addChild(p.token, `NativeKid${stamp}`);
     const ios = await request(app)
       .post("/api/payments/orders")
       .set("Authorization", `Bearer ${p.token}`)
       .set("X-Client-Platform", "ios")
-      .send({ planId });
+      .send({ planId, childId });
     expect(ios.status).toBe(403);
     expect(ios.body.code).toBe("USE_STORE_BILLING");
     const android = await request(app)
       .post("/api/payments/orders")
       .set("Authorization", `Bearer ${p.token}`)
       .set("X-Client-Platform", "android")
-      .send({ planId });
+      .send({ planId, childId });
     expect(android.status).toBe(201);
     const web = await request(app)
       .post("/api/payments/orders")
       .set("Authorization", `Bearer ${p.token}`)
       .set("X-Client-Platform", "web")
-      .send({ planId });
+      .send({ planId, childId });
     expect(web.status).toBe(201);
   });
 
   // I.17 authorized-only payment does not activate
   it("does not activate a Razorpay payment that is only authorized", async () => {
     const p = await registerParent("authz");
-    const order = await request(app).post("/api/payments/orders").set("Authorization", `Bearer ${p.token}`).send({ planId });
+    const childId = await addChild(p.token, `AuthzKid${stamp}`);
+    const order = await request(app).post("/api/payments/orders").set("Authorization", `Bearer ${p.token}`).send({ planId, childId });
     expect(order.status).toBe(201);
     const orderId = order.body.data.orderId as string;
     const payId = `pay_authz_${stamp}`;
@@ -555,8 +575,7 @@ describe.skipIf(!hasDb)("Dual payment — Google Play Billing + Razorpay website
     } finally {
       setRazorpayClientForTests(null);
     }
-    const me = await request(app).get("/api/subscriptions/me").set("Authorization", `Bearer ${p.token}`);
-    expect(me.body.data.eligible).toBe(false);
+    expect((await childAccess(p.token, childId)).entitled).toBe(false);
     const row = await prisma.payment.findFirstOrThrow({ where: { razorpayOrderId: orderId } });
     expect(row.status).toBe("PENDING");
   });
@@ -564,7 +583,8 @@ describe.skipIf(!hasDb)("Dual payment — Google Play Billing + Razorpay website
   // I.18 Razorpay refunds + audit history in Admin
   it("revokes the paid period on a full Razorpay refund, records partial refunds, and shows history to Admin", async () => {
     const p = await registerParent("refund");
-    const order = await request(app).post("/api/payments/orders").set("Authorization", `Bearer ${p.token}`).send({ planId });
+    const childId = await addChild(p.token, `RefundKid${stamp}`);
+    const order = await request(app).post("/api/payments/orders").set("Authorization", `Bearer ${p.token}`).send({ planId, childId });
     const orderId = order.body.data.orderId as string;
     const paid = stubMarkOrderPaid(orderId, `pay_refund_${stamp}`);
     const ok = await request(app)
@@ -572,8 +592,7 @@ describe.skipIf(!hasDb)("Dual payment — Google Play Billing + Razorpay website
       .set("Authorization", `Bearer ${p.token}`)
       .send({ orderId, paymentId: paid.id, signature: signCheckout(orderId, paid.id) });
     expect(ok.status).toBe(200);
-    let me = await request(app).get("/api/subscriptions/me").set("Authorization", `Bearer ${p.token}`);
-    expect(me.body.data.eligible).toBe(true);
+    expect((await childAccess(p.token, childId)).entitled).toBe(true);
 
     const refundEvent = (id: string, amount: number) =>
       JSON.stringify({ id, event: "refund.processed", payload: { refund: { entity: { id: `rfnd_${id}`, payment_id: paid.id, amount } } } });
@@ -582,8 +601,7 @@ describe.skipIf(!hasDb)("Dual payment — Google Play Billing + Razorpay website
     const partialRes = await request(app).post("/api/payments/webhook").set("Content-Type", "application/json").set("X-Razorpay-Signature", signWebhook(partial)).send(partial);
     expect(partialRes.status).toBe(200);
     expect(partialRes.body.data.partial).toBe(true);
-    me = await request(app).get("/api/subscriptions/me").set("Authorization", `Bearer ${p.token}`);
-    expect(me.body.data.eligible).toBe(true);
+    expect((await childAccess(p.token, childId)).entitled).toBe(true);
 
     const full = refundEvent(`evt_full_${stamp}`, 48900);
     const fullRes = await request(app).post("/api/payments/webhook").set("Content-Type", "application/json").set("X-Razorpay-Signature", signWebhook(full)).send(full);
@@ -593,8 +611,7 @@ describe.skipIf(!hasDb)("Dual payment — Google Play Billing + Razorpay website
     const again = await request(app).post("/api/payments/webhook").set("Content-Type", "application/json").set("X-Razorpay-Signature", signWebhook(full)).send(full);
     expect(again.status).toBe(200);
     expect(again.body.data.alreadyProcessed).toBe(true);
-    me = await request(app).get("/api/subscriptions/me").set("Authorization", `Bearer ${p.token}`);
-    expect(me.body.data.eligible).toBe(false);
+    expect((await childAccess(p.token, childId)).entitled).toBe(false);
     expect((await prisma.payment.findFirstOrThrow({ where: { razorpayOrderId: orderId } })).status).toBe("REFUNDED");
 
     const history = await request(app).get(`/api/subscriptions/admin/${p.id}/history`).set("Authorization", `Bearer ${adminToken}`);

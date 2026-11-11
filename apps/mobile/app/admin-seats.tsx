@@ -9,6 +9,7 @@ import { useFocusEffect, useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Card, ErrorText, KeyboardScroll, SoftButton, Title, LoadingSlot } from "../components/ui";
 import { AuthGate } from "../components/AuthGate";
+import { AdminGradeAccessCard } from "../components/AdminGradeAccessCard";
 import { goAdminBack } from "../services/admin-nav";
 import { apiRequest, ApiError } from "../services/api";
 import { ROLE_SETS } from "../services/auth-errors";
@@ -114,6 +115,7 @@ export default function AdminSeatsScreen() {
           <ErrorText>{error}</ErrorText>
           {info ? <Text style={styles.info}>{info}</Text> : null}
           <LoadingSlot active={busy} />
+          <AdminGradeAccessCard />
           {rows.map((row) => (
             <Card key={row.id} style={{ gap: 8 }}>
               <Text style={styles.word}>

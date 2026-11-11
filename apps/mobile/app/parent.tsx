@@ -21,9 +21,28 @@ type ChildRow = {
   gradeId?: string | null;
   grade?: { id: string; label: string; gradeNumber: number | null } | null;
   hasLearningSeat?: boolean;
+  learnWiseGrade?: { levelCode: string; gradeLabel: string } | null;
 };
 
-type CatalogLevel = { id: string; code: string; label: string };
+type GradeAccess = {
+  childId: string;
+  gradeLabel: string;
+  entitled: boolean;
+  via: "GRADE" | "LEGACY_FAMILY" | "STAFF" | null;
+  expiresAt: string | null;
+};
+
+function accessLine(access: GradeAccess | undefined) {
+  if (!access) return null;
+  const grade = access.gradeLabel.split(" – ")[0];
+  const until = access.expiresAt
+    ? ` until ${new Date(access.expiresAt).toLocaleDateString()}`
+    : "";
+  if (access.via === "GRADE") return `${grade} subscription active${until}`;
+  if (access.via === "LEGACY_FAMILY") return `Covered by family plan${until}`;
+  if (access.via === "STAFF") return "Staff access";
+  return `Needs a ${grade} subscription`;
+}
 
 type SeatInfo = {
   included: number;
@@ -51,22 +70,22 @@ export default function ParentScreen() {
   const [info, setInfo] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [seats, setSeats] = useState<SeatInfo | null>(null);
-  const [catalogLevels, setCatalogLevels] = useState<CatalogLevel[]>([]);
+  const [gradeAccess, setGradeAccess] = useState<Record<string, GradeAccess>>({});
   const [agreementsOutdated, setAgreementsOutdated] = useState(false);
 
   const load = useCallback(async () => {
     try {
-      const [kids, sub, levels, agreements] = await Promise.all([
+      const [kids, sub, access, agreements] = await Promise.all([
         apiRequest<ChildRow[]>("/children"),
         apiRequest<{ seats?: SeatInfo }>("/subscriptions/me").catch(() => null),
-        apiRequest<CatalogLevel[]>("/parent/catalog/levels").catch(() => []),
+        apiRequest<GradeAccess[]>("/subscriptions/children").catch(() => []),
         apiRequest<{ allPublished: boolean; allAccepted: boolean; documents: { acceptedAt: string | null }[] }>(
           "/agreements"
         ).catch(() => null),
       ]);
       setChildren(kids);
       setSeats(sub?.seats ?? null);
-      setCatalogLevels(levels);
+      setGradeAccess(Object.fromEntries(access.map((a) => [a.childId, a])));
       setAgreementsOutdated(
         Boolean(
           agreements?.allPublished &&
@@ -120,7 +139,6 @@ export default function ParentScreen() {
         body: JSON.stringify({
           displayName: name.trim(),
           birthDate: birthDate.trim(),
-          ...(catalogLevels[0] ? { levelId: catalogLevels[0].id } : {}),
         }),
       });
       setName("");
@@ -163,7 +181,8 @@ export default function ParentScreen() {
 
   function openLearn(child: ChildRow) {
     void setActive(child).then(() => {
-      if (!child.hasLearningSeat) {
+      const access = gradeAccess[child.id];
+      if (access ? !access.entitled : !child.hasLearningSeat) {
         router.push("/subscription");
         return;
       }
@@ -260,10 +279,15 @@ export default function ParentScreen() {
                     ) : null}
                   </View>
                 </View>
-                <Text style={styles.meta}>
-                  {child.level}
-                  {child.grade ? ` · ${child.grade.label}` : ""} · Birthday {birthday}
+                <Text style={styles.gradeLine}>
+                  {child.learnWiseGrade?.gradeLabel ?? "Learn Wise grade not set"}
                 </Text>
+                <Text style={styles.meta}>Birthday {birthday}</Text>
+                {gradeAccess[child.id] ? (
+                  <Text style={gradeAccess[child.id].entitled ? styles.meta : styles.warn}>
+                    {accessLine(gradeAccess[child.id])}
+                  </Text>
+                ) : null}
                 <Text style={styles.meta}>
                   Words correct {summary?.wordsCorrect ?? summary?.wordsLearned ?? 0} · Tried{" "}
                   {summary?.wordsAttempted ?? "—"} · Accuracy {summary?.accuracy ?? 0}%
@@ -327,7 +351,7 @@ export default function ParentScreen() {
               maxLength={10}
             />
             <Text style={styles.meta}>
-              Next you'll choose the level, the learning phone and a subscription.
+              Next you'll choose the Learn Wise grade, the learning phone and a subscription.
             </Text>
             <PrimaryButton label="Save child" onPress={() => void addChild()} loading={busy} />
           </Card>
@@ -368,6 +392,7 @@ const styles = StyleSheet.create({
   sub: { color: colors.textMuted },
   section: { fontWeight: "800", fontSize: 18, color: colors.text },
   childName: { fontWeight: "800", fontSize: 18, color: colors.text },
+  gradeLine: { fontWeight: "800", color: colors.primary },
   meta: { color: colors.textMuted },
   info: { color: colors.success, fontWeight: "700" },
   rowBetween: {

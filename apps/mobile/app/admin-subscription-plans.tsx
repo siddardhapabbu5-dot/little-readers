@@ -16,6 +16,8 @@ import { Card, ErrorText, Field, KeyboardScroll, SoftButton, Title } from "../co
 import { goAdminBack } from "../services/admin-nav";
 import { apiRequest, ApiError } from "../services/api";
 import { ROLE_SETS } from "../services/auth-errors";
+import { AdminGradeSelector, useAdminGrade } from "../components/AdminGradeSelector";
+import { ADMIN_PRODUCT_GRADES, adminGradeLabel } from "../services/admin-grade";
 import { adminColors, radii, shadow } from "../theme";
 
 type Level = { id: string; code: string; label: string };
@@ -62,6 +64,9 @@ export default function AdminSubscriptionPlansScreen() {
   const router = useRouter();
   const [rows, setRows] = useState<Plan[]>([]);
   const [levels, setLevels] = useState<Level[]>([]);
+  const [grade, setGrade] = useAdminGrade();
+  const gradeInfo = ADMIN_PRODUCT_GRADES.find((g) => g.code === grade)!;
+  const gradeLevel = levels.find((l) => l.code === gradeInfo.levelCode) ?? null;
   const [q, setQ] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -101,8 +106,12 @@ export default function AdminSubscriptionPlansScreen() {
     }, [load])
   );
 
+  const legacyCount = rows.filter((r) => !r.level && r.applicableLevel === "ALL").length;
   const filtered = useMemo(() => {
-    const sorted = [...rows].sort(
+    const forGrade = rows.filter(
+      (r) => (r.level?.code ?? r.applicableLevel) === gradeInfo.levelCode
+    );
+    const sorted = [...forGrade].sort(
       (a, b) =>
         a.durationMonths - b.durationMonths ||
         a.sortOrder - b.sortOrder ||
@@ -114,10 +123,14 @@ export default function AdminSubscriptionPlansScreen() {
       (r) =>
         r.name.toLowerCase().includes(s) || r.code.toLowerCase().includes(s)
     );
-  }, [rows, q]);
+  }, [rows, q, gradeInfo.levelCode]);
 
   async function save() {
     if (!form) return;
+    if (!form.levelId) {
+      setError("Each plan belongs to one Learn Wise grade. Pick a grade first.");
+      return;
+    }
     const amountPaise = Math.round(Number(form.amountInr) * 100);
     if (!amountPaise || amountPaise <= 0) {
       setError("Amount (INR) must be greater than zero");
@@ -176,20 +189,33 @@ export default function AdminSubscriptionPlansScreen() {
           </Text>
           <ErrorText>{error}</ErrorText>
 
+          <AdminGradeSelector
+            value={grade}
+            onChange={(code) => {
+              setGrade(code);
+              setForm(null);
+            }}
+          />
+          <Text style={styles.hint}>
+            One subscription covers one child in {adminGradeLabel(grade)}. Families pay per child,
+            and moving to the next grade needs that grade's plan.
+            {legacyCount ? ` ${legacyCount} older all-grade plan(s) are hidden here.` : ""}
+          </Text>
+
           <Field label="Search" value={q} onChangeText={setQ} />
           <SoftButton
-            label="+ Add Plan"
+            label={`+ Add Grade ${gradeInfo.number} plan`}
             onPress={() =>
               setForm({
                 name: "Monthly",
-                code: "PLAN_1M",
+                code: `${gradeInfo.levelCode}_1M`,
                 description: "",
                 durationMonths: 1,
                 amountInr: "",
                 amountPhp: "",
-                applicableLevel: "ALL",
-                levelId: "",
-                isPublished: true,
+                applicableLevel: gradeInfo.levelCode,
+                levelId: gradeLevel?.id ?? "",
+                isPublished: false,
               })
             }
           />
@@ -229,11 +255,7 @@ export default function AdminSubscriptionPlansScreen() {
                           /renamed/i.test(form.name)
                             ? d.label
                             : form.name,
-                        code: form.id
-                          ? form.code
-                          : form.code && !/\d{10,}/.test(form.code)
-                            ? form.code
-                            : `PLAN_${d.months}M`,
+                        code: form.id ? form.code : `${gradeInfo.levelCode}_${d.months}M`,
                       })
                     }
                     style={[
@@ -258,42 +280,9 @@ export default function AdminSubscriptionPlansScreen() {
                 keyboardType="decimal-pad"
                 placeholder="Leave empty to charge INR"
               />
-              <Text style={styles.meta}>Applicable Level</Text>
-              <View style={styles.filters}>
-                <Pressable
-                  onPress={() =>
-                    setForm({
-                      ...form,
-                      applicableLevel: "ALL",
-                      levelId: "",
-                    })
-                  }
-                  style={[
-                    styles.chip,
-                    form.applicableLevel === "ALL" && styles.chipOn,
-                  ]}
-                >
-                  <Text style={styles.chipText}>All Levels</Text>
-                </Pressable>
-                {levels.map((l) => (
-                  <Pressable
-                    key={l.id}
-                    onPress={() =>
-                      setForm({
-                        ...form,
-                        applicableLevel: l.code,
-                        levelId: l.id,
-                      })
-                    }
-                    style={[
-                      styles.chip,
-                      form.levelId === l.id && styles.chipOn,
-                    ]}
-                  >
-                    <Text style={styles.chipText}>{l.label}</Text>
-                  </Pressable>
-                ))}
-              </View>
+              <Text style={styles.meta}>
+                Grade: {adminGradeLabel(grade)} (change it with the grade switch above)
+              </Text>
               <Field
                 label="Description"
                 value={form.description}
@@ -336,7 +325,7 @@ export default function AdminSubscriptionPlansScreen() {
                 <Text style={styles.meta}>
                   {r.durationMonths} mo · {inr(r.amountPaise)} ·{" "}
                   {r.amountPhpCentavos ? `₱${(r.amountPhpCentavos / 100).toFixed(2)} · ` : ""}
-                  {r.level?.label ?? r.applicableLevel} ·{" "}
+                  {adminGradeLabel(grade)} ·{" "}
                   {r.isActive ? "Active" : "Inactive"} ·{" "}
                   {r.isPublished ? "Published" : "Draft (hidden from parents)"}
                 </Text>
@@ -356,7 +345,7 @@ export default function AdminSubscriptionPlansScreen() {
                         amountInr: String(r.amountPaise / 100),
                         amountPhp: r.amountPhpCentavos ? String(r.amountPhpCentavos / 100) : "",
                         applicableLevel: r.applicableLevel,
-                        levelId: r.levelId ?? "",
+                        levelId: r.levelId ?? gradeLevel?.id ?? "",
                         isPublished: r.isPublished,
                       })
                     }

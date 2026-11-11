@@ -21,7 +21,8 @@ describe.skipIf(!hasDb)("Vocabulary upload & import", () => {
   let token = "";
   let levelId = "";
   let categoryId = "";
-  const unique = `uploadtest${Date.now()}`;
+  // Word-quality rules reject digits, so the unique suffix is letters only.
+  const unique = `uploadtest${String(Date.now()).replace(/\d/g, (d, at: number) => (at % 2 ? "klmnopqrst" : "abcdefghij")[Number(d)])}`;
 
   beforeAll(async () => {
     process.env.JWT_SECRET =

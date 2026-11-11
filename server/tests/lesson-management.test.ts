@@ -39,7 +39,15 @@ describe.skipIf(!hasDb)("Admin lesson management", () => {
       .set("Authorization", `Bearer ${adminToken}`);
     expect(cats.status).toBe(200);
     const rows = cats.body.data as Array<{ id: string; isPublished: boolean }>;
-    const published = rows.filter((c) => c.isPublished);
+    const grade1Ids = new Set(
+      (
+        await prisma.learningCategory.findMany({
+          where: { group: { level: { code: "LEVEL_1" } } },
+          select: { id: true },
+        })
+      ).map((c) => c.id)
+    );
+    const published = rows.filter((c) => c.isPublished && grade1Ids.has(c.id));
     expect(published.length).toBeGreaterThan(0);
     categoryId = published[0].id;
     otherCategoryId = published[1]?.id ?? rows.find((c) => c.id !== categoryId)?.id ?? categoryId;
@@ -51,7 +59,8 @@ describe.skipIf(!hasDb)("Admin lesson management", () => {
 
     // Ensure at least 3 active words in category
     for (let i = 0; i < 3; i++) {
-      const text = `lsn${String(stamp + i).replace(/\d/g, (d) => "abcdefghij"[Number(d)])}`;
+      // Shift by position so repeated digits never become 4+ identical letters (WORD_QUALITY rule).
+      const text = `lsn${String(stamp + i).replace(/\d/g, (d, at: number) => (at % 2 ? "klmnopqrst" : "abcdefghij")[Number(d)])}`;
       const created = await request(app)
         .post("/api/admin/vocabulary/words")
         .set("Authorization", `Bearer ${adminToken}`)

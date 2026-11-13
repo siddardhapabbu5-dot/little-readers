@@ -10,9 +10,8 @@
  */
 import fs from "node:fs";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
-import { parse } from "dotenv";
-import { PrismaClient } from "@prisma/client";
+import { createRequire } from "node:module";
+import { fileURLToPath, pathToFileURL } from "node:url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = process.env.SIWI_ROOT
@@ -24,13 +23,41 @@ const DATA =
 const LOCAL_HOSTS = new Set(["localhost", "127.0.0.1", "::1", "[::1]"]);
 const GRADE_LEVEL = { 2: "LEVEL_2", 3: "LEVEL_3", 4: "LEVEL_4" };
 
+/** Tiny .env loader — no dotenv package required on the VPS */
 function loadEnv() {
   const envFile = path.join(ROOT, ".env");
   if (!fs.existsSync(envFile)) return;
-  const parsed = parse(fs.readFileSync(envFile));
-  for (const [k, v] of Object.entries(parsed)) {
+  for (const line of fs.readFileSync(envFile, "utf8").split(/\r?\n/)) {
+    const t = line.trim();
+    if (!t || t.startsWith("#")) continue;
+    const i = t.indexOf("=");
+    if (i < 1) continue;
+    const k = t.slice(0, i).trim();
+    let v = t.slice(i + 1).trim();
+    if (
+      (v.startsWith('"') && v.endsWith('"')) ||
+      (v.startsWith("'") && v.endsWith("'"))
+    ) {
+      v = v.slice(1, -1);
+    }
     if (process.env[k] == null) process.env[k] = v;
   }
+}
+
+async function loadPrisma() {
+  // Prefer app node_modules even if this file was downloaded elsewhere
+  const candidates = [
+    path.join(ROOT, "server/node_modules/@prisma/client"),
+    path.join(ROOT, "node_modules/@prisma/client"),
+  ];
+  for (const p of candidates) {
+    if (fs.existsSync(p)) {
+      const mod = await import(pathToFileURL(path.join(p, "index.js")).href);
+      return mod.PrismaClient;
+    }
+  }
+  const require = createRequire(path.join(ROOT, "server/package.json"));
+  return require("@prisma/client").PrismaClient;
 }
 
 function assertDbAllowed() {
@@ -59,6 +86,7 @@ async function main() {
   const db = assertDbAllowed();
   if (!fs.existsSync(DATA)) throw new Error(`Missing data file: ${DATA}`);
   const payload = JSON.parse(fs.readFileSync(DATA, "utf8"));
+  const PrismaClient = await loadPrisma();
   const prisma = new PrismaClient();
 
   const g1Before = await prisma.vocabularyWord.count({

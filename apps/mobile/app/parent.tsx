@@ -257,7 +257,10 @@ export default function ParentScreen() {
             const summary = progressMap[child.id]?.summary;
             const isActive = activeId === child.id;
             const birthday = child.birthDate ?? `01/01/${child.birthYear}`;
-            const seated = Boolean(child.hasLearningSeat);
+            const staffAccess = gradeAccess[child.id]?.via === "STAFF";
+            const seated = Boolean(child.hasLearningSeat) || staffAccess;
+            const canLearn =
+              gradeAccess[child.id]?.entitled === true || Boolean(child.hasLearningSeat);
             return (
               <Card key={child.id} style={{ gap: 6 }}>
                 <View style={styles.rowBetween}>
@@ -265,7 +268,9 @@ export default function ParentScreen() {
                   <View style={{ flexDirection: "row", gap: 6 }}>
                     {seated ? (
                       <View style={styles.seatBadge}>
-                        <Text style={styles.seatBadgeText}>Seat</Text>
+                        <Text style={styles.seatBadgeText}>
+                          {staffAccess ? "Staff" : "Seat"}
+                        </Text>
                       </View>
                     ) : (
                       <View style={styles.needSeatBadge}>
@@ -302,7 +307,7 @@ export default function ParentScreen() {
                   {summary?.wordsNeedingPractice ?? 0} · Categories{" "}
                   {summary?.categoriesCompleted ?? 0}
                 </Text>
-                {!seated ? (
+                {!canLearn ? (
                   <Text style={styles.warn}>
                     Kids Zone locked until a learning seat is assigned.
                   </Text>
@@ -325,12 +330,14 @@ export default function ParentScreen() {
                     active={isActive}
                     onPress={() => void setActive(child)}
                   />
+                  {!staffAccess ? (
+                    <SoftButton
+                      label={child.hasLearningSeat ? "Remove seat" : "Assign seat"}
+                      onPress={() => void toggleSeat(child)}
+                    />
+                  ) : null}
                   <SoftButton
-                    label={seated ? "Remove seat" : "Assign seat"}
-                    onPress={() => void toggleSeat(child)}
-                  />
-                  <SoftButton
-                    label={seated ? "Learn" : "Activate seat"}
+                    label="Learn"
                     onPress={() => openLearn(child)}
                   />
                 </View>
@@ -351,7 +358,8 @@ export default function ParentScreen() {
               maxLength={10}
             />
             <Text style={styles.meta}>
-              Next you'll choose the Learn Wise grade, the learning phone and a subscription.
+              Birthday must be DD/MM/YYYY (age 1–12). Next you'll choose the grade and learning
+              phone. As admin you can learn without buying a subscription.
             </Text>
             <PrimaryButton label="Save child" onPress={() => void addChild()} loading={busy} />
           </Card>

@@ -10,7 +10,12 @@ import { RegistrationSteps } from "../../components/RegistrationSteps";
 import { GradePicker, type LearnWiseGrade } from "../../components/GradePicker";
 import { apiRequest, ApiError } from "../../services/api";
 import { ROLE_SETS } from "../../services/auth-errors";
-import { getOrCreateInstallationId, phoneLabel, saveActiveChild } from "../../services/secure";
+import {
+  getOrCreateInstallationId,
+  getUser,
+  phoneLabel,
+  saveActiveChild,
+} from "../../services/secure";
 import { colors, radii } from "../../theme";
 
 type ChildRow = {
@@ -96,7 +101,10 @@ export default function ChildSetupScreen() {
           }),
         });
       }
-      router.replace("/subscription?setup=1");
+      const user = await getUser<{ role: string }>();
+      const isStaff = user?.role === "ADMIN" || user?.role === "SUPER_ADMIN";
+      // Staff practice accounts skip checkout — learning is unlocked without a plan.
+      router.replace(isStaff ? "/parent" : "/subscription?setup=1");
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Could not register the phone");
     } finally {
@@ -123,7 +131,8 @@ export default function ChildSetupScreen() {
                 <Title>Learn Wise grade</Title>
                 <Text style={styles.meta}>
                   Choose the grade {name} will learn. The age suggestion is only a guide, and
-                  changing a birthday never changes the grade. Each grade needs its own subscription.
+                  changing a birthday never changes the grade. Family accounts need a plan per grade;
+                  admin practice accounts can learn without a subscription.
                 </Text>
                 <GradePicker
                   grades={grades}

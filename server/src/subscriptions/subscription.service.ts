@@ -70,11 +70,12 @@ const latestSubscription = entitlementSubscription;
 
 export async function getSeatSnapshot(parentId: string, tx: Prisma.TransactionClient | typeof prisma = prisma) {
   const subscription = await latestSubscription(parentId, tx);
-  const eligible = subscription
-    ? isSubscriptionRecordEligible(subscription)
-    : false;
-  // Expired / missing subscriptions grant zero claimable seats.
-  const capacity = eligible ? seatCapacity(subscription) : 0;
+  const staff = await isStaffLearnerAccount(parentId);
+  const eligible = staff
+    ? true
+    : subscription
+      ? isSubscriptionRecordEligible(subscription)
+      : false;
   const [assigned, children] = await Promise.all([
     tx.child.count({
       where: { parentId, isActive: true, hasLearningSeat: true },
@@ -90,19 +91,41 @@ export async function getSeatSnapshot(parentId: string, tx: Prisma.TransactionCl
       orderBy: { createdAt: "asc" },
     }),
   ]);
+  // Admins may seat every child without a paid plan. Parents only get seats while eligible.
+  let seatedChildren = children;
+  let seatedCount = assigned;
+  if (staff) {
+    const unseated = children.filter((c) => !c.hasLearningSeat);
+    if (unseated.length > 0) {
+      await tx.child.updateMany({
+        where: { id: { in: unseated.map((c) => c.id) }, parentId },
+        data: { hasLearningSeat: true },
+      });
+      seatedChildren = children.map((c) =>
+        c.hasLearningSeat ? c : { ...c, hasLearningSeat: true }
+      );
+      seatedCount = seatedChildren.length;
+    }
+  }
+
+  const capacity = staff
+    ? Math.max(seatedChildren.length, seatedCount, BASE_INCLUDED_SEATS)
+    : eligible
+      ? seatCapacity(subscription)
+      : 0;
 
   return {
     subscription,
     eligible,
-    included: subscription?.includedSeats ?? BASE_INCLUDED_SEATS,
+    included: staff ? capacity : subscription?.includedSeats ?? BASE_INCLUDED_SEATS,
     extra: subscription?.extraSeats ?? 0,
     /** Plan capacity when eligible; 0 when expired/missing. */
     capacity,
     /** Raw plan capacity ignoring eligibility (for Parent UI messaging). */
-    planCapacity: seatCapacity(subscription),
-    assigned,
-    available: Math.max(0, capacity - assigned),
-    children: children.map((c) => ({
+    planCapacity: staff ? capacity : seatCapacity(subscription),
+    assigned: seatedCount,
+    available: Math.max(0, capacity - seatedCount),
+    children: seatedChildren.map((c) => ({
       id: c.id,
       displayName: c.displayName,
       hasLearningSeat: c.hasLearningSeat,
@@ -134,6 +157,15 @@ export async function tryAssignLearningSeat(
   });
   if (!child) throw new AppError("Child not found", 404);
   if (child.hasLearningSeat) return true;
+
+  // Admin / super-admin practice accounts may seat children without a paid plan.
+  if (await isStaffLearnerAccount(parentId)) {
+    await tx.child.update({
+      where: { id: childId },
+      data: { hasLearningSeat: true },
+    });
+    return true;
+  }
 
   // No eligible subscription → no seats to claim.
   if (

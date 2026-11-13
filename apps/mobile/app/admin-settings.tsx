@@ -13,6 +13,18 @@ import { adminColors, radii, shadow } from "../theme";
 
 type AuthUser = { id: string; name: string; email: string; role: string };
 
+const FAMILY: Array<{
+  label: string;
+  href: string;
+  icon: keyof typeof Ionicons.glyphMap;
+}> = [
+  {
+    label: "Parent dashboard",
+    href: "/parent",
+    icon: "people-circle-outline",
+  },
+];
+
 const ACADEMIC: Array<{
   label: string;
   href: string;
@@ -134,6 +146,9 @@ export default function AdminSettingsScreen() {
               <Text style={styles.role}>{user?.role ?? ""}</Text>
             </View>
           </View>
+
+          <Text style={styles.section}>Family</Text>
+          {renderLinks(FAMILY)}
 
           <Text style={styles.section}>Academic Setup</Text>
           {renderLinks(ACADEMIC)}

@@ -15,8 +15,12 @@ import { parse } from "dotenv";
 import { PrismaClient } from "@prisma/client";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const ROOT = path.resolve(__dirname, "../..");
-const DATA = path.join(ROOT, "docs/curriculum/additional-vocab-g2-4-enriched.json");
+const ROOT = process.env.SIWI_ROOT
+  ? path.resolve(process.env.SIWI_ROOT)
+  : path.resolve(__dirname, "../..");
+const DATA =
+  process.env.VOCAB_JSON ||
+  path.join(ROOT, "docs/curriculum/additional-vocab-g2-4-enriched.json");
 const LOCAL_HOSTS = new Set(["localhost", "127.0.0.1", "::1", "[::1]"]);
 const GRADE_LEVEL = { 2: "LEVEL_2", 3: "LEVEL_3", 4: "LEVEL_4" };
 

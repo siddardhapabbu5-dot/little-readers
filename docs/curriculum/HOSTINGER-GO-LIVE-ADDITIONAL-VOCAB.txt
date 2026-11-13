@@ -1,0 +1,18 @@
+# Hostinger VPS → Browser Terminal
+# Paste everything below once, then press Enter.
+# Does NOT switch the live app branch — only updates vocabulary in the DB.
+# Grade 1 is not changed.
+
+set -e
+cd /var/www/siwi
+mkdir -p /tmp/siwi-vocab docs/curriculum
+curl -fsSL -o /tmp/siwi-vocab/apply-additional-vocab-production.mjs \
+  https://raw.githubusercontent.com/siddardhapabbu5-dot/little-readers/feature/central-dictionary-expansion/server/scripts/apply-additional-vocab-production.mjs
+curl -fsSL -o docs/curriculum/additional-vocab-g2-4-enriched.json \
+  https://raw.githubusercontent.com/siddardhapabbu5-dot/little-readers/feature/central-dictionary-expansion/docs/curriculum/additional-vocab-g2-4-enriched.json
+cd server
+SIWI_ROOT=/var/www/siwi \
+VOCAB_JSON=/var/www/siwi/docs/curriculum/additional-vocab-g2-4-enriched.json \
+ALLOW_PRODUCTION=1 CONFIRM_PRODUCTION=1 \
+node /tmp/siwi-vocab/apply-additional-vocab-production.mjs --apply
+echo DONE

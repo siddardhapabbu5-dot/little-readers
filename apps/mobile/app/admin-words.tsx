@@ -34,6 +34,7 @@ type FailedCategory = { category: string; count: number; reasons: string[] };
 type Category = {
   id: string;
   label: string;
+  draftWordCount?: number;
   _count?: { words?: number };
   group?: {
     code?: string;
@@ -98,6 +99,8 @@ export default function AdminWordsScreen() {
   const setGrade = setSharedGrade;
   const [gradeRows, setGradeRows] = useState<GradeRow[]>([]);
   const [categoryId, setCategoryId] = useState<string>(paramCategoryId || "");
+  /** Default "all" so inactive draft imports are visible in Admin. */
+  const [activeFilter, setActiveFilter] = useState<"all" | "true" | "false">("all");
   const [words, setWords] = useState<WordRow[]>([]);
   const [total, setTotal] = useState(0);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -140,7 +143,8 @@ export default function AdminWordsScreen() {
       setGradeRows(grades);
       setCategories(cats);
       const gid = grades.find((g) => g.code === grade)?.id;
-      const params = new URLSearchParams({ take: "200", isActive: "true" });
+      const params = new URLSearchParams({ take: "500" });
+      if (activeFilter !== "all") params.set("isActive", activeFilter);
       if (q.trim()) params.set("q", q.trim());
       if (gid) params.set("gradeId", gid);
       if (categoryId) params.set("categoryId", categoryId);
@@ -160,7 +164,7 @@ export default function AdminWordsScreen() {
     } finally {
       setBusy(false);
     }
-  }, [q, grade, categoryId]);
+  }, [q, grade, categoryId, activeFilter]);
 
   useEffect(() => {
     if (paramGrade) setGrade(paramGrade);
@@ -228,11 +232,31 @@ export default function AdminWordsScreen() {
     }
   }
 
+  async function activate() {
+    if (!selected) return;
+    setBusy(true);
+    setError(null);
+    try {
+      await apiRequest(`/admin/vocabulary/words/${selected.id}`, {
+        method: "PATCH",
+        body: JSON.stringify({ isActive: true }),
+      });
+      setInfo("Activated (still only visible to kids if the topic is published).");
+      setSelected(null);
+      await load();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Activate failed");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function downloadCsv() {
     setBusy(true);
     setError(null);
     try {
-      const params = new URLSearchParams({ isActive: "true", format: "auto" });
+      const params = new URLSearchParams({ format: "auto" });
+      if (activeFilter !== "all") params.set("isActive", activeFilter);
       if (gradeId) params.set("gradeId", gradeId);
       if (categoryId) params.set("categoryId", categoryId);
       let csv = await apiDownloadText(
@@ -460,14 +484,43 @@ export default function AdminWordsScreen() {
                 active={!categoryId}
                 onPress={() => setCategoryId("")}
               />
-              {gradeCategories.map((c) => (
-                <SoftButton
-                  key={c.id}
-                  label={`${c.label}${c._count?.words != null ? ` (${c._count.words})` : ""}`}
-                  active={categoryId === c.id}
-                  onPress={() => setCategoryId(c.id)}
-                />
-              ))}
+              {gradeCategories.map((c) => {
+                const activeN = c._count?.words ?? 0;
+                const draftN = c.draftWordCount ?? 0;
+                const totalN = activeN + draftN;
+                const countLabel =
+                  draftN > 0
+                    ? ` (${totalN} · ${draftN} draft)`
+                    : activeN
+                      ? ` (${activeN})`
+                      : "";
+                return (
+                  <SoftButton
+                    key={c.id}
+                    label={`${c.label}${countLabel}`}
+                    active={categoryId === c.id}
+                    onPress={() => setCategoryId(c.id)}
+                  />
+                );
+              })}
+            </View>
+            <Text style={styles.section}>Show words</Text>
+            <View style={styles.rowWrap}>
+              <SoftButton
+                label="All"
+                active={activeFilter === "all"}
+                onPress={() => setActiveFilter("all")}
+              />
+              <SoftButton
+                label="Active only"
+                active={activeFilter === "true"}
+                onPress={() => setActiveFilter("true")}
+              />
+              <SoftButton
+                label="Drafts only"
+                active={activeFilter === "false"}
+                onPress={() => setActiveFilter("false")}
+              />
             </View>
             <AdminActivityPanel category={selectedCategory} />
             <ReadinessPanel grade={grade} />
@@ -488,8 +541,15 @@ export default function AdminWordsScreen() {
               />
             </View>
             <Text style={styles.meta}>
-              Showing {words.length} of {total} active words
+              Showing {words.length} of {total}{" "}
+              {activeFilter === "false"
+                ? "draft"
+                : activeFilter === "true"
+                  ? "active"
+                  : ""}{" "}
+              words
               {categoryId ? " in this category" : ` for ${grade}`}.
+              Drafts stay hidden from kids until you activate them.
               A–Z template: docs/templates/A_to_Z_Alphabet_with_Symbols.xlsx
               (select category first). Grade/level CSV:
               docs/templates/little-readers-words-by-grade-level-template.csv
@@ -519,9 +579,11 @@ export default function AdminWordsScreen() {
                 {displayEmoji(w.emoji, "")}
                 {displayEmoji(w.emoji, "") ? " " : ""}
                 {w.text}
+                {!w.isActive ? " · draft" : ""}
               </Text>
               <Text style={styles.meta}>
                 {w.category.group.level.grade?.code} · {w.category.label} · {w.origin}
+                {w.isActive ? " · active" : " · inactive"}
               </Text>
               <Text style={styles.meta} numberOfLines={2}>
                 {w.meaning}
@@ -572,7 +634,11 @@ export default function AdminWordsScreen() {
               </View>
               <SoftButton label="Save" onPress={() => void save()} />
               <SoftButton label="Reclassify" onPress={() => void reclassify()} />
-              <SoftButton label="Deactivate" onPress={() => void deactivate()} />
+              {selected.isActive ? (
+                <SoftButton label="Deactivate" onPress={() => void deactivate()} />
+              ) : (
+                <SoftButton label="Activate draft" onPress={() => void activate()} />
+              )}
               <SoftButton label="Close" onPress={() => setSelected(null)} />
             </Card>
           ) : null}

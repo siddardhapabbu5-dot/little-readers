@@ -1,0 +1,21 @@
+{
+  "activated": 3163,
+  "topicsPublishedNow": 75,
+  "byLevel": {
+    "LEVEL_2": {
+      "activeWords": 1082,
+      "publishedTopics": 38
+    },
+    "LEVEL_3": {
+      "activeWords": 1074,
+      "publishedTopics": 18
+    },
+    "LEVEL_4": {
+      "activeWords": 1439,
+      "publishedTopics": 19
+    }
+  },
+  "grade1ActiveAfter": 750,
+  "grade1PublishedAfter": 10,
+  "grade1Unchanged": true
+}

@@ -15,6 +15,7 @@
  * Optional:
  *   --file "C:/path/to/workbook.xlsx"
  *   --grade 2|3|4   (default: all)
+ *   --update-inactive   update meaning/example on existing inactive words (skip active)
  */
 import fs from "node:fs";
 import path from "node:path";
@@ -83,6 +84,7 @@ function parseArgs(argv) {
   const out = {
     dryRun: true,
     apply: false,
+    updateInactive: false,
     file: DEFAULT_FILE,
     grades: [2, 3, 4],
   };
@@ -94,6 +96,8 @@ function parseArgs(argv) {
     } else if (a === "--dry-run") {
       out.dryRun = true;
       out.apply = false;
+    } else if (a === "--update-inactive") {
+      out.updateInactive = true;
     } else if (a === "--file") {
       out.file = argv[++i];
     } else if (a === "--grade") {
@@ -111,7 +115,7 @@ async function loadTopicMap(prisma, levelCode) {
         include: {
           categories: {
             include: {
-              words: { select: { text: true, isActive: true } },
+              words: { select: { id: true, text: true, isActive: true } },
             },
           },
         },
@@ -122,6 +126,9 @@ async function loadTopicMap(prisma, levelCode) {
   const byLabel = new Map();
   for (const g of level.groups) {
     for (const c of g.categories) {
+      const byText = new Map(
+        c.words.map((w) => [w.text.toLowerCase(), { id: w.id, isActive: w.isActive }])
+      );
       byLabel.set(normLabel(c.label), {
         id: c.id,
         code: c.code,
@@ -129,7 +136,8 @@ async function loadTopicMap(prisma, levelCode) {
         groupCode: g.code,
         status: c.status,
         isPublished: c.isPublished,
-        existingWords: new Set(c.words.map((w) => w.text.toLowerCase())),
+        existingWords: new Set(byText.keys()),
+        wordsByText: byText,
       });
     }
   }
@@ -142,7 +150,7 @@ function readGradeRows(wb, sheetName) {
   return XLSX.utils.sheet_to_json(sheet, { defval: "" });
 }
 
-async function processGrade(prisma, wb, gradeNum, apply) {
+async function processGrade(prisma, wb, gradeNum, apply, updateInactive) {
   const meta = GRADE_LEVEL[gradeNum];
   const byLabel = await loadTopicMap(prisma, meta.levelCode);
   const rows = readGradeRows(wb, meta.sheet);
@@ -153,7 +161,9 @@ async function processGrade(prisma, wb, gradeNum, apply) {
     rows: rows.length,
     mapped: 0,
     create: 0,
+    updateInactive: 0,
     skipSameTopic: 0,
+    skipActiveExisting: 0,
     skipBadWord: 0,
     unmatchedTopic: 0,
     topicsTouched: new Set(),
@@ -162,7 +172,8 @@ async function processGrade(prisma, wb, gradeNum, apply) {
     createdSample: [],
   };
 
-  const planned = [];
+  const plannedCreate = [];
+  const plannedUpdate = [];
 
   for (const rec of rows) {
     const topicLabel = String(rec["Original Topic / Lesson"] || "").trim();
@@ -189,8 +200,23 @@ async function processGrade(prisma, wb, gradeNum, apply) {
     }
     report.mapped += 1;
 
-    if (cat.existingWords.has(word)) {
-      report.skipSameTopic += 1;
+    const existing = cat.wordsByText.get(word);
+    if (existing) {
+      if (updateInactive && !existing.isActive) {
+        report.topicsTouched.add(cat.code);
+        plannedUpdate.push({
+          id: existing.id,
+          categoryId: cat.id,
+          categoryCode: cat.code,
+          text: word,
+          meaning,
+          exampleSentence: example || null,
+          phonetic: pos && pos !== "Vocabulary example" ? pos.slice(0, 40) : null,
+        });
+        continue;
+      }
+      if (existing.isActive) report.skipActiveExisting += 1;
+      else report.skipSameTopic += 1;
       if (report.collisions.length < 30) {
         report.collisions.push({ word, topic: cat.code, label: cat.label });
       }
@@ -199,34 +225,36 @@ async function processGrade(prisma, wb, gradeNum, apply) {
 
     report.topicsTouched.add(cat.code);
     const key = `${cat.id}::${word}`;
-    if (planned.some((p) => `${p.categoryId}::${p.text}` === key)) {
+    if (plannedCreate.some((p) => `${p.categoryId}::${p.text}` === key)) {
       report.skipSameTopic += 1;
       continue;
     }
     // Reserve so later rows in this file collide as skip, not unique-constraint errors
     cat.existingWords.add(word);
-    planned.push({
+    cat.wordsByText.set(word, { id: "pending", isActive: false });
+    plannedCreate.push({
       categoryId: cat.id,
       categoryCode: cat.code,
       text: word,
       meaning,
       exampleSentence: example || null,
-      // POS is not a first-class VocabularyWord field; keep only real POS values
       phonetic: pos && pos !== "Vocabulary example" ? pos.slice(0, 40) : null,
       emoji: "📚",
       difficulty: 2,
-      sortOrder: 1000 + planned.length,
+      sortOrder: 1000 + plannedCreate.length,
       firstLetter: word.charAt(0).toUpperCase(),
       isActive: false,
       origin: "CATEGORY_IMPORT",
     });
   }
 
-  report.create = planned.length;
+  report.create = plannedCreate.length;
+  report.updateInactive = plannedUpdate.length;
 
-  if (apply && planned.length) {
-    const categoryIds = [...new Set(planned.map((p) => p.categoryId))];
-    for (const row of planned) {
+  if (apply) {
+    const categoryIds = new Set();
+    for (const row of plannedCreate) {
+      categoryIds.add(row.categoryId);
       await prisma.vocabularyWord.create({
         data: {
           categoryId: row.categoryId,
@@ -242,9 +270,6 @@ async function processGrade(prisma, wb, gradeNum, apply) {
           origin: "CATEGORY_IMPORT",
         },
       });
-      // Prevent intra-batch duplicates in same category
-      const cat = [...byLabel.values()].find((c) => c.id === row.categoryId);
-      cat?.existingWords.add(row.text);
       if (report.createdSample.length < 5) {
         report.createdSample.push({
           word: row.text,
@@ -253,10 +278,31 @@ async function processGrade(prisma, wb, gradeNum, apply) {
         });
       }
     }
-    await prisma.learningCategory.updateMany({
-      where: { id: { in: categoryIds } },
-      data: { needsReview: true },
-    });
+    for (const row of plannedUpdate) {
+      categoryIds.add(row.categoryId);
+      await prisma.vocabularyWord.update({
+        where: { id: row.id },
+        data: {
+          meaning: row.meaning,
+          exampleSentence: row.exampleSentence,
+          phonetic: row.phonetic,
+        },
+      });
+      if (report.createdSample.length < 5) {
+        report.createdSample.push({
+          word: row.text,
+          topic: row.categoryCode,
+          active: false,
+          updated: true,
+        });
+      }
+    }
+    if (categoryIds.size) {
+      await prisma.learningCategory.updateMany({
+        where: { id: { in: [...categoryIds] } },
+        data: { needsReview: true },
+      });
+    }
   }
 
   return {
@@ -296,7 +342,7 @@ async function main() {
   try {
     for (const g of args.grades) {
       if (!GRADE_LEVEL[g]) throw new Error(`Invalid --grade ${g}`);
-      const r = await processGrade(prisma, wb, g, args.apply);
+      const r = await processGrade(prisma, wb, g, args.apply, args.updateInactive);
       results.push(r);
       console.log(JSON.stringify(r, null, 2));
     }

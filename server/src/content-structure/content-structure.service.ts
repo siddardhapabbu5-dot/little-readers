@@ -500,7 +500,7 @@ export async function listCategoriesAdmin(filters: {
   levelId?: string;
   includeUnpublished?: boolean;
 }) {
-  return prisma.learningCategory.findMany({
+  const rows = await prisma.learningCategory.findMany({
     where: {
       ...(filters.groupId ? { groupId: filters.groupId } : {}),
       ...(filters.levelId ? { group: { levelId: filters.levelId } } : {}),
@@ -531,6 +531,27 @@ export async function listCategoriesAdmin(filters: {
       },
     },
   });
+
+  // Inactive drafts (e.g. additional vocab import) — admin chips need these counts
+  const draftGroups =
+    rows.length === 0
+      ? []
+      : await prisma.vocabularyWord.groupBy({
+          by: ["categoryId"],
+          where: {
+            isActive: false,
+            categoryId: { in: rows.map((r) => r.id) },
+          },
+          _count: { _all: true },
+        });
+  const draftByCategory = new Map(
+    draftGroups.map((g) => [g.categoryId, g._count._all])
+  );
+
+  return rows.map((r) => ({
+    ...r,
+    draftWordCount: draftByCategory.get(r.id) ?? 0,
+  }));
 }
 
 export async function createCategory(input: {

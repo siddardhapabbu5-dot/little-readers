@@ -5,8 +5,8 @@
     "grade1PublishedTopicsBefore": 10,
     "grade1PublishedTopicsAfter": 10,
     "grade1Unchanged": true,
-    "totalCreate": 3153,
-    "totalSkipSameTopic": 15,
+    "totalCreate": 0,
+    "totalSkipSameTopic": 0,
     "note": "Words imported with isActive=false. Kids will not see them until Admin activates and topic is PUBLISHED."
   },
   "results": [
@@ -15,8 +15,10 @@
       "levelCode": "LEVEL_2",
       "rows": 864,
       "mapped": 864,
-      "create": 864,
+      "create": 0,
+      "updateInactive": 864,
       "skipSameTopic": 0,
+      "skipActiveExisting": 0,
       "skipBadWord": 0,
       "unmatchedTopic": 0,
       "topicsTouched": 36,
@@ -26,27 +28,32 @@
         {
           "word": "subject",
           "topic": "NOUNS",
-          "active": false
+          "active": false,
+          "updated": true
         },
         {
           "word": "predicate",
           "topic": "NOUNS",
-          "active": false
+          "active": false,
+          "updated": true
         },
         {
           "word": "clause",
           "topic": "NOUNS",
-          "active": false
+          "active": false,
+          "updated": true
         },
         {
           "word": "phrase",
           "topic": "NOUNS",
-          "active": false
+          "active": false,
+          "updated": true
         },
         {
           "word": "sentence",
           "topic": "NOUNS",
-          "active": false
+          "active": false,
+          "updated": true
         }
       ],
       "mode": "APPLY"
@@ -56,8 +63,10 @@
       "levelCode": "LEVEL_3",
       "rows": 972,
       "mapped": 972,
-      "create": 966,
-      "skipSameTopic": 6,
+      "create": 0,
+      "updateInactive": 966,
+      "skipSameTopic": 0,
+      "skipActiveExisting": 6,
       "skipBadWord": 0,
       "unmatchedTopic": 0,
       "topicsTouched": 18,
@@ -98,27 +107,32 @@
         {
           "word": "run",
           "topic": "SUBJECT_VERB_AGREEMENT",
-          "active": false
+          "active": false,
+          "updated": true
         },
         {
           "word": "jump",
           "topic": "SUBJECT_VERB_AGREEMENT",
-          "active": false
+          "active": false,
+          "updated": true
         },
         {
           "word": "whisper",
           "topic": "SUBJECT_VERB_AGREEMENT",
-          "active": false
+          "active": false,
+          "updated": true
         },
         {
           "word": "discover",
           "topic": "SUBJECT_VERB_AGREEMENT",
-          "active": false
+          "active": false,
+          "updated": true
         },
         {
           "word": "compare",
           "topic": "SUBJECT_VERB_AGREEMENT",
-          "active": false
+          "active": false,
+          "updated": true
         }
       ],
       "mode": "APPLY"
@@ -128,8 +142,10 @@
       "levelCode": "LEVEL_4",
       "rows": 1332,
       "mapped": 1332,
-      "create": 1323,
-      "skipSameTopic": 9,
+      "create": 0,
+      "updateInactive": 1323,
+      "skipSameTopic": 0,
+      "skipActiveExisting": 9,
       "skipBadWord": 0,
       "unmatchedTopic": 0,
       "topicsTouched": 18,
@@ -185,27 +201,32 @@
         {
           "word": "outline",
           "topic": "ARGUMENTATIVE_ESSAY_WRITING",
-          "active": false
+          "active": false,
+          "updated": true
         },
         {
           "word": "draft",
           "topic": "ARGUMENTATIVE_ESSAY_WRITING",
-          "active": false
+          "active": false,
+          "updated": true
         },
         {
           "word": "revise",
           "topic": "ARGUMENTATIVE_ESSAY_WRITING",
-          "active": false
+          "active": false,
+          "updated": true
         },
         {
           "word": "edit",
           "topic": "ARGUMENTATIVE_ESSAY_WRITING",
-          "active": false
+          "active": false,
+          "updated": true
         },
         {
           "word": "proofread",
           "topic": "ARGUMENTATIVE_ESSAY_WRITING",
-          "active": false
+          "active": false,
+          "updated": true
         }
       ],
       "mode": "APPLY"

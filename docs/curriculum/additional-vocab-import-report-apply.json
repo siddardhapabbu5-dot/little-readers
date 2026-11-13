@@ -1,0 +1,214 @@
+{
+  "summary": {
+    "grade1ActiveWordsBefore": 750,
+    "grade1ActiveWordsAfter": 750,
+    "grade1PublishedTopicsBefore": 10,
+    "grade1PublishedTopicsAfter": 10,
+    "grade1Unchanged": true,
+    "totalCreate": 3153,
+    "totalSkipSameTopic": 15,
+    "note": "Words imported with isActive=false. Kids will not see them until Admin activates and topic is PUBLISHED."
+  },
+  "results": [
+    {
+      "grade": 2,
+      "levelCode": "LEVEL_2",
+      "rows": 864,
+      "mapped": 864,
+      "create": 864,
+      "skipSameTopic": 0,
+      "skipBadWord": 0,
+      "unmatchedTopic": 0,
+      "topicsTouched": 36,
+      "unmatchedTopics": [],
+      "collisions": [],
+      "createdSample": [
+        {
+          "word": "subject",
+          "topic": "NOUNS",
+          "active": false
+        },
+        {
+          "word": "predicate",
+          "topic": "NOUNS",
+          "active": false
+        },
+        {
+          "word": "clause",
+          "topic": "NOUNS",
+          "active": false
+        },
+        {
+          "word": "phrase",
+          "topic": "NOUNS",
+          "active": false
+        },
+        {
+          "word": "sentence",
+          "topic": "NOUNS",
+          "active": false
+        }
+      ],
+      "mode": "APPLY"
+    },
+    {
+      "grade": 3,
+      "levelCode": "LEVEL_3",
+      "rows": 972,
+      "mapped": 972,
+      "create": 966,
+      "skipSameTopic": 6,
+      "skipBadWord": 0,
+      "unmatchedTopic": 0,
+      "topicsTouched": 18,
+      "unmatchedTopics": [],
+      "collisions": [
+        {
+          "word": "condition",
+          "topic": "CONDITIONALS_ZERO_TO_THIRD",
+          "label": "Conditionals (Zero to Third)"
+        },
+        {
+          "word": "result",
+          "topic": "CONDITIONALS_ZERO_TO_THIRD",
+          "label": "Conditionals (Zero to Third)"
+        },
+        {
+          "word": "unless",
+          "topic": "CONDITIONALS_ZERO_TO_THIRD",
+          "label": "Conditionals (Zero to Third)"
+        },
+        {
+          "word": "formal",
+          "topic": "COMMUNICATIVE_STYLES",
+          "label": "Communicative Styles"
+        },
+        {
+          "word": "informal",
+          "topic": "COMMUNICATIVE_STYLES",
+          "label": "Communicative Styles"
+        },
+        {
+          "word": "focus",
+          "topic": "ACTIVE_LISTENING_STRATEGIES",
+          "label": "Active Listening Strategies"
+        }
+      ],
+      "createdSample": [
+        {
+          "word": "run",
+          "topic": "SUBJECT_VERB_AGREEMENT",
+          "active": false
+        },
+        {
+          "word": "jump",
+          "topic": "SUBJECT_VERB_AGREEMENT",
+          "active": false
+        },
+        {
+          "word": "whisper",
+          "topic": "SUBJECT_VERB_AGREEMENT",
+          "active": false
+        },
+        {
+          "word": "discover",
+          "topic": "SUBJECT_VERB_AGREEMENT",
+          "active": false
+        },
+        {
+          "word": "compare",
+          "topic": "SUBJECT_VERB_AGREEMENT",
+          "active": false
+        }
+      ],
+      "mode": "APPLY"
+    },
+    {
+      "grade": 4,
+      "levelCode": "LEVEL_4",
+      "rows": 1332,
+      "mapped": 1332,
+      "create": 1323,
+      "skipSameTopic": 9,
+      "skipBadWord": 0,
+      "unmatchedTopic": 0,
+      "topicsTouched": 18,
+      "unmatchedTopics": [],
+      "collisions": [
+        {
+          "word": "claim",
+          "topic": "ARGUMENTATIVE_ESSAY_WRITING",
+          "label": "Argumentative Essay Writing"
+        },
+        {
+          "word": "evidence",
+          "topic": "ARGUMENTATIVE_ESSAY_WRITING",
+          "label": "Argumentative Essay Writing"
+        },
+        {
+          "word": "counterclaim",
+          "topic": "ARGUMENTATIVE_ESSAY_WRITING",
+          "label": "Argumentative Essay Writing"
+        },
+        {
+          "word": "critique",
+          "topic": "CRITIQUING_A_LITERARY_SELECTION",
+          "label": "Critiquing a Literary Selection"
+        },
+        {
+          "word": "reference",
+          "topic": "HYPERTEXT_AND_INTERTEXT",
+          "label": "Hypertext and Intertext"
+        },
+        {
+          "word": "outline",
+          "topic": "PRINCIPLES_OF_EFFECTIVE_SPEECH_WRITING",
+          "label": "Principles of Effective Speech Writing"
+        },
+        {
+          "word": "draft",
+          "topic": "PRINCIPLES_OF_EFFECTIVE_SPEECH_WRITING",
+          "label": "Principles of Effective Speech Writing"
+        },
+        {
+          "word": "revise",
+          "topic": "PRINCIPLES_OF_EFFECTIVE_SPEECH_WRITING",
+          "label": "Principles of Effective Speech Writing"
+        },
+        {
+          "word": "thesis",
+          "topic": "POSITION_PAPER_WRITING",
+          "label": "Position Paper Writing"
+        }
+      ],
+      "createdSample": [
+        {
+          "word": "outline",
+          "topic": "ARGUMENTATIVE_ESSAY_WRITING",
+          "active": false
+        },
+        {
+          "word": "draft",
+          "topic": "ARGUMENTATIVE_ESSAY_WRITING",
+          "active": false
+        },
+        {
+          "word": "revise",
+          "topic": "ARGUMENTATIVE_ESSAY_WRITING",
+          "active": false
+        },
+        {
+          "word": "edit",
+          "topic": "ARGUMENTATIVE_ESSAY_WRITING",
+          "active": false
+        },
+        {
+          "word": "proofread",
+          "topic": "ARGUMENTATIVE_ESSAY_WRITING",
+          "active": false
+        }
+      ],
+      "mode": "APPLY"
+    }
+  ]
+}

@@ -35,6 +35,8 @@ type BatchInfo = {
   entryCount: number;
   senseCount: number;
   status: string;
+  validCount?: number;
+  errorCount?: number;
 };
 
 type PickedFile = {
@@ -166,10 +168,23 @@ export default function AdminDictionaryScreen() {
         licence.trim() || "Project-owned sample template for LEARN WISE"
       );
 
-      const data = await apiUpload<BatchInfo>("/admin/dictionary/uploads", form);
-      setBatch(data);
+      const preview = await apiUpload<BatchInfo>(
+        "/admin/dictionary/uploads/preview",
+        form
+      );
+      setBatch(preview);
+      if (!preview.validCount) {
+        throw new Error(
+          `No valid rows (${preview.errorCount ?? 0} invalid). Fix the file and preview again.`
+        );
+      }
+      const confirmed = await apiRequest<BatchInfo>(
+        `/admin/dictionary/uploads/confirm/${preview.id}`,
+        { method: "POST", body: "{}" }
+      );
+      setBatch(confirmed);
       setInfo(
-        `Uploaded. Entries ${data.entryCount}, new senses ${data.senseCount}. Tap Classify next.`
+        `Imported after preview. Entries ${confirmed.entryCount}, new senses ${confirmed.senseCount}. Invalid rows reported: ${preview.errorCount ?? 0}. Tap Classify next.`
       );
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Upload failed");
@@ -226,16 +241,29 @@ export default function AdminDictionaryScreen() {
     }
   }
 
-  async function act(id: string, action: "approve" | "reject" | "publish") {
+  async function act(
+    id: string,
+    action: "approve" | "reject" | "publish" | "unpublish"
+  ) {
     setBusy(true);
     setError(null);
     try {
+      if (action === "publish") {
+        await apiRequest(`/admin/dictionary/assignments/${id}/approve`, {
+          method: "POST",
+          body: "{}",
+        });
+      }
       await apiRequest(`/admin/dictionary/assignments/${id}/${action}`, {
         method: "POST",
         body: "{}",
       });
       await loadPending();
-      setInfo(`${action} saved — published words appear in Kids Zone.`);
+      setInfo(
+        action === "unpublish"
+          ? "Unpublished — dictionary entry kept; kids word hidden."
+          : `${action} saved — only approved+published words appear in Kids Zone.`
+      );
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Action failed");
     } finally {
@@ -399,6 +427,7 @@ export default function AdminDictionaryScreen() {
                 <View style={styles.row}>
                   <SoftButton label="Approve" onPress={() => void act(a.id, "approve")} />
                   <SoftButton label="Publish" onPress={() => void act(a.id, "publish")} />
+                  <SoftButton label="Unpublish" onPress={() => void act(a.id, "unpublish")} />
                   <SoftButton label="Reject" onPress={() => void act(a.id, "reject")} />
                 </View>
               </View>

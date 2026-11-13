@@ -100,10 +100,15 @@ enum DictionaryImportStatus {
 }
 
 enum VocabAssignmentStatus {
+  /// Manual draft before classify, or awaiting placement
+  DRAFT
+  /// Classifier suggestion (never auto-published)
   PENDING
   APPROVED
   REJECTED
   PUBLISHED
+  /// Kids word hidden; dictionary Entry/Sense kept
+  UNPUBLISHED
 }
 
 enum VocabWordOrigin {
@@ -155,6 +160,7 @@ model User {
   vocabImports      VocabImportBatch[]
   dictionaryImports DictionaryImportBatch[]
   vocabAssignmentsReviewed VocabularyGradeAssignment[] @relation("AssignmentReviewer")
+  dictionaryPublishEvents  DictionaryPublishEvent[] @relation("DictionaryPublishActor")
   passwordResetTokens PasswordResetToken[]
   adminPasswordResetTokens AdminPasswordResetToken[]
   schoolStaff         SchoolStaff[]
@@ -658,7 +664,11 @@ model DictionaryImportBatch {
   assignmentCount  Int                    @default(0)
   parseNotes       String?
   errorMessage     String?
+  /// Preview payload: { validRows, errors, notes } — written before confirm
   previewJson      String?                @db.Text
+  /// Invalid-row report JSON for downloadable CSV
+  errorReportJson  String?                @db.Text
+  confirmedAt      DateTime?
   createdAt        DateTime               @default(now())
   classifiedAt     DateTime?
 
@@ -723,6 +733,11 @@ model VocabularyGradeAssignment {
   confidenceScore        Float                @default(0)
   explanation            String               @db.Text
   classificationVersion  String
+  /// Age-appropriate meaning for this grade/topic only — never mutates DictionarySense.definition
+  meaningOverride        String?
+  /// Age-appropriate example for this grade/topic only
+  exampleOverride        String?
+  difficultyOverride     Int?
   publishedWordId        String?
   reviewedById           String?
   reviewedAt             DateTime?
@@ -735,11 +750,35 @@ model VocabularyGradeAssignment {
   category      LearningCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
   publishedWord VocabularyWord?  @relation(fields: [publishedWordId], references: [id], onDelete: SetNull)
   reviewedBy    User?            @relation("AssignmentReviewer", fields: [reviewedById], references: [id], onDelete: SetNull)
+  publishEvents DictionaryPublishEvent[]
 
   @@unique([senseId, gradeId, categoryId])
   @@index([status, confidenceScore])
   @@index([gradeId, status])
   @@index([categoryId, status])
+}
+
+enum DictionaryPublishAction {
+  PUBLISH
+  UNPUBLISH
+}
+
+/// Immutable audit log for dictionary publish / unpublish (does not delete dictionary records).
+model DictionaryPublishEvent {
+  id           String                  @id @default(cuid())
+  assignmentId String
+  wordId       String?
+  action       DictionaryPublishAction
+  actorId      String
+  note         String?
+  createdAt    DateTime                @default(now())
+
+  assignment VocabularyGradeAssignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  actor      User                      @relation("DictionaryPublishActor", fields: [actorId], references: [id], onDelete: Cascade)
+
+  @@index([assignmentId, createdAt])
+  @@index([actorId, createdAt])
+  @@index([action, createdAt])
 }
 
 model LearningSession {

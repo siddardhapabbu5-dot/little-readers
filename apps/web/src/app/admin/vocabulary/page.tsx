@@ -7,7 +7,8 @@ import { useAdminGate } from "@/lib/use-admin-gate";
 
 const LINKS = [
   { href: "/admin/vocabulary/grades", title: "Academic Structure", desc: "Grades → levels → groups → categories" },
-  { href: "/admin/vocabulary/dictionary", title: "Dictionary upload", desc: "Import, AI grade suggestions, approve & publish" },
+  { href: "/admin/vocabulary/dictionary", title: "Central dictionary", desc: "Search, preview import, classify, overrides, publish" },
+  { href: "/admin/vocabulary/dictionary/dashboard", title: "Grade vocabulary dashboard", desc: "Counts per grade, insufficient topics, export" },
   { href: "/admin/vocabulary/words", title: "Vocabulary Manager", desc: "Filter by grade/category, download/upload CSV sheets" },
   { href: "/admin/vocabulary/programme", title: "Six-month programme", desc: "Schedule daily words (scheduler follow-up)" },
   { href: "/admin/vocabulary/lessons", title: "Lessons", desc: "Create lessons, attach vocab, publish Listen/Spell" },

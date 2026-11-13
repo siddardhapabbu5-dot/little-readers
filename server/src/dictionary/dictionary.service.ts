@@ -141,7 +141,96 @@ export async function listGrades() {
   return prisma.learningGrade.findMany({ orderBy: { sortOrder: "asc" } });
 }
 
-export async function createDictionaryUpload(input: {
+type PreviewErrorRow = {
+  row: number;
+  headword: string;
+  issues: string[];
+};
+
+async function parseUploadBuffer(input: {
+  originalFilename: string;
+  buffer: Buffer;
+}) {
+  if (!input.buffer.length) throw new AppError("Uploaded file is empty", 400);
+  if (input.buffer.length > MAX_VOCAB_UPLOAD_BYTES) {
+    throw new AppError("File exceeds 5MB limit", 400);
+  }
+  const extWithDot = assertAllowedExtension(input.originalFilename);
+  const ext = extWithDot.replace(/^\./, "");
+  detectFileKind(input.buffer, extWithDot);
+  const parsed = await parseDictionaryFile(input.buffer, ext);
+
+  const errors: PreviewErrorRow[] = [];
+  const validRows = [];
+  const seenInFile = new Map<string, number>();
+
+  for (let i = 0; i < parsed.rows.length; i++) {
+    const row = parsed.rows[i]!;
+    const issues = [...row.issues];
+    if (!row.normalizedHeadword) issues.push("Empty word");
+    if (!row.senses.length) issues.push("Missing definition — not invented");
+    const prev = seenInFile.get(row.normalizedHeadword);
+    if (prev != null) {
+      issues.push(`Duplicate headword in file (also row ${prev + 1})`);
+    } else if (row.normalizedHeadword) {
+      seenInFile.set(row.normalizedHeadword, i);
+    }
+    const existing = row.normalizedHeadword
+      ? await prisma.dictionaryEntry.findUnique({
+          where: { normalizedHeadword: row.normalizedHeadword },
+          select: { id: true },
+        })
+      : null;
+    if (existing) {
+      issues.push("Headword already exists in central dictionary (will merge senses on confirm)");
+    }
+    if (issues.length && !row.senses.length) {
+      errors.push({
+        row: i + 1,
+        headword: row.headword || "",
+        issues,
+      });
+      continue;
+    }
+    if (!row.normalizedHeadword || !row.senses.length) {
+      errors.push({
+        row: i + 1,
+        headword: row.headword || "",
+        issues: issues.length ? issues : ["Invalid row"],
+      });
+      continue;
+    }
+    // Soft warnings (existing headword / in-file dup) still allow import of new senses
+    const hard = issues.filter(
+      (x) =>
+        !x.includes("already exists") &&
+        !x.includes("Duplicate headword in file")
+    );
+    if (hard.length) {
+      errors.push({ row: i + 1, headword: row.headword, issues: hard });
+      continue;
+    }
+    validRows.push(row);
+  }
+
+  return {
+    ext,
+    extWithDot,
+    fileHash: hashFile(input.buffer),
+    parsed,
+    validRows,
+    errors,
+    notes: [
+      ...parsed.notes,
+      `Valid rows: ${validRows.length}`,
+      `Invalid rows: ${errors.length}`,
+      `In-file duplicate headwords: ${parsed.duplicateNormalized}`,
+    ],
+  };
+}
+
+/** Parse + validate only — no DictionaryEntry writes. */
+export async function previewDictionaryUpload(input: {
   adminId: string;
   originalFilename: string;
   mimeType: string;
@@ -149,25 +238,23 @@ export async function createDictionaryUpload(input: {
   sourceName?: string;
   licence?: string;
 }) {
-  if (!input.buffer.length) throw new AppError("Uploaded file is empty", 400);
-  if (input.buffer.length > MAX_VOCAB_UPLOAD_BYTES) {
-    throw new AppError("File exceeds 5MB limit", 400);
-  }
-
-  const extWithDot = assertAllowedExtension(input.originalFilename);
-  const ext = extWithDot.replace(/^\./, "");
-  detectFileKind(input.buffer, extWithDot);
-  const fileHash = hashFile(input.buffer);
-
+  const prepared = await parseUploadBuffer(input);
   await mkdir(STORAGE_ROOT, { recursive: true });
-  const storedName = `${Date.now()}_${fileHash.slice(0, 12)}.${ext}`;
+  const storedName = `${Date.now()}_${prepared.fileHash.slice(0, 12)}.${prepared.ext}`;
   const storedPath = path.join(STORAGE_ROOT, storedName);
   await writeFile(storedPath, input.buffer);
 
-  const parsed = await parseDictionaryFile(input.buffer, ext);
-  const validRows = parsed.rows.filter(
-    (r) => r.normalizedHeadword && r.senses.length > 0 && r.issues.length === 0
-  );
+  const previewPayload = {
+    validRows: prepared.validRows.slice(0, 100).map((r) => ({
+      headword: r.headword,
+      normalizedHeadword: r.normalizedHeadword,
+      pronunciation: r.pronunciation,
+      senseCount: r.senses.length,
+      firstDefinition: r.senses[0]?.definition,
+    })),
+    errors: prepared.errors,
+    notes: prepared.notes,
+  };
 
   const batch = await prisma.dictionaryImportBatch.create({
     data: {
@@ -175,19 +262,36 @@ export async function createDictionaryUpload(input: {
       originalFilename: input.originalFilename,
       storedPath,
       mimeType: input.mimeType || "application/octet-stream",
-      fileExt: ext,
+      fileExt: prepared.ext,
       fileSize: input.buffer.length,
-      fileHash,
-      status: "PARSED",
+      fileHash: prepared.fileHash,
+      status: "PENDING",
       sourceName: input.sourceName ? sanitizeText(input.sourceName) : null,
       licence: input.licence ? sanitizeText(input.licence) : null,
-      extractedCount: parsed.rows.length,
-      duplicateCount: parsed.duplicateNormalized,
-      parseNotes: parsed.notes.join("\n"),
-      previewJson: JSON.stringify(validRows.slice(0, 40)),
+      extractedCount: prepared.parsed.rows.length,
+      duplicateCount: prepared.parsed.duplicateNormalized,
+      parseNotes: prepared.notes.join("\n"),
+      previewJson: JSON.stringify(previewPayload),
+      errorReportJson: JSON.stringify(prepared.errors),
+      entryCount: 0,
+      senseCount: 0,
     },
   });
 
+  return {
+    ...batch,
+    validCount: prepared.validRows.length,
+    errorCount: prepared.errors.length,
+    errors: prepared.errors,
+    preview: previewPayload.validRows,
+  };
+}
+
+async function writeEntriesFromParsedRows(
+  batchId: string,
+  validRows: Awaited<ReturnType<typeof parseUploadBuffer>>["validRows"],
+  meta: { sourceName?: string; licence?: string }
+) {
   let entryCount = 0;
   let senseCount = 0;
 
@@ -197,19 +301,19 @@ export async function createDictionaryUpload(input: {
       update: {
         headword: row.headword,
         pronunciation: row.pronunciation ?? undefined,
-        sourceName: input.sourceName ? sanitizeText(input.sourceName) : undefined,
-        licence: input.licence ? sanitizeText(input.licence) : undefined,
+        sourceName: meta.sourceName ? sanitizeText(meta.sourceName) : undefined,
+        licence: meta.licence ? sanitizeText(meta.licence) : undefined,
         sourceRef: row.sourceRef,
-        importBatchId: batch.id,
+        importBatchId: batchId,
       },
       create: {
         normalizedHeadword: row.normalizedHeadword,
         headword: row.headword,
         pronunciation: row.pronunciation,
-        sourceName: input.sourceName ? sanitizeText(input.sourceName) : null,
-        licence: input.licence ? sanitizeText(input.licence) : null,
+        sourceName: meta.sourceName ? sanitizeText(meta.sourceName) : null,
+        licence: meta.licence ? sanitizeText(meta.licence) : null,
         sourceRef: row.sourceRef,
-        importBatchId: batch.id,
+        importBatchId: batchId,
       },
     });
     entryCount += 1;
@@ -239,15 +343,95 @@ export async function createDictionaryUpload(input: {
           rawPayloadJson: sense.raw ? JSON.stringify(sense.raw) : null,
         },
       });
+      existingSenses.push({
+        senseIndex: nextIndex,
+        definition: sense.definition,
+      });
       nextIndex += 1;
       senseCount += 1;
     }
   }
 
+  return { entryCount, senseCount };
+}
+
+/** Confirm a preview batch: write DictionaryEntry/Sense rows. */
+export async function confirmDictionaryUpload(batchId: string) {
+  const batch = await prisma.dictionaryImportBatch.findUnique({
+    where: { id: batchId },
+  });
+  if (!batch) throw new AppError("Dictionary import not found", 404);
+  if (batch.confirmedAt) {
+    throw new AppError("Import batch already confirmed", 400);
+  }
+  if (batch.status !== "PENDING" && batch.status !== "PARSED") {
+    throw new AppError(`Cannot confirm batch in status ${batch.status}`, 400);
+  }
+
+  const { readFile } = await import("node:fs/promises");
+  const buffer = await readFile(batch.storedPath);
+  const prepared = await parseUploadBuffer({
+    originalFilename: batch.originalFilename,
+    buffer,
+  });
+
+  if (!prepared.validRows.length) {
+    throw new AppError(
+      `No valid rows to import (${prepared.errors.length} invalid). Download error report.`,
+      400
+    );
+  }
+
+  const { entryCount, senseCount } = await writeEntriesFromParsedRows(
+    batch.id,
+    prepared.validRows,
+    { sourceName: batch.sourceName ?? undefined, licence: batch.licence ?? undefined }
+  );
+
   return prisma.dictionaryImportBatch.update({
     where: { id: batch.id },
-    data: { entryCount, senseCount },
+    data: {
+      status: "PARSED",
+      entryCount,
+      senseCount,
+      confirmedAt: new Date(),
+      errorReportJson: JSON.stringify(prepared.errors),
+      parseNotes: prepared.notes.join("\n"),
+    },
   });
+}
+
+/**
+ * Backward-compatible upload: preview + immediate confirm (existing clients / tests).
+ * Prefer preview → confirm for admin UI.
+ */
+export async function createDictionaryUpload(input: {
+  adminId: string;
+  originalFilename: string;
+  mimeType: string;
+  buffer: Buffer;
+  sourceName?: string;
+  licence?: string;
+}) {
+  const preview = await previewDictionaryUpload(input);
+  if (!preview.validCount) {
+    throw new AppError(
+      `No valid rows to import (${preview.errorCount} invalid). Fix the file or use preview.`,
+      400
+    );
+  }
+  return confirmDictionaryUpload(preview.id);
+}
+
+export function errorReportToCsv(errors: PreviewErrorRow[]) {
+  const escape = (v: string) =>
+    /[",\n]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v;
+  return [
+    "row,headword,issues",
+    ...errors.map((e) =>
+      [e.row, escape(e.headword), escape(e.issues.join("; "))].join(",")
+    ),
+  ].join("\n");
 }
 
 export async function classifyDictionaryBatch(batchId: string) {
@@ -390,6 +574,9 @@ export async function updateAssignment(
     levelId?: string;
     categoryId?: string;
     status?: VocabAssignmentStatus;
+    meaningOverride?: string | null;
+    exampleOverride?: string | null;
+    difficultyOverride?: number | null;
   },
   reviewerId?: string
 ) {
@@ -398,6 +585,11 @@ export async function updateAssignment(
   });
   if (!existing) throw new AppError("Assignment not found", 404);
 
+  // Overrides never touch DictionarySense.definition — assignment fields only.
+  if (patch.meaningOverride) {
+    assertWordQuality("word", sanitizeText(patch.meaningOverride));
+  }
+
   return prisma.vocabularyGradeAssignment.update({
     where: { id: assignmentId },
     data: {
@@ -405,6 +597,23 @@ export async function updateAssignment(
       ...(patch.levelId ? { levelId: patch.levelId } : {}),
       ...(patch.categoryId ? { categoryId: patch.categoryId } : {}),
       ...(patch.status ? { status: patch.status } : {}),
+      ...(patch.meaningOverride !== undefined
+        ? {
+            meaningOverride: patch.meaningOverride
+              ? sanitizeText(patch.meaningOverride)
+              : null,
+          }
+        : {}),
+      ...(patch.exampleOverride !== undefined
+        ? {
+            exampleOverride: patch.exampleOverride
+              ? sanitizeText(patch.exampleOverride)
+              : null,
+          }
+        : {}),
+      ...(patch.difficultyOverride !== undefined
+        ? { difficultyOverride: patch.difficultyOverride }
+        : {}),
       ...(reviewerId
         ? { reviewedById: reviewerId, reviewedAt: new Date() }
         : {}),
@@ -483,6 +692,16 @@ export async function bulkPublishAssignments(
   }> = [];
   for (const id of ids) {
     try {
+      const current = await prisma.vocabularyGradeAssignment.findUnique({
+        where: { id },
+      });
+      // Explicit approve step for PENDING/DRAFT so bulk "Publish all" stays policy-safe.
+      if (
+        current &&
+        (current.status === "PENDING" || current.status === "DRAFT")
+      ) {
+        await approveAssignment(id, reviewerId);
+      }
       const row = await publishAssignment(id, reviewerId);
       results.push({
         id,
@@ -506,8 +725,10 @@ export async function bulkPublishAssignments(
 }
 
 /**
- * Publish approved assignment into kids-facing VocabularyWord (category-scoped).
- * Never invents meaning — uses dictionary sense definition.
+ * Publish approved (or republish unpublished) assignment into kids-facing VocabularyWord.
+ * Kids meaning = meaningOverride ?? central DictionarySense.definition.
+ * Never mutates DictionarySense.definition.
+ * Upserts on (categoryId, text) — no duplicate words in the same topic.
  */
 export async function publishAssignment(assignmentId: string, reviewerId: string) {
   const assignment = await prisma.vocabularyGradeAssignment.findUnique({
@@ -521,52 +742,150 @@ export async function publishAssignment(assignmentId: string, reviewerId: string
   if (assignment.status === "REJECTED") {
     throw new AppError("Cannot publish a rejected assignment", 400);
   }
+  if (
+    assignment.status !== "APPROVED" &&
+    assignment.status !== "UNPUBLISHED" &&
+    assignment.status !== "PUBLISHED"
+  ) {
+    throw new AppError(
+      "Only APPROVED, PUBLISHED (re-publish), or UNPUBLISHED assignments can be published (approve first)",
+      400
+    );
+  }
 
   const headword = assignment.sense.entry.headword;
-  const meaning = assignment.sense.definition;
+  const centralMeaning = assignment.sense.definition;
+  const meaning = assignment.meaningOverride?.trim() || centralMeaning;
   assertWordQuality(headword, meaning);
-  const firstLetter = headword.charAt(0).toUpperCase();
 
-  const word = await prisma.vocabularyWord.upsert({
-    where: {
-      categoryId_text: {
+  let exampleSentence: string | null = assignment.exampleOverride?.trim() || null;
+  if (!exampleSentence && assignment.sense.examplesJson) {
+    try {
+      const examples = JSON.parse(assignment.sense.examplesJson) as unknown;
+      if (Array.isArray(examples) && typeof examples[0] === "string") {
+        exampleSentence = examples[0];
+      }
+    } catch {
+      /* ignore */
+    }
+  }
+
+  const firstLetter = headword.charAt(0).toUpperCase();
+  const difficulty =
+    assignment.difficultyOverride != null
+      ? Math.max(1, Math.min(5, assignment.difficultyOverride))
+      : Math.max(1, Math.min(5, Math.round(assignment.difficultyScore / 20)));
+
+  return prisma.$transaction(async (tx) => {
+    const word = await tx.vocabularyWord.upsert({
+      where: {
+        categoryId_text: {
+          categoryId: assignment.categoryId,
+          text: headword,
+        },
+      },
+      update: {
+        meaning,
+        exampleSentence: exampleSentence ?? undefined,
+        phonetic: assignment.sense.entry.pronunciation ?? undefined,
+        audioUrl: assignment.sense.entry.audioUrl ?? undefined,
+        firstLetter,
+        isActive: true,
+        origin: "DICTIONARY",
+        dictionarySenseId: assignment.senseId,
+        difficulty,
+      },
+      create: {
         categoryId: assignment.categoryId,
         text: headword,
+        meaning,
+        exampleSentence,
+        emoji: assignment.category.emoji || "📚",
+        phonetic: assignment.sense.entry.pronunciation,
+        audioUrl: assignment.sense.entry.audioUrl,
+        firstLetter,
+        isActive: true,
+        origin: "DICTIONARY",
+        dictionarySenseId: assignment.senseId,
+        difficulty,
+        sortOrder: 0,
       },
-    },
-    update: {
-      meaning,
-      phonetic: assignment.sense.entry.pronunciation ?? undefined,
-      firstLetter,
-      isActive: true,
-      origin: "DICTIONARY",
-      dictionarySenseId: assignment.senseId,
-      difficulty: Math.max(1, Math.min(5, Math.round(assignment.difficultyScore / 20))),
-    },
-    create: {
-      categoryId: assignment.categoryId,
-      text: headword,
-      meaning,
-      emoji: assignment.category.emoji || "📚",
-      phonetic: assignment.sense.entry.pronunciation,
-      firstLetter,
-      isActive: true,
-      origin: "DICTIONARY",
-      dictionarySenseId: assignment.senseId,
-      difficulty: Math.max(1, Math.min(5, Math.round(assignment.difficultyScore / 20))),
-      sortOrder: 0,
-    },
-  });
+    });
 
-  return prisma.vocabularyGradeAssignment.update({
+    const updated = await tx.vocabularyGradeAssignment.update({
+      where: { id: assignmentId },
+      data: {
+        status: "PUBLISHED",
+        publishedWordId: word.id,
+        reviewedById: reviewerId,
+        reviewedAt: new Date(),
+      },
+      include: { publishedWord: true, sense: { include: { entry: true } } },
+    });
+
+    await tx.dictionaryPublishEvent.create({
+      data: {
+        assignmentId,
+        wordId: word.id,
+        action: "PUBLISH",
+        actorId: reviewerId,
+        note: assignment.meaningOverride
+          ? "Published with assignment meaning override (central sense unchanged)"
+          : "Published using central dictionary meaning",
+      },
+    });
+
+    return updated;
+  });
+}
+
+/**
+ * Hide kids word; keep DictionaryEntry / DictionarySense / assignment row.
+ */
+export async function unpublishAssignment(
+  assignmentId: string,
+  reviewerId: string
+) {
+  const assignment = await prisma.vocabularyGradeAssignment.findUnique({
     where: { id: assignmentId },
-    data: {
-      status: "PUBLISHED",
-      publishedWordId: word.id,
-      reviewedById: reviewerId,
-      reviewedAt: new Date(),
-    },
-    include: { publishedWord: true },
+  });
+  if (!assignment) throw new AppError("Assignment not found", 404);
+  if (assignment.status !== "PUBLISHED") {
+    throw new AppError("Only PUBLISHED assignments can be unpublished", 400);
+  }
+
+  return prisma.$transaction(async (tx) => {
+    if (assignment.publishedWordId) {
+      await tx.vocabularyWord.update({
+        where: { id: assignment.publishedWordId },
+        data: { isActive: false },
+      });
+    }
+
+    const updated = await tx.vocabularyGradeAssignment.update({
+      where: { id: assignmentId },
+      data: {
+        status: "UNPUBLISHED",
+        reviewedById: reviewerId,
+        reviewedAt: new Date(),
+      },
+      include: {
+        publishedWord: true,
+        sense: { include: { entry: true } },
+      },
+    });
+
+    await tx.dictionaryPublishEvent.create({
+      data: {
+        assignmentId,
+        wordId: assignment.publishedWordId,
+        action: "UNPUBLISH",
+        actorId: reviewerId,
+        note: "Unpublished — dictionary entry/sense preserved",
+      },
+    });
+
+    return updated;
   });
 }
 

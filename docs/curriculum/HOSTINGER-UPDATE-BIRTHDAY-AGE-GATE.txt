@@ -5,6 +5,18 @@
 set -e
 cd /var/www/siwi
 
+# Clear leftover untracked files from earlier go-live (move aside, do not delete permanently)
+mkdir -p /tmp/siwi-bak-birthday-gate
+for f in \
+  docs/curriculum/additional-vocab-g2-4-enriched.json \
+  server/scripts/apply-additional-vocab-production.mjs
+do
+  if [ -e "$f" ]; then
+    mv -f "$f" "/tmp/siwi-bak-birthday-gate/$(basename "$f").$(date +%s)"
+    echo "MOVED_ASIDE $f"
+  fi
+done
+
 git fetch origin feature/central-dictionary-expansion
 git checkout feature/central-dictionary-expansion
 git pull --ff-only origin feature/central-dictionary-expansion
@@ -14,7 +26,7 @@ grep -n "Parents may enter any real past birthday\|minYear = 1980\|Birthday cann
 
 # Restart API (adjust if your process name differs)
 if command -v pm2 >/dev/null 2>&1; then
-  pm2 restart all --update-env || pm2 restart siwi-api --update-env || pm2 restart ecosystem.config.cjs --update-env
+  pm2 restart all --update-env || pm2 restart siwi-api --update-env || true
 else
   systemctl restart siwi-api || true
 fi

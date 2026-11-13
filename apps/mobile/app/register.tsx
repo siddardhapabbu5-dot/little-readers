@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import {
+  Alert,
   Image,
   Platform,
   Pressable,
@@ -48,6 +49,28 @@ function formatBirthdayInput(text: string) {
   return `${digits.slice(0, 2)}/${digits.slice(2, 4)}/${digits.slice(4)}`;
 }
 
+/** Valid calendar date in the past — parents may enter any student birthday. */
+function validateStudentBirthday(value: string): string | null {
+  const trimmed = value.trim();
+  if (!/^\d{2}\/\d{2}\/\d{4}$/.test(trimmed)) {
+    return "Enter student birthday as DD/MM/YYYY.";
+  }
+  const [dd, mm, yyyy] = trimmed.split("/").map(Number);
+  const dt = new Date(yyyy, mm - 1, dd);
+  if (dt.getFullYear() !== yyyy || dt.getMonth() !== mm - 1 || dt.getDate() !== dd) {
+    return "Birthday is not a valid calendar date.";
+  }
+  const today = new Date();
+  today.setHours(23, 59, 59, 999);
+  if (dt > today) {
+    return "Birthday cannot be in the future.";
+  }
+  if (yyyy < 1980) {
+    return "Enter a valid student birthday.";
+  }
+  return null;
+}
+
 export default function RegisterScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -92,6 +115,14 @@ export default function RegisterScreen() {
       );
   }, []);
 
+  function showBlockingError(message: string) {
+    setError(message);
+    setFieldHint(null);
+    if (Platform.OS !== "web") {
+      Alert.alert("Cannot create account", message);
+    }
+  }
+
   async function onRegister() {
     if (loading) return;
     setError(null);
@@ -101,41 +132,49 @@ export default function RegisterScreen() {
     const name = studentName.trim();
     const email = guardianEmail.trim();
     if (name.length < 2) {
-      setFieldHint("Enter the student’s full name.");
+      showBlockingError("Enter the student’s full name.");
       return;
     }
     if (!email || !isValidEmail(email)) {
-      setFieldHint("Enter a valid parent/guardian email.");
+      showBlockingError("Enter a valid parent/guardian email.");
       return;
     }
     if (!emailVerified) {
-      setFieldHint("Verify your email with the 6-digit code before creating the account.");
+      showBlockingError(
+        "Verify your email with the 6-digit code before creating the account."
+      );
       return;
     }
     if (!password || password.length < 8) {
-      setFieldHint("Password must be at least 8 characters.");
+      showBlockingError("Password must be at least 8 characters.");
       return;
     }
     if (mobile.trim()) {
       const phone = validateNationalPhone(mobile, countryIso);
       if (!phone.ok) {
-        setFieldHint(phone.error);
+        showBlockingError(phone.error);
         return;
       }
     }
-    if (!/^\d{2}\/\d{2}\/\d{4}$/.test(birthDate.trim())) {
-      setFieldHint("Enter student birthday as DD/MM/YYYY.");
+    const birthdayError = validateStudentBirthday(birthDate);
+    if (birthdayError) {
+      setFieldHint(birthdayError);
+      setError(birthdayError);
+      birthRef.current?.focus();
+      if (Platform.OS !== "web") {
+        Alert.alert("Birthday not allowed", birthdayError);
+      }
       return;
     }
     if (!privacyMeta?.published || !privacyMeta.policy?.version) {
-      setFieldHint(
+      showBlockingError(
         privacyMeta?.message ??
           "Registration is unavailable until the Privacy Policy is published."
       );
       return;
     }
     if (!acceptTerms || !acceptPrivacy || !parentalConsent) {
-      setFieldHint(
+      showBlockingError(
         "Please review and accept Terms, Privacy Policy, and parental confirmation."
       );
       return;
@@ -192,19 +231,31 @@ export default function RegisterScreen() {
           }),
         });
         await saveActiveChild(child);
-        setInfo("Student account created and linked to your guardian login.");
+        router.replace(routeForRole(data.user.role) as never);
       } catch (childErr) {
-        // Guardian account exists; student profile can be added from Parent home.
-        setInfo(
+        // Parent login exists; do NOT leave them stuck re-registering.
+        const why =
           childErr instanceof ApiError
-            ? `Account created. Add the student profile next: ${childErr.message}`
-            : "Account created. Add the student profile from the Parent screen."
-        );
+            ? childErr.message
+            : "Could not create the student profile.";
+        const nextStep = `${why}\n\nYour parent account was created. Opening Parent Home so you can add the student.`;
+        setError(nextStep);
+        router.replace("/parent" as never);
       }
-
-      router.replace(routeForRole(data.user.role) as never);
     } catch (err) {
-      setError(
+      if (err instanceof ApiError && (err.status === 409 || /already exists/i.test(err.message))) {
+        const msg =
+          "This email is already registered. Use Log in with this email, then add your student from Parent Home.";
+        setError(msg);
+        if (Platform.OS !== "web") {
+          Alert.alert("Account already exists", msg, [
+            { text: "Go to login", onPress: () => router.replace("/login" as never) },
+            { text: "OK" },
+          ]);
+        }
+        return;
+      }
+      showBlockingError(
         err instanceof ApiError ? err.message : "Student registration failed"
       );
     } finally {
@@ -349,13 +400,24 @@ export default function RegisterScreen() {
             </View>
 
             <Text style={styles.label}>Student birthday (DD/MM/YYYY)</Text>
-            <View style={styles.inputRow}>
+            <View
+              style={[
+                styles.inputRow,
+                birthDate.length === 10 && validateStudentBirthday(birthDate)
+                  ? styles.inputRowError
+                  : null,
+              ]}
+            >
               <TextInput
                 ref={birthRef}
                 style={styles.input}
                 value={birthDate}
-                onChangeText={(v) => setBirthDate(formatBirthdayInput(v))}
-                placeholder="DD/MM/YYYY"
+                onChangeText={(v) => {
+                  setBirthDate(formatBirthdayInput(v));
+                  setError(null);
+                  setFieldHint(null);
+                }}
+                placeholder="Example: 15/03/2019"
                 placeholderTextColor="#9B8EC4"
                 keyboardType="number-pad"
                 returnKeyType="done"
@@ -364,6 +426,12 @@ export default function RegisterScreen() {
                 accessibilityLabel="Student birthday"
               />
             </View>
+            <Text style={styles.fieldHelp}>
+              Enter the student’s birthday (DD/MM/YYYY). Any past date is accepted.
+            </Text>
+            {birthDate.length === 10 && validateStudentBirthday(birthDate) ? (
+              <Text style={styles.inlineError}>{validateStudentBirthday(birthDate)}</Text>
+            ) : null}
 
             <View style={styles.consentBox}>
               {!privacyMeta?.published ? (
@@ -408,9 +476,9 @@ export default function RegisterScreen() {
 
             {(fieldHint || error || info) && (
               <View
-                style={styles.messageBox}
+                style={[styles.messageBox, error ? styles.messageBoxError : null]}
                 accessibilityRole="alert"
-                accessibilityLiveRegion="polite"
+                accessibilityLiveRegion="assertive"
               >
                 {fieldHint ? (
                   <Text style={styles.hint}>{fieldHint}</Text>
@@ -423,11 +491,20 @@ export default function RegisterScreen() {
             <Pressable
               accessibilityRole="button"
               accessibilityLabel="Create Student Account"
-              disabled={loading || !privacyMeta?.published || !emailVerified}
+              disabled={
+                loading ||
+                !privacyMeta?.published ||
+                !emailVerified ||
+                Boolean(birthDate.length === 10 && validateStudentBirthday(birthDate))
+              }
               onPress={() => void onRegister()}
               style={({ pressed }) => [
                 styles.primaryBtn,
-                (pressed || loading || !privacyMeta?.published || !emailVerified) && {
+                (pressed ||
+                  loading ||
+                  !privacyMeta?.published ||
+                  !emailVerified ||
+                  Boolean(birthDate.length === 10 && validateStudentBirthday(birthDate))) && {
                   opacity: 0.6,
                 },
               ]}
@@ -440,10 +517,10 @@ export default function RegisterScreen() {
             <Pressable
               accessibilityRole="button"
               accessibilityLabel="Back to login"
-              onPress={() => router.back()}
+              onPress={() => router.replace("/login" as never)}
               style={styles.softBtn}
             >
-              <Text style={styles.softBtnText}>Back to login</Text>
+              <Text style={styles.softBtnText}>Already registered? Log in</Text>
             </Pressable>
           </View>
       </KeyboardAwareScroll>
@@ -574,6 +651,28 @@ const styles = StyleSheet.create({
     borderColor: "#FED7AA",
     gap: 2,
     marginTop: 4,
+  },
+  fieldHelp: {
+    color: colors.textMuted,
+    fontWeight: "600",
+    fontSize: 12,
+    marginTop: -4,
+    marginBottom: 2,
+  },
+  inputRowError: {
+    borderColor: colors.danger,
+    borderWidth: 2,
+  },
+  inlineError: {
+    color: colors.danger,
+    fontWeight: "800",
+    fontSize: 13,
+    lineHeight: 18,
+  },
+  messageBoxError: {
+    backgroundColor: "#FEE2E2",
+    borderColor: colors.danger,
+    borderWidth: 1,
   },
   hint: { color: colors.accent, fontWeight: "700", fontSize: 12 },
   verified: { color: colors.success, fontWeight: "800", fontSize: 13 },

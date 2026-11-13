@@ -138,10 +138,15 @@ export function parseBirthDateDdMmYyyy(value: string): {
   ) {
     throw new Error("Birthday is not a valid calendar date");
   }
-  const minYear = new Date().getFullYear() - 12;
-  const maxYear = new Date().getFullYear() - 1;
-  if (year < minYear || year > maxYear) {
-    throw new Error(`Birth year must be between ${minYear} and ${maxYear}`);
+  // Parents may enter any real past birthday. Grade/level is chosen separately.
+  const today = new Date();
+  today.setHours(23, 59, 59, 999);
+  if (dt > today) {
+    throw new Error("Birthday cannot be in the future");
+  }
+  const minYear = 1980;
+  if (year < minYear) {
+    throw new Error(`Birth year must be ${minYear} or later`);
   }
   return {
     day,
@@ -160,8 +165,8 @@ export const createChildSchema = z
     birthYear: z.coerce
       .number()
       .int()
-      .min(new Date().getFullYear() - 12)
-      .max(new Date().getFullYear() - 1)
+      .min(1980)
+      .max(new Date().getFullYear())
       .optional(),
     level: z
       .enum(["LEVEL_1", "LEVEL_2", "LEVEL_3", "LEVEL_4", "FOUNDATION", "ELEMENTARY", "ADVANCED"])
@@ -200,8 +205,8 @@ export const updateChildSchema = z
     birthYear: z.coerce
       .number()
       .int()
-      .min(new Date().getFullYear() - 12)
-      .max(new Date().getFullYear() - 1)
+      .min(1980)
+      .max(new Date().getFullYear())
       .optional(),
     level: z
       .enum(["LEVEL_1", "LEVEL_2", "LEVEL_3", "LEVEL_4", "FOUNDATION", "ELEMENTARY", "ADVANCED"])

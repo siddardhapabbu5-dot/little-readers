@@ -457,8 +457,8 @@ export default function ParentDashboardPage() {
             name="birthYear"
             type="number"
             required
-            min={new Date().getFullYear() - 12}
-            max={new Date().getFullYear() - 1}
+            min={1980}
+            max={new Date().getFullYear()}
           />
           <Button type="submit" loading={creating}>
             Save child profile

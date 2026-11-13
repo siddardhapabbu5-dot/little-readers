@@ -1,0 +1,24 @@
+# Paste in Hostinger Browser Terminal (as root)
+# Removes Learn Wise child birthday age 1–12 lock on the LIVE API.
+# Safe: no DB deletes, no vocab publish, no Grade 1 changes.
+
+set -e
+cd /var/www/siwi
+
+git fetch origin feature/central-dictionary-expansion
+git checkout feature/central-dictionary-expansion
+git pull --ff-only origin feature/central-dictionary-expansion
+
+# Confirm the new birthday rules are present
+grep -n "Parents may enter any real past birthday\|minYear = 1980\|Birthday cannot be in the future" packages/validation/src/index.ts | head
+
+# Restart API (adjust if your process name differs)
+if command -v pm2 >/dev/null 2>&1; then
+  pm2 restart all --update-env || pm2 restart siwi-api --update-env || pm2 restart ecosystem.config.cjs --update-env
+else
+  systemctl restart siwi-api || true
+fi
+
+curl -fsS http://127.0.0.1:4100/api/health || curl -fsS http://127.0.0.1:3001/api/health || true
+echo
+echo DONE_BIRTHDAY_AGE_GATE_UPDATE

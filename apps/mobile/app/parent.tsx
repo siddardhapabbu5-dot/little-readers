@@ -1,15 +1,16 @@
 import { useCallback, useState } from "react";
-import { StyleSheet, Text, View } from "react-native";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 import { useFocusEffect, useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Card, ErrorText, Field, KeyboardScroll, PrimaryButton, SoftButton, Title } from "../components/ui";
+import { Card, ErrorText, Field, KeyboardScroll, PrimaryButton, SoftButton } from "../components/ui";
 import { AuthGate } from "../components/AuthGate";
+import { ParentBottomNav } from "../components/ParentBottomNav";
 import { RequireParentGate } from "../components/RequireParentGate";
 import { RegistrationSteps } from "../components/RegistrationSteps";
 import { apiRequest, ApiError } from "../services/api";
 import { ROLE_SETS } from "../services/auth-errors";
-import { getActiveChild, saveActiveChild } from "../services/secure";
-import { colors } from "../theme";
+import { getActiveChild, getUser, saveActiveChild } from "../services/secure";
+import { colors, radii, shadow } from "../theme";
 
 type ChildRow = {
   id: string;
@@ -72,12 +73,26 @@ export default function ParentScreen() {
   const [seats, setSeats] = useState<SeatInfo | null>(null);
   const [gradeAccess, setGradeAccess] = useState<Record<string, GradeAccess>>({});
   const [agreementsOutdated, setAgreementsOutdated] = useState(false);
+  const [parentName, setParentName] = useState("Parent");
+  const [subMeta, setSubMeta] = useState<{
+    plan?: string | null;
+    status?: string | null;
+    expiresAt?: string | null;
+  } | null>(null);
 
   const load = useCallback(async () => {
     try {
+      const me = await getUser<{ name?: string }>();
+      if (me?.name) setParentName(me.name.split(" ")[0] || me.name);
       const [kids, sub, access, agreements] = await Promise.all([
         apiRequest<ChildRow[]>("/children"),
-        apiRequest<{ seats?: SeatInfo }>("/subscriptions/me").catch(() => null),
+        apiRequest<{
+          seats?: SeatInfo;
+          plan?: string;
+          status?: string;
+          expiresAt?: string | null;
+          subscription?: { plan?: string; status?: string; expiresAt?: string | null };
+        }>("/subscriptions/me").catch(() => null),
         apiRequest<GradeAccess[]>("/subscriptions/children").catch(() => []),
         apiRequest<{ allPublished: boolean; allAccepted: boolean; documents: { acceptedAt: string | null }[] }>(
           "/agreements"
@@ -85,6 +100,11 @@ export default function ParentScreen() {
       ]);
       setChildren(kids);
       setSeats(sub?.seats ?? null);
+      setSubMeta({
+        plan: sub?.plan ?? sub?.subscription?.plan ?? null,
+        status: sub?.status ?? sub?.subscription?.status ?? null,
+        expiresAt: sub?.expiresAt ?? sub?.subscription?.expiresAt ?? null,
+      });
       setGradeAccess(Object.fromEntries(access.map((a) => [a.childId, a])));
       setAgreementsOutdated(
         Boolean(
@@ -190,32 +210,40 @@ export default function ParentScreen() {
     });
   }
 
+  const activeChild = children.find((c) => c.id === activeId) ?? children[0] ?? null;
+  const activeSummary = activeChild ? progressMap[activeChild.id]?.summary : null;
+  const activeAccess = activeChild ? gradeAccess[activeChild.id] : undefined;
+
   return (
     <AuthGate roles={ROLE_SETS.parentFamily}>
       <RequireParentGate>
-      <SafeAreaView style={styles.safe}>
+      <SafeAreaView style={styles.safe} edges={["top"]}>
         <KeyboardScroll contentContainerStyle={styles.content}>
-          <SoftButton
-            label="← Back"
-            onPress={() => {
-              // After login, Parent lands here via replace — no history to pop.
-              if (router.canGoBack()) {
-                router.back();
-                return;
-              }
-              router.replace("/(tabs)/home");
-            }}
-          />
-          <Title>Parent dashboard</Title>
-          <Text style={styles.sub}>Children, progress, devices & subscription</Text>
-          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
-            <SoftButton label="Devices" onPress={() => router.push("/devices")} />
-            <SoftButton label="Subscription" onPress={() => router.push("/subscription")} />
-            <SoftButton
-              label="Privacy requests"
-              onPress={() => router.push("/privacy-request")}
-            />
+          <View style={styles.header}>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.hello}>Hi, {parentName}</Text>
+              <Text style={styles.sub}>
+                {activeChild
+                  ? `Following ${activeChild.displayName}'s learning`
+                  : "Children, progress & subscription"}
+              </Text>
+            </View>
+            <Pressable
+              accessibilityLabel="Notifications"
+              onPress={() => router.push("/subscription")}
+              style={styles.iconBtn}
+            >
+              <Text style={styles.iconEmoji}>🔔</Text>
+            </Pressable>
+            <Pressable
+              accessibilityLabel="Account"
+              onPress={() => router.push("/(tabs)/profile")}
+              style={styles.iconBtn}
+            >
+              <Text style={styles.iconEmoji}>👤</Text>
+            </Pressable>
           </View>
+
           <ErrorText>{error}</ErrorText>
           {info ? <Text style={styles.info}>{info}</Text> : null}
 
@@ -230,22 +258,7 @@ export default function ParentScreen() {
             </Card>
           ) : null}
 
-          {seats ? (
-            <Card style={{ gap: 6 }}>
-              <Text style={styles.section}>Child seats</Text>
-              <Text style={styles.meta}>
-                {seats.assigned}/{seats.capacity} seats used · {seats.included} included
-                {seats.extra ? ` · ${seats.extra} add-on` : ""}
-              </Text>
-              <Text style={styles.meta}>
-                Base plan covers {seats.included} child
-                {seats.included === 1 ? "" : "ren"}. Extra seats need purchase or admin
-                activation.
-              </Text>
-            </Card>
-          ) : null}
-
-          <Text style={styles.section}>My Children</Text>
+          <Text style={styles.section}>Your children</Text>
           {!children.length ? (
             <Card>
               <Text style={styles.meta}>
@@ -261,74 +274,91 @@ export default function ParentScreen() {
             const seated = Boolean(child.hasLearningSeat) || staffAccess;
             const canLearn =
               gradeAccess[child.id]?.entitled === true || Boolean(child.hasLearningSeat);
+            const age = Math.max(1, new Date().getFullYear() - child.birthYear);
             return (
-              <Card key={child.id} style={{ gap: 6 }}>
+              <View
+                key={child.id}
+                style={[
+                  styles.childCard,
+                  isActive ? styles.childCardActive : null,
+                  shadow.soft,
+                ]}
+              >
                 <View style={styles.rowBetween}>
-                  <Text style={styles.childName}>{child.displayName}</Text>
-                  <View style={{ flexDirection: "row", gap: 6 }}>
+                  <View style={styles.childIdentity}>
+                    <View style={[styles.avatar, isActive && { backgroundColor: colors.primarySoft }]}>
+                      <Text style={styles.avatarEmoji}>🧒</Text>
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.childName}>{child.displayName}</Text>
+                      <Text style={styles.gradeLine}>
+                        {child.learnWiseGrade?.gradeLabel ?? "Grade not set"} · Age {age}
+                      </Text>
+                    </View>
+                  </View>
+                  <View style={{ flexDirection: "row", gap: 6, flexWrap: "wrap", justifyContent: "flex-end" }}>
                     {seated ? (
                       <View style={styles.seatBadge}>
                         <Text style={styles.seatBadgeText}>
-                          {staffAccess ? "Staff" : "Seat"}
+                          {staffAccess ? "Staff" : "Access"}
                         </Text>
                       </View>
                     ) : (
                       <View style={styles.needSeatBadge}>
-                        <Text style={styles.needSeatBadgeText}>Needs seat</Text>
+                        <Text style={styles.needSeatBadgeText}>Locked</Text>
                       </View>
                     )}
                     {isActive ? (
                       <View style={styles.activeBadge}>
-                        <Text style={styles.activeBadgeText}>Active</Text>
+                        <Text style={styles.activeBadgeText}>Selected</Text>
                       </View>
                     ) : null}
                   </View>
                 </View>
-                <Text style={styles.gradeLine}>
-                  {child.learnWiseGrade?.gradeLabel ?? "Learn Wise grade not set"}
-                </Text>
                 <Text style={styles.meta}>Birthday {birthday}</Text>
                 {gradeAccess[child.id] ? (
                   <Text style={gradeAccess[child.id].entitled ? styles.meta : styles.warn}>
                     {accessLine(gradeAccess[child.id])}
                   </Text>
                 ) : null}
-                <Text style={styles.meta}>
-                  Words correct {summary?.wordsCorrect ?? summary?.wordsLearned ?? 0} · Tried{" "}
-                  {summary?.wordsAttempted ?? "—"} · Accuracy {summary?.accuracy ?? 0}%
-                </Text>
+                <View style={styles.progressChips}>
+                  <View style={styles.chip}>
+                    <Text style={styles.chipText}>
+                      📖 {summary?.wordsCorrect ?? summary?.wordsLearned ?? 0} words
+                    </Text>
+                  </View>
+                  <View style={styles.chip}>
+                    <Text style={styles.chipText}>
+                      ✅ {summary?.categoriesCompleted ?? 0} topics
+                    </Text>
+                  </View>
+                  <View style={styles.chip}>
+                    <Text style={styles.chipText}>⭐ {summary?.stars ?? 0}</Text>
+                  </View>
+                </View>
                 <Text style={styles.meta}>
                   Today {summary?.daily?.wordsLearnedToday ?? 0}/
-                  {summary?.daily?.target ?? 5} · Week {summary?.weekly?.wordsLearned ?? 0} ·
-                  Stars {summary?.stars ?? 0} · Points {summary?.points ?? 0}
-                </Text>
-                <Text style={styles.meta}>
-                  Activities {summary?.activitiesCompleted ?? 0} · Need practice{" "}
-                  {summary?.wordsNeedingPractice ?? 0} · Categories{" "}
-                  {summary?.categoriesCompleted ?? 0}
+                  {summary?.daily?.target ?? 5} · Accuracy {summary?.accuracy ?? 0}%
                 </Text>
                 {!canLearn ? (
                   <Text style={styles.warn}>
-                    Kids Zone locked until a learning seat is assigned.
+                    Learning locked until a seat or grade subscription is active for this child.
                   </Text>
                 ) : null}
-                <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 6 }}>
+                <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 8 }}>
                   <SoftButton
-                    label="View / edit"
-                    onPress={() => router.push(`/child/${child.id}`)}
+                    label={isActive ? "Selected ✓" : "Select child"}
+                    active={isActive}
+                    onPress={() => void setActive(child)}
                   />
+                  <SoftButton label="View / edit" onPress={() => router.push(`/child/${child.id}`)} />
                   <SoftButton
-                    label="Progress report"
+                    label="Progress"
                     onPress={() => router.push(`/child/${child.id}?tab=progress`)}
                   />
                   <SoftButton
-                    label="🏆 Challenge settings"
+                    label="Challenges"
                     onPress={() => router.push(`/parent-challenges?childId=${child.id}`)}
-                  />
-                  <SoftButton
-                    label={isActive ? "Active ✓" : "Set active"}
-                    active={isActive}
-                    onPress={() => void setActive(child)}
                   />
                   {!staffAccess ? (
                     <SoftButton
@@ -336,18 +366,70 @@ export default function ParentScreen() {
                       onPress={() => void toggleSeat(child)}
                     />
                   ) : null}
-                  <SoftButton
-                    label="Learn"
-                    onPress={() => openLearn(child)}
-                  />
+                  <SoftButton label="Open Learn" onPress={() => openLearn(child)} />
                 </View>
-              </Card>
+              </View>
             );
           })}
 
+          {activeChild ? (
+            <Card style={{ gap: 8 }}>
+              <Text style={styles.section}>Learning progress</Text>
+              <Text style={styles.gradeLine}>{activeChild.displayName} only</Text>
+              <Text style={styles.meta}>
+                Words learned {activeSummary?.wordsCorrect ?? activeSummary?.wordsLearned ?? 0} ·
+                Topics {activeSummary?.categoriesCompleted ?? 0} · Stars{" "}
+                {activeSummary?.stars ?? 0}
+              </Text>
+              <Text style={styles.meta}>
+                Recent: today {activeSummary?.daily?.wordsLearnedToday ?? 0}/
+                {activeSummary?.daily?.target ?? 5} words · week{" "}
+                {activeSummary?.weekly?.wordsLearned ?? 0} · need practice{" "}
+                {activeSummary?.wordsNeedingPractice ?? 0}
+              </Text>
+              <SoftButton
+                label="Full progress report"
+                onPress={() => router.push(`/child/${activeChild.id}?tab=progress`)}
+              />
+            </Card>
+          ) : null}
+
+          <Card style={{ gap: 8 }}>
+            <Text style={styles.section}>Subscription</Text>
+            {activeChild ? (
+              <Text style={styles.meta}>
+                Selected child: {activeChild.displayName}
+                {activeChild.learnWiseGrade?.gradeLabel
+                  ? ` · ${activeChild.learnWiseGrade.gradeLabel}`
+                  : ""}
+              </Text>
+            ) : null}
+            <Text style={styles.meta}>
+              Plan {subMeta?.plan ?? "—"} · Status {subMeta?.status ?? "—"}
+              {subMeta?.expiresAt
+                ? ` · Expires ${new Date(subMeta.expiresAt).toLocaleDateString()}`
+                : ""}
+            </Text>
+            {activeAccess ? (
+              <Text style={activeAccess.entitled ? styles.meta : styles.warn}>
+                {accessLine(activeAccess)}
+              </Text>
+            ) : null}
+            {seats ? (
+              <Text style={styles.meta}>
+                Seats {seats.assigned}/{seats.capacity} used · {seats.included} included
+                {seats.extra ? ` · ${seats.extra} add-on` : ""}
+              </Text>
+            ) : null}
+            <PrimaryButton
+              label={activeAccess?.entitled ? "Manage plan" : "Renew / activate"}
+              onPress={() => router.push("/subscription")}
+            />
+          </Card>
+
           <Card style={{ gap: 10 }}>
             <RegistrationSteps step={1} />
-            <Text style={styles.section}>Add Child</Text>
+            <Text style={styles.section}>Add child</Text>
             <Field label="Display name" value={name} onChangeText={setName} />
             <Field
               label="Birthday (DD/MM/YYYY)"
@@ -358,21 +440,14 @@ export default function ParentScreen() {
               maxLength={10}
             />
             <Text style={styles.meta}>
-              Birthday must be DD/MM/YYYY (age 1–12). Next you'll choose the grade and learning
-              phone. As admin you can learn without buying a subscription.
+              Birthday must be DD/MM/YYYY. Next you'll choose the grade and learning phone.
             </Text>
-            <PrimaryButton label="Save child" onPress={() => void addChild()} loading={busy} />
+            <PrimaryButton label="Add child" onPress={() => void addChild()} loading={busy} />
           </Card>
 
-          <PrimaryButton
-            label="Subscription status"
-            onPress={() => router.push("/subscription")}
-          />
-          <SoftButton
-            label="Device registration / transfer"
-            onPress={() => router.push("/devices")}
-          />
+          <View style={{ height: 12 }} />
         </KeyboardScroll>
+        <ParentBottomNav activeChildId={activeId} />
       </SafeAreaView>
       </RequireParentGate>
     </AuthGate>
@@ -381,8 +456,52 @@ export default function ParentScreen() {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.bg },
-  content: { padding: 20, gap: 12, paddingBottom: 32 },
+  content: { padding: 20, gap: 14, paddingBottom: 24 },
+  header: { flexDirection: "row", alignItems: "center", gap: 10 },
+  hello: { fontSize: 24, fontWeight: "900", color: colors.text },
+  sub: { color: colors.textMuted, fontWeight: "600", marginTop: 2 },
+  iconBtn: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    backgroundColor: "#fff",
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  iconEmoji: { fontSize: 18 },
   warn: { color: colors.danger, fontWeight: "700", fontSize: 13 },
+  childCard: {
+    backgroundColor: "#fff",
+    borderRadius: radii.lg,
+    padding: 16,
+    gap: 6,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  childCardActive: {
+    borderColor: colors.primary,
+    backgroundColor: "#FFFEFF",
+  },
+  childIdentity: { flexDirection: "row", alignItems: "center", gap: 10, flex: 1 },
+  avatar: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: colors.skySoft,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  avatarEmoji: { fontSize: 24 },
+  progressChips: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 4 },
+  chip: {
+    backgroundColor: colors.bgSoft,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: radii.pill,
+  },
+  chipText: { fontWeight: "800", fontSize: 12, color: colors.text },
   seatBadge: {
     backgroundColor: colors.success,
     borderRadius: 999,
@@ -397,15 +516,14 @@ const styles = StyleSheet.create({
     paddingVertical: 2,
   },
   needSeatBadgeText: { color: "#fff", fontWeight: "800", fontSize: 11 },
-  sub: { color: colors.textMuted },
   section: { fontWeight: "800", fontSize: 18, color: colors.text },
   childName: { fontWeight: "800", fontSize: 18, color: colors.text },
-  gradeLine: { fontWeight: "800", color: colors.primary },
-  meta: { color: colors.textMuted },
+  gradeLine: { fontWeight: "800", color: colors.primary, fontSize: 13 },
+  meta: { color: colors.textMuted, fontWeight: "600", lineHeight: 18 },
   info: { color: colors.success, fontWeight: "700" },
   rowBetween: {
     flexDirection: "row",
-    alignItems: "center",
+    alignItems: "flex-start",
     justifyContent: "space-between",
     gap: 8,
   },
@@ -416,7 +534,7 @@ const styles = StyleSheet.create({
     borderRadius: 999,
   },
   activeBadgeText: {
-    color: colors.success,
+    color: colors.mintDeep,
     fontWeight: "800",
     fontSize: 12,
   },

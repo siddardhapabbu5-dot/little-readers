@@ -530,9 +530,9 @@ export async function listPublishedGrades(levelId?: string) {
 }
 
 /**
- * Ensure Level-1..3 exist.
+ * Ensure Learn Wise product grades LEVEL_1..4 exist (parent-selectable bands).
  *
- * Grades G1–G12 are NEVER created unless `seedGrades: true` (tests / rare
+ * School grades G1–G12 are NEVER created unless `seedGrades: true` (tests / rare
  * explicit admin seed). Opening Levels or restarting the API must not
  * resurrect grades an admin deleted.
  */
@@ -542,9 +542,10 @@ export async function ensureAcademicDefaults(opts?: {
 }) {
   const seedGrades = opts?.seedGrades === true;
   const defaults = [
-    { code: "LEVEL_1", label: "Level-1", start: 1, end: 3, sort: 1 },
-    { code: "LEVEL_2", label: "Level-2", start: 4, end: 6, sort: 2 },
-    { code: "LEVEL_3", label: "Level-3", start: 7, end: 12, sort: 3 },
+    { code: "LEVEL_1", label: "Level-1", start: 1, end: 3, sort: 1, ageMin: 1, ageMax: 3 },
+    { code: "LEVEL_2", label: "Level-2", start: 4, end: 6, sort: 2, ageMin: 4, ageMax: 6 },
+    { code: "LEVEL_3", label: "Level-3", start: 7, end: 9, sort: 3, ageMin: 7, ageMax: 9 },
+    { code: "LEVEL_4", label: "Level-4", start: 10, end: 12, sort: 4, ageMin: 10, ageMax: 12 },
   ] as const;
 
   const levels: Record<string, string> = {};
@@ -562,8 +563,8 @@ export async function ensureAcademicDefaults(opts?: {
         label: d.label,
         startGrade: d.start,
         endGrade: d.end,
-        ageMin: d.start + 2,
-        ageMax: Math.min(18, d.end + 5),
+        ageMin: d.ageMin,
+        ageMax: d.ageMax,
         sortOrder: d.sort,
         kind: "GRADE_BAND",
         isActive: true,
@@ -585,7 +586,8 @@ export async function ensureAcademicDefaults(opts?: {
 
   let seededGrades = 0;
   for (let n = 1; n <= 12; n++) {
-    const levelCode = n <= 3 ? "LEVEL_1" : n <= 6 ? "LEVEL_2" : "LEVEL_3";
+    const levelCode =
+      n <= 3 ? "LEVEL_1" : n <= 6 ? "LEVEL_2" : n <= 9 ? "LEVEL_3" : "LEVEL_4";
     const code = `G${n}`;
     const existing = await prisma.learningGrade.findFirst({
       where: { OR: [{ gradeNumber: n }, { code }] },

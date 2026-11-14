@@ -87,6 +87,8 @@ export async function ensureFourGrades(opts?: { createMissing?: boolean }) {
         ageMax: def.ageMax,
         kind: "GRADE_BAND",
         gradeId: grade.id,
+        isActive: true,
+        isPublished: true,
       },
     });
   }

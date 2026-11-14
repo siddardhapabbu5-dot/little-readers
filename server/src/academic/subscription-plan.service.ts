@@ -6,6 +6,21 @@ import type { PriceRegion } from "../payments/region.js";
 const ALLOWED_DURATIONS = new Set([1, 3, 6, 12]);
 const CODE_RE = /^[A-Z0-9_]{1,40}$/;
 
+/** Parents can only buy / assign a grade when that Learn Wise level is live. */
+async function ensureProductLevelVisible(levelId: string | null | undefined) {
+  if (!levelId) return;
+  const level = await prisma.learningLevel.findUnique({
+    where: { id: levelId },
+    select: { id: true, code: true, isActive: true, isPublished: true },
+  });
+  if (!level || !/^LEVEL_[1-4]$/.test(level.code)) return;
+  if (level.isActive && level.isPublished) return;
+  await prisma.learningLevel.update({
+    where: { id: level.id },
+    data: { isActive: true, isPublished: true },
+  });
+}
+
 function assertCode(code: string) {
   const normalized = code.trim().toUpperCase();
   if (!CODE_RE.test(normalized)) {
@@ -87,7 +102,9 @@ export async function createPlan(input: {
     });
   }
 
-  return prisma.subscriptionPlan.create({
+  const isPublished = input.isPublished ?? true;
+  const levelId = input.levelId ?? null;
+  const created = await prisma.subscriptionPlan.create({
     data: {
       name,
       code,
@@ -97,14 +114,18 @@ export async function createPlan(input: {
       amountPhpCentavos: input.amountPhpCentavos ?? null,
       currency: env.PAYMENT_CURRENCY ?? "INR",
       applicableLevel,
-      levelId: input.levelId ?? null,
+      levelId,
       includedSeats: input.includedSeats ?? 2,
       sortOrder: input.sortOrder ?? input.durationMonths,
       isActive: input.isActive ?? true,
       // New plans are visible to parents immediately (admin can Unpublish).
-      isPublished: input.isPublished ?? true,
+      isPublished,
     },
   });
+  if (isPublished && (input.isActive ?? true)) {
+    await ensureProductLevelVisible(levelId);
+  }
+  return created;
 }
 
 export async function updatePlan(
@@ -136,7 +157,7 @@ export async function updatePlan(
     throw new AppError("Amount must be greater than zero (paise)", 400);
   }
 
-  return prisma.subscriptionPlan.update({
+  const updated = await prisma.subscriptionPlan.update({
     where: { id },
     data: {
       ...(patch.name !== undefined ? { name: patch.name.trim() } : {}),
@@ -166,6 +187,10 @@ export async function updatePlan(
         : {}),
     },
   });
+  if (updated.isActive && updated.isPublished) {
+    await ensureProductLevelVisible(updated.levelId);
+  }
+  return updated;
 }
 
 export async function deactivatePlan(id: string) {

@@ -35,7 +35,8 @@ type Level = {
 const GRADE_RANGE_REFERENCE = [
   { label: "Level-1", code: "LEVEL_1", start: 1, end: 3 },
   { label: "Level-2", code: "LEVEL_2", start: 4, end: 6 },
-  { label: "Level-3", code: "LEVEL_3", start: 7, end: 12 },
+  { label: "Level-3", code: "LEVEL_3", start: 7, end: 9 },
+  { label: "Level-4", code: "LEVEL_4", start: 10, end: 12 },
 ] as const;
 
 const GRADE_OPTIONS = Array.from({ length: 12 }, (_, i) => i + 1);

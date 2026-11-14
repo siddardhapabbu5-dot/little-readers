@@ -127,8 +127,11 @@ export default function AdminSubscriptionPlansScreen() {
 
   async function save() {
     if (!form) return;
-    if (!form.levelId) {
-      setError("Each plan belongs to one Learn Wise grade. Pick a grade first.");
+    const levelId = form.levelId || gradeLevel?.id || "";
+    if (!levelId) {
+      setError(
+        `Each plan belongs to one Learn Wise grade. ${gradeInfo.levelCode} was not found — check Admin → Levels.`
+      );
       return;
     }
     const amountPaise = Math.round(Number(form.amountInr) * 100);
@@ -151,8 +154,8 @@ export default function AdminSubscriptionPlansScreen() {
         durationMonths: form.durationMonths,
         amountPaise,
         amountPhpCentavos,
-        applicableLevel: form.applicableLevel,
-        levelId: form.levelId || null,
+        applicableLevel: form.applicableLevel || gradeInfo.levelCode,
+        levelId,
         isPublished: form.isPublished,
         isActive: true,
       };
@@ -184,8 +187,10 @@ export default function AdminSubscriptionPlansScreen() {
             Subscription Management · prices in INR (stored as paise)
           </Text>
           <Text style={styles.hint}>
-            Only Published plans appear on the Parent subscription screen. Draft
-            plans stay admin-only.
+            Parents only see Published plans for the child's current grade. New
+            plans start Published — use Draft only when you want them admin-only.
+            If Grade 2–4 plans are missing for parents, tap "Publish for parents"
+            (or Publish all drafts) on each grade.
           </Text>
           <ErrorText>{error}</ErrorText>
 
@@ -205,7 +210,14 @@ export default function AdminSubscriptionPlansScreen() {
           <Field label="Search" value={q} onChangeText={setQ} />
           <SoftButton
             label={`+ Add Grade ${gradeInfo.number} plan`}
-            onPress={() =>
+            onPress={() => {
+              if (!gradeLevel?.id) {
+                setError(
+                  `Grade ${gradeInfo.number} is missing in Levels. Open Admin → Levels and ensure ${gradeInfo.levelCode} exists, then try again.`
+                );
+                return;
+              }
+              setError(null);
               setForm({
                 name: "Monthly",
                 code: `${gradeInfo.levelCode}_1M`,
@@ -214,11 +226,38 @@ export default function AdminSubscriptionPlansScreen() {
                 amountInr: "",
                 amountPhp: "",
                 applicableLevel: gradeInfo.levelCode,
-                levelId: gradeLevel?.id ?? "",
-                isPublished: false,
-              })
-            }
+                levelId: gradeLevel.id,
+                // Parents only see published plans — default to live.
+                isPublished: true,
+              });
+            }}
           />
+          {filtered.some((r) => !r.isPublished && r.isActive) ? (
+            <SoftButton
+              label={`Publish all Grade ${gradeInfo.number} drafts for parents`}
+              onPress={() =>
+                confirm(
+                  "Publish drafts?",
+                  `Make every draft Grade ${gradeInfo.number} plan visible on the parent subscription screen.`,
+                  () =>
+                    void (async () => {
+                      const drafts = filtered.filter((r) => !r.isPublished && r.isActive);
+                      try {
+                        for (const r of drafts) {
+                          await apiRequest(
+                            `/admin/academic/subscription-plans/${r.id}/publish?published=1`,
+                            { method: "POST", body: "{}" }
+                          );
+                        }
+                        await load();
+                      } catch (err) {
+                        setError(err instanceof ApiError ? err.message : "Publish failed");
+                      }
+                    })()
+                )
+              }
+            />
+          ) : null}
 
           {form ? (
             <Card style={{ gap: 8 }}>

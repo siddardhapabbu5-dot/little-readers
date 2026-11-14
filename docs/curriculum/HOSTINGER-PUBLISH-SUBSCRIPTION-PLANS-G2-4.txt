@@ -1,0 +1,24 @@
+# Paste in Hostinger Browser Terminal (as root)
+# Publishes Grade 2–4 subscription plans + levels for parent checkout.
+# Safe: does not change Grade 1 plans or vocabulary.
+
+set -e
+cd /var/www/siwi
+
+git fetch origin feature/central-dictionary-expansion
+git checkout feature/central-dictionary-expansion
+git pull --ff-only origin feature/central-dictionary-expansion
+
+cd server
+ALLOW_PRODUCTION=1 CONFIRM_PRODUCTION=1 \
+  node scripts/publish-subscription-plans-g2-4-production.mjs
+
+if command -v pm2 >/dev/null 2>&1; then
+  pm2 restart siwi-api --update-env || pm2 restart all --update-env || true
+else
+  systemctl restart siwi-api || true
+fi
+
+curl -fsS https://api.siwiapp.shop/api/payments/public-plans | head -c 2000 || true
+echo
+echo DONE_PUBLISH_SUBSCRIPTION_PLANS_G2_4

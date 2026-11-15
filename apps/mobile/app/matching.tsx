@@ -19,7 +19,8 @@ import { ChallengePointsEarned, type ChallengeResult } from "../components/Chall
 import { ApiError } from "../services/api";
 import { apiRequest, isPreviewChild } from "../services/learning-session";
 import { ROLE_SETS } from "../services/auth-errors";
-import { displayEmoji } from "../services/emoji";
+import { VocabVisual } from "../components/VocabVisual";
+import { playOptionVisual } from "../services/emoji";
 import { speakWord } from "../services/speech";
 import { colors, radii, shadow } from "../theme";
 
@@ -54,7 +55,15 @@ type ResultsPayload = {
 
 type Tile =
   | { kind: "word"; id: string; wordId: string; label: string }
-  | { kind: "emoji"; id: string; wordId: string; label: string };
+  | {
+      kind: "emoji";
+      id: string;
+      wordId: string;
+      label: string;
+      imageUrl?: string | null;
+      letter?: string;
+      visualKind?: "image" | "emoji" | "letter";
+    };
 
 export default function MatchingScreen() {
   const router = useRouter();
@@ -80,10 +89,21 @@ export default function MatchingScreen() {
 
   const words = useMemo(
     () =>
-      (session?.questions ?? []).map((q) => ({
-        ...q.word,
-        emoji: displayEmoji(q.word.emoji),
-      })),
+      (session?.questions ?? []).map((q) => {
+        const visual = playOptionVisual({
+          text: q.word.text,
+          emoji: q.word.emoji,
+          imageUrl: (q.word as { imageUrl?: string | null }).imageUrl,
+          wordId: q.word.id,
+        });
+        return {
+          ...q.word,
+          emoji: visual.emoji,
+          imageUrl: visual.imageUrl,
+          letter: visual.letter,
+          visualKind: visual.kind,
+        };
+      }),
     [session]
   );
 
@@ -99,6 +119,9 @@ export default function MatchingScreen() {
       id: `e-${w.id}`,
       wordId: w.id,
       label: w.emoji,
+      imageUrl: w.imageUrl,
+      letter: w.letter,
+      visualKind: w.visualKind,
     }));
     return {
       left: shuffle(left),
@@ -250,7 +273,16 @@ export default function MatchingScreen() {
       <SkyBackground>
       <SafeAreaView style={styles.safe} edges={["top", "bottom"]}>
         <KidsHeader
-          left={<IconButton emoji="←" onPress={() => router.back()} />}
+          left={
+            <View style={{ flexDirection: "row", gap: 8 }}>
+              <IconButton emoji="←" label="Back" onPress={() => router.back()} />
+              <IconButton
+                emoji="🏠"
+                label="Home"
+                onPress={() => router.push("/home")}
+              />
+            </View>
+          }
           title={params.title ?? session?.category.label ?? "Matching"}
           right={
             <View style={styles.scorePill}>
@@ -279,7 +311,7 @@ export default function MatchingScreen() {
               <CertificateEarned certificates={results.newCertificates} />
               <ChallengePointsEarned challenge={results.challenge} />
               <SoftButton label="Back to Games" onPress={() => (isPreviewChild(params.childId) ? router.back() : router.replace("/(tabs)/games"))} />
-              <SoftButton label="Home" onPress={() => router.replace("/(tabs)/home")} />
+              <SoftButton label="Home" onPress={() => router.replace("/home")} />
             </Card>
           </ScrollView>
         ) : null}
@@ -337,7 +369,21 @@ export default function MatchingScreen() {
                       matched.has(t.wordId) && styles.tileDone,
                     ]}
                   >
-                    <Text style={styles.tileEmoji}>{t.label}</Text>
+                    {t.kind === "emoji" ? (
+                      <VocabVisual
+                        imageUrl={t.visualKind === "image" ? t.imageUrl : null}
+                        emoji={t.label}
+                        letter={t.letter}
+                        wordId={t.wordId}
+                        size={108}
+                        // Crop flashcard PNGs that print the answer word on the lower band.
+                        // Skipped automatically when Batch D1 text-free pilot art is active.
+                        hideAnswerBand
+                        accessibilityLabel={t.letter || "Picture to match"}
+                      />
+                    ) : (
+                      <Text style={styles.tileEmoji}>{t.label}</Text>
+                    )}
                     {matched.has(t.wordId) ? <Text style={styles.tick}>✓</Text> : null}
                   </Pressable>
                 ))}
@@ -385,19 +431,30 @@ const styles = StyleSheet.create({
   tile: {
     backgroundColor: "#fff",
     borderRadius: radii.lg,
-    minHeight: 64,
+    minHeight: 72,
     alignItems: "center",
     justifyContent: "center",
-    padding: 10,
+    padding: 12,
     borderWidth: 3,
     borderColor: "#fff",
     ...shadow.soft,
   },
-  emojiTile: { minHeight: 64, backgroundColor: colors.cream },
+  // Picture column: large image-first cards for young readers (was 48px thumbnails).
+  emojiTile: {
+    minHeight: 132,
+    paddingVertical: 14,
+    backgroundColor: colors.cream,
+  },
   tileOn: { borderColor: colors.primary, backgroundColor: colors.primarySoft },
   tileDone: { opacity: 0.6, borderColor: colors.green, backgroundColor: colors.greenSoft },
   tileWord: { fontWeight: "900", color: colors.text, fontSize: 18, textAlign: "center" },
-  tileEmoji: { fontSize: 36 },
+  tileEmoji: { fontSize: 48 },
+  tileImage: { width: 108, height: 108, borderRadius: 16, resizeMode: "contain" },
+  tileLetter: {
+    fontSize: 28,
+    fontWeight: "900",
+    color: colors.primaryDark,
+  },
   tick: { position: "absolute", top: 4, right: 8, color: colors.green, fontWeight: "900", fontSize: 16 },
   resultsArt: { width: 140, height: 140 },
   resultsTitle: { color: "#fff", fontSize: 24, fontWeight: "900", textAlign: "center" },

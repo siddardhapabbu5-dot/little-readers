@@ -13,7 +13,6 @@ import {
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import {
-  AvatarBubble,
   Card,
   ErrorText,
   ProgressBar,
@@ -28,9 +27,17 @@ import { ChallengePointsEarned, type ChallengeResult } from "../components/Chall
 import { ApiError } from "../services/api";
 import { apiRequest } from "../services/learning-session";
 import { ROLE_SETS } from "../services/auth-errors";
+import { VocabVisual } from "../components/VocabVisual";
 import { displayEmoji } from "../services/emoji";
 import { prefetchKidVoice, speakWord } from "../services/speech";
+import { getActiveChild } from "../services/secure";
 import { colors, radii, shadow } from "../theme";
+
+function listenSpellQuestionCount(levelCode?: string | null): number {
+  if (levelCode === "LEVEL_1") return 5;
+  if (levelCode === "LEVEL_2") return 8;
+  return 10;
+}
 
 type Round = "LISTEN" | "LETTER" | "SPELL" | "RESULTS";
 
@@ -39,6 +46,9 @@ interface ListenOption {
   wordId?: string;
   text: string;
   emoji: string;
+  imageUrl?: string | null;
+  letter?: string | null;
+  visualKey?: string | null;
   isCorrect: boolean;
 }
 
@@ -72,6 +82,7 @@ interface ResultsPayload {
   stars: number;
   accuracy: number;
   wordsLearned: number;
+  sessionWordsLearned?: number;
   nextCategory: { id: string; label: string; emoji: string } | null;
   newCertificates?: EarnedCertificate[];
   challenge?: ChallengeResult;
@@ -134,13 +145,23 @@ export default function PlayScreen() {
         if (!params.childId || (!params.categoryId && !params.lessonId)) {
           throw new Error("Missing child or lesson/category");
         }
+        const active = await getActiveChild<{
+          learnWiseGrade?: { levelCode?: string };
+          level?: string;
+        }>().catch(() => null);
+        const levelCode =
+          active?.learnWiseGrade?.levelCode ??
+          (typeof active?.level === "string" && active.level.startsWith("LEVEL_")
+            ? active.level
+            : "LEVEL_1");
+        const questionCount = listenSpellQuestionCount(levelCode);
         const data = await apiRequest<SessionPayload>("/learning/sessions", {
           method: "POST",
           body: JSON.stringify({
             childId: params.childId,
+            questionCount,
             ...(params.lessonId
               ? { lessonId: params.lessonId, resume: true }
-              // Omit count → server gives remaining unlearned words (up to full category).
               : { categoryId: params.categoryId, resume: params.fresh !== "1" }),
           }),
         });
@@ -376,9 +397,15 @@ export default function PlayScreen() {
     if (!question) return;
     setUsedClue(true);
     if (round === "LISTEN") {
-      setHighlightCorrect(true);
-      setClue(`Picture tip: look for ${question.word.emoji}`);
-      void speakWord(question.word.text);
+      // Meaning tip only — do not speak the answer word (that would give it away).
+      const meaning = question.word.meaning?.trim();
+      setClue(
+        meaning
+          ? `Clue: ${meaning}`
+          : question.word.emoji
+            ? `Picture tip: look for ${question.word.emoji}`
+            : "Listen again, then pick the matching picture."
+      );
     } else if (round === "LETTER") {
       setClue(`Starts with “${question.word.firstLetter}”`);
       void speakWord(question.word.firstLetter);
@@ -405,7 +432,16 @@ export default function PlayScreen() {
       <SkyBackground>
       <SafeAreaView style={styles.safe} edges={["top", "bottom"]}>
         <KidsHeader
-          left={<IconButton emoji="←" onPress={() => router.back()} />}
+          left={
+            <View style={{ flexDirection: "row", gap: 8 }}>
+              <IconButton emoji="←" label="Back" onPress={() => router.back()} />
+              <IconButton
+                emoji="🏠"
+                label="Home"
+                onPress={() => router.push("/home")}
+              />
+            </View>
+          }
           title={params.title ?? session?.category.label ?? "Play"}
           right={
             <View style={styles.scorePill}>
@@ -452,7 +488,13 @@ export default function PlayScreen() {
               <Image source={art.trophy} style={styles.resultsArt} resizeMode="contain" />
               <Text style={styles.resultsTitle}>Great job, {results.childName}!</Text>
               <Text style={styles.resultsSub}>
-                {results.category.emoji} {results.category.label} finished
+                {results.category.emoji} {results.category.label}
+              </Text>
+              <Text style={styles.resultsProgress}>
+                This time: {results.sessionWordsLearned ?? results.correctAnswers} words practised
+              </Text>
+              <Text style={styles.resultsProgress}>
+                Topic progress: {results.wordsLearned} words learned so far
               </Text>
               <View style={styles.statsGrid}>
                 <Stat label="Attempted" value={String(results.questionsAttempted)} />
@@ -463,15 +505,18 @@ export default function PlayScreen() {
                   value={"★".repeat(results.stars) || "☆"}
                 />
                 <Stat label="Accuracy" value={`${results.accuracy}%`} />
-                <Stat label="Words" value={String(results.wordsLearned)} />
+                <Stat label="Topic" value={String(results.wordsLearned)} />
               </View>
               <CertificateEarned certificates={results.newCertificates} />
               <ChallengePointsEarned challenge={results.challenge} />
-              <SoftButton label="Replay category" onPress={replayCategory} />
-              <SoftButton label="Back to categories" onPress={() => router.back()} />
+              <Text style={styles.resultsNavHint}>
+                Practise more keeps this topic. Next topic opens a different category.
+              </Text>
+              <SoftButton label="Practise more in this topic" onPress={replayCategory} />
+              <SoftButton label="Back to topics" onPress={() => router.back()} />
               {results.nextCategory ? (
                 <SoftButton
-                  label={`Next: ${results.nextCategory.emoji} ${results.nextCategory.label}`}
+                  label={`Next topic: ${results.nextCategory.emoji} ${results.nextCategory.label}`}
                   onPress={() =>
                     router.replace({
                       pathname: "/play",
@@ -479,6 +524,7 @@ export default function PlayScreen() {
                         categoryId: results.nextCategory!.id,
                         childId: String(params.childId),
                         title: results.nextCategory!.label,
+                        fresh: "1",
                       },
                     })
                   }
@@ -527,17 +573,16 @@ export default function PlayScreen() {
                   >
                     <Text style={styles.bigAudioIcon}>🔊</Text>
                   </Pressable>
-                ) : question.word.imageUrl ? (
-                  <Image
-                    source={{ uri: question.word.imageUrl }}
-                    style={styles.wordImageSm}
-                    accessibilityLabel={feedback === "ok" ? question.word.text : "Picture clue"}
-                  />
                 ) : (
-                  <AvatarBubble
-                    emoji={displayEmoji(question.word.emoji)}
-                    size={52}
-                    bg={colors.skySoft}
+                  <VocabVisual
+                    imageUrl={question.word.imageUrl}
+                    emoji={question.word.emoji}
+                    text={question.word.text}
+                    letter={question.word.firstLetter}
+                    wordId={question.word.id}
+                    size={96}
+                    hideAnswerBand
+                    accessibilityLabel={feedback === "ok" ? question.word.text : "Picture clue"}
                   />
                 )}
                 <View style={styles.promptTextCol}>
@@ -616,7 +661,17 @@ export default function PlayScreen() {
                           }}
                         >
                           <Text style={styles.choiceKey}>{opt.key}</Text>
-                          <Text style={styles.choiceEmoji}>{displayEmoji(opt.emoji)}</Text>
+                          <VocabVisual
+                            imageUrl={opt.imageUrl}
+                            emoji={opt.emoji}
+                            text={opt.text}
+                            letter={opt.letter}
+                            wordId={opt.wordId}
+                            size={100}
+                            preferEmoji
+                            hideAnswerBand
+                            accessibilityLabel={`Picture for answer ${opt.key}`}
+                          />
                         </Pressable>
                       ))}
                     </View>
@@ -811,7 +866,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     gap: 2,
   },
-  choicePicture: { borderRadius: radii.xl, borderWidth: 3, borderColor: "#fff", minHeight: 96 },
+  choicePicture: { borderRadius: radii.xl, borderWidth: 3, borderColor: "#fff", minHeight: 128 },
   choiceHint: { borderWidth: 4, borderColor: colors.green },
   choiceKey: {
     position: "absolute",
@@ -822,6 +877,22 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
   choiceEmoji: { fontSize: 64, lineHeight: 76 },
+  choiceImage: { width: 72, height: 72, borderRadius: 14, resizeMode: "contain" },
+  choiceLetterWrap: {
+    width: 72,
+    height: 72,
+    borderRadius: 16,
+    backgroundColor: "#fff",
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 2,
+    borderColor: colors.primarySoft,
+  },
+  choiceLetter: {
+    fontSize: 40,
+    fontWeight: "900",
+    color: colors.primaryDark,
+  },
   letterTile: { borderRadius: radii.xl, borderWidth: 3, borderColor: "#fff", minHeight: 64 },
   letterBig: { fontSize: 48, fontWeight: "900", color: colors.primaryDark },
   letterBlock: { flex: 1, gap: 6, minHeight: 0 },
@@ -908,6 +979,22 @@ const styles = StyleSheet.create({
   resultsArt: { width: 140, height: 140 },
   resultsTitle: { color: "#fff", fontSize: 26, fontWeight: "900", textAlign: "center" },
   resultsSub: { color: "#EDE9FE", fontWeight: "700", textAlign: "center" },
+  resultsProgress: {
+    color: "#F5F3FF",
+    fontWeight: "700",
+    textAlign: "center",
+    fontSize: 14,
+    marginTop: 2,
+  },
+  resultsNavHint: {
+    color: "#EDE9FE",
+    fontWeight: "600",
+    textAlign: "center",
+    fontSize: 13,
+    lineHeight: 18,
+    marginTop: 4,
+    marginBottom: 2,
+  },
   statsGrid: {
     flexDirection: "row",
     flexWrap: "wrap",

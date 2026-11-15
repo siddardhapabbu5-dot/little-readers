@@ -19,20 +19,29 @@ import { ChallengePointsEarned, type ChallengeResult } from "../components/Chall
 import { ApiError } from "../services/api";
 import { apiRequest, isPreviewChild } from "../services/learning-session";
 import { ROLE_SETS } from "../services/auth-errors";
+import { VocabVisual } from "../components/VocabVisual";
 import { displayEmoji } from "../services/emoji";
 import { speakWord } from "../services/speech";
 import { colors, radii, shadow } from "../theme";
 
 type Option = {
   key: string;
+  wordId?: string;
   text: string;
   emoji: string;
+  imageUrl?: string | null;
   isCorrect: boolean;
 };
 
 type Question = {
   index: number;
-  word: { id: string; text: string; meaning: string; emoji: string };
+  word: {
+    id: string;
+    text: string;
+    meaning: string;
+    emoji: string;
+    imageUrl?: string | null;
+  };
   listenOptions: Option[];
 };
 
@@ -207,7 +216,16 @@ export default function RevisionScreen() {
       <SkyBackground>
       <SafeAreaView style={styles.safe} edges={["top", "bottom"]}>
         <KidsHeader
-          left={<IconButton emoji="←" onPress={() => router.back()} />}
+          left={
+            <View style={{ flexDirection: "row", gap: 8 }}>
+              <IconButton emoji="←" label="Back" onPress={() => router.back()} />
+              <IconButton
+                emoji="🏠"
+                label="Home"
+                onPress={() => router.push("/home")}
+              />
+            </View>
+          }
           title={params.title ?? "Revision"}
           right={
             <View style={styles.scorePill}>
@@ -234,7 +252,7 @@ export default function RevisionScreen() {
               <CertificateEarned certificates={results.newCertificates} />
               <ChallengePointsEarned challenge={results.challenge} />
               <SoftButton label="Back to Games" onPress={() => (isPreviewChild(params.childId) ? router.back() : router.replace("/(tabs)/games"))} />
-              <SoftButton label="Home" onPress={() => router.replace("/(tabs)/home")} />
+              <SoftButton label="Home" onPress={() => router.replace("/home")} />
             </Card>
           </ScrollView>
         ) : null}
@@ -254,7 +272,14 @@ export default function RevisionScreen() {
                 <Text style={styles.speaker}>🔊 Hear again</Text>
               </Pressable>
               {mode === "SPELL" ? (
-                <Text style={styles.emoji}>{question.word.emoji}</Text>
+                <VocabVisual
+                  imageUrl={question.word.imageUrl}
+                  emoji={question.word.emoji}
+                  text={question.word.text}
+                  wordId={question.word.id}
+                  size={96}
+                  hideAnswerBand
+                />
               ) : (
                 <Text style={styles.hint}>Listen, then pick the matching word</Text>
               )}
@@ -274,7 +299,15 @@ export default function RevisionScreen() {
                       feedback === "ok" && opt.isCorrect && styles.optionOk,
                     ]}
                   >
-                    <Text style={styles.optionEmoji}>{opt.emoji}</Text>
+                    <VocabVisual
+                      imageUrl={opt.imageUrl}
+                      emoji={opt.emoji}
+                      text={opt.text}
+                      wordId={opt.wordId}
+                      size={48}
+                      preferEmoji
+                      hideAnswerBand
+                    />
                     <Text style={styles.optionText}>{opt.text}</Text>
                   </Pressable>
                 ))

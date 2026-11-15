@@ -1,0 +1,44 @@
+# Hostinger VPS → Browser Terminal
+# Paste everything below once, then press Enter.
+# Grade 1 only: upload text-free 3D JPGs + cut over imageUrl in DB.
+# Legacy PNG files are NOT deleted (rollback = restore backup JSON).
+
+set -euo pipefail
+cd /var/www/siwi
+
+BRANCH=feature/central-dictionary-expansion
+RELEASE_TAG=g1-3d-live-20261115
+ASSET_ZIP=g1-3d-batch-d1-images.zip
+
+mkdir -p /tmp/siwi-g1-3d server/storage/vocab-media/pilot/batch-d1 server/scripts apps/mobile/data docs/curriculum
+
+# 1) Scripts + pilot map from GitHub branch
+curl -fsSL -o server/scripts/apply-g1-3d-cutover.mjs \
+  "https://raw.githubusercontent.com/siddardhapabbu5-dot/little-readers/${BRANCH}/server/scripts/apply-g1-3d-cutover.mjs"
+curl -fsSL -o apps/mobile/data/pilot-batch-d1.json \
+  "https://raw.githubusercontent.com/siddardhapabbu5-dot/little-readers/${BRANCH}/apps/mobile/data/pilot-batch-d1.json"
+
+# 2) Download image pack from GitHub Release and extract
+curl -fsSL -o /tmp/siwi-g1-3d/${ASSET_ZIP} \
+  "https://github.com/siddardhapabbu5-dot/little-readers/releases/download/${RELEASE_TAG}/${ASSET_ZIP}"
+python3 - <<'PY'
+import zipfile
+zipfile.ZipFile("/tmp/siwi-g1-3d/g1-3d-batch-d1-images.zip").extractall(
+    "/var/www/siwi/server/storage/vocab-media/pilot/batch-d1"
+)
+print("extracted", len(__import__("os").listdir("/var/www/siwi/server/storage/vocab-media/pilot/batch-d1")), "files")
+PY
+
+# 3) Dry-run then apply DB cutover (LEVEL_1 only)
+cd /var/www/siwi/server
+export PUBLIC_MEDIA_ORIGIN=https://api.siwiapp.shop
+node ./scripts/apply-g1-3d-cutover.mjs
+ALLOW_PRODUCTION=1 CONFIRM_PRODUCTION=1 \
+  PUBLIC_MEDIA_ORIGIN=https://api.siwiapp.shop \
+  node ./scripts/apply-g1-3d-cutover.mjs --apply
+
+# 4) Spot-check one media URL on the VPS / public API
+test -f /var/www/siwi/server/storage/vocab-media/pilot/batch-d1/cmw6ugnmn004ghtzstce48ssy.jpg
+curl -fsI "https://api.siwiapp.shop/media/vocab/pilot/batch-d1/cmw6ugnmn004ghtzstce48ssy.jpg" | head -n 5
+
+echo DONE_G1_3D_LIVE

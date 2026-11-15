@@ -19,6 +19,7 @@ import { ChallengePointsEarned, type ChallengeResult } from "../components/Chall
 import { ApiError } from "../services/api";
 import { apiRequest, isPreviewChild } from "../services/learning-session";
 import { ROLE_SETS } from "../services/auth-errors";
+import { VocabVisual } from "../components/VocabVisual";
 import { displayEmoji } from "../services/emoji";
 import { speakWord } from "../services/speech";
 import { colors, radii, shadow } from "../theme";
@@ -28,6 +29,7 @@ type Option = {
   wordId?: string;
   text: string;
   emoji: string;
+  imageUrl?: string | null;
   isCorrect: boolean;
 };
 
@@ -38,6 +40,7 @@ type Question = {
     text: string;
     meaning: string;
     emoji: string;
+    imageUrl?: string | null;
   };
   listenOptions: Option[];
 };
@@ -198,7 +201,16 @@ export default function QuizScreen() {
       <SkyBackground>
       <SafeAreaView style={styles.safe} edges={["top", "bottom"]}>
         <KidsHeader
-          left={<IconButton emoji="←" onPress={() => router.back()} />}
+          left={
+            <View style={{ flexDirection: "row", gap: 8 }}>
+              <IconButton emoji="←" label="Back" onPress={() => router.back()} />
+              <IconButton
+                emoji="🏠"
+                label="Home"
+                onPress={() => router.push("/home")}
+              />
+            </View>
+          }
           title={params.title ?? session?.category.label ?? "Quiz"}
           right={
             <View style={styles.scorePill}>
@@ -226,7 +238,7 @@ export default function QuizScreen() {
               <CertificateEarned certificates={results.newCertificates} />
               <ChallengePointsEarned challenge={results.challenge} />
               <SoftButton label="Back to Games" onPress={() => (isPreviewChild(params.childId) ? router.back() : router.replace("/(tabs)/games"))} />
-              <SoftButton label="Home" onPress={() => router.replace("/(tabs)/home")} />
+              <SoftButton label="Home" onPress={() => router.replace("/home")} />
             </Card>
           </ScrollView>
         ) : null}
@@ -243,8 +255,19 @@ export default function QuizScreen() {
             </View>
             <View style={[styles.promptCard, shadow.card]}>
               <Image source={art.quiz} style={styles.quizArt} resizeMode="contain" />
-              {/* The answer's picture is revealed only after a correct pick. */}
-              <Text style={styles.emoji}>{feedback === "ok" ? question.word.emoji : "🤔"}</Text>
+              {/* Reveal the answer picture (pilot 3D when mapped) only after a correct pick. */}
+              {feedback === "ok" ? (
+                <VocabVisual
+                  imageUrl={question.word.imageUrl}
+                  emoji={question.word.emoji}
+                  text={question.word.text}
+                  wordId={question.word.id}
+                  size={72}
+                  hideAnswerBand
+                />
+              ) : (
+                <Text style={styles.emoji}>🤔</Text>
+              )}
               {feedback === "ok" ? (
                 <Text style={styles.okText}>🎉 Correct! Well done!</Text>
               ) : feedback === "try" ? (
@@ -278,7 +301,15 @@ export default function QuizScreen() {
                           { transform: [{ scale: pressed ? 0.97 : 1 }] },
                         ]}
                       >
-                        <Text style={styles.optionEmoji}>{opt.emoji}</Text>
+                        <VocabVisual
+                          imageUrl={opt.imageUrl}
+                          emoji={opt.emoji}
+                          text={opt.text}
+                          wordId={opt.wordId}
+                          size={56}
+                          preferEmoji
+                          hideAnswerBand
+                        />
                         <Text style={styles.optionText} numberOfLines={2}>
                           {opt.text}
                         </Text>

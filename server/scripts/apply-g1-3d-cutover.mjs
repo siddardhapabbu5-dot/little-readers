@@ -1,15 +1,10 @@
 /**
  * Grade 1 text-free 3D image cutover.
- * Updates VocabularyWord.imageUrl for mapped LEVEL_1 words only.
- * Does NOT delete legacy PNG files.
  *
- * Local dry-run:
- *   node ./scripts/apply-g1-3d-cutover.mjs
+ * Prefer text+category matching (safe across staging vs production IDs).
+ * Falls back to staging wordId match when payload is absent.
  *
- * Local apply:
- *   node ./scripts/apply-g1-3d-cutover.mjs --apply
- *
- * Production (on VPS only):
+ * Production:
  *   ALLOW_PRODUCTION=1 CONFIRM_PRODUCTION=1 \
  *   PUBLIC_MEDIA_ORIGIN=https://api.siwiapp.shop \
  *   node ./scripts/apply-g1-3d-cutover.mjs --apply
@@ -49,18 +44,6 @@ function assertDbAllowed() {
   );
 }
 
-function loadPilotMap() {
-  const candidates = [
-    path.join(ROOT, "apps/mobile/data/pilot-batch-d1.json"),
-    path.join(ROOT, "docs/documentation/siwi-3d-visual-upgrade/grade1/pilot-batch-d1.json"),
-  ];
-  const mapPath = candidates.find((p) => fs.existsSync(p));
-  if (!mapPath) throw new Error("pilot-batch-d1.json not found");
-  const map = JSON.parse(fs.readFileSync(mapPath, "utf8"));
-  const byWordId = map.byWordId || {};
-  return { mapPath, byWordId, count: Object.keys(byWordId).length };
-}
-
 function mediaOrigin(dbMode) {
   const fromEnv = (process.env.PUBLIC_MEDIA_ORIGIN || "").replace(/\/$/, "");
   if (fromEnv) return fromEnv;
@@ -81,68 +64,117 @@ function toAbsolutePilotUrl(origin, relOrAbs) {
   return `${origin}${rel}`;
 }
 
+function loadPayload() {
+  const candidates = [
+    path.join(ROOT, "docs/documentation/siwi-3d-visual-upgrade/grade1/g1-3d-cutover-payload.json"),
+    path.join(ROOT, "server/storage/content-correction-work/g1-3d-cutover-payload.json"),
+    "/tmp/siwi-g1-3d/g1-3d-cutover-payload.json",
+  ];
+  const p = candidates.find((f) => fs.existsSync(f));
+  if (!p) return null;
+  return { path: p, data: JSON.parse(fs.readFileSync(p, "utf8")) };
+}
+
+function keyOf(category, text) {
+  return `${String(category || "").trim().toLowerCase()}::${String(text || "").trim().toLowerCase()}`;
+}
+
 async function main() {
   loadEnv();
   const apply = process.argv.includes("--apply");
   const db = assertDbAllowed();
-  const { mapPath, byWordId, count } = loadPilotMap();
   const origin = mediaOrigin(db.mode);
   const prisma = new PrismaClient();
+  const payloadInfo = loadPayload();
 
-  const ids = Object.keys(byWordId);
-  const words = await prisma.vocabularyWord.findMany({
-    where: { id: { in: ids } },
+  if (!payloadInfo) {
+    throw new Error("g1-3d-cutover-payload.json not found. Build it first.");
+  }
+
+  const items = payloadInfo.data.items || [];
+  const level1 = await prisma.vocabularyWord.findMany({
+    where: { category: { group: { level: { code: "LEVEL_1" } } } },
     select: {
       id: true,
       text: true,
       imageUrl: true,
       isActive: true,
-      category: { select: { label: true, group: { select: { level: { select: { code: true } } } } } },
+      category: { select: { label: true, isPublished: true } },
     },
   });
-  const found = new Map(words.map((w) => [w.id, w]));
-  const missingIds = ids.filter((id) => !found.has(id));
-  const wrongLevel = words.filter((w) => w.category?.group?.level?.code !== "LEVEL_1");
-  const eligible = words.filter((w) => w.category?.group?.level?.code === "LEVEL_1");
 
-  const backup = eligible.map((w) => ({
-    id: w.id,
-    text: w.text,
-    previousImageUrl: w.imageUrl,
-    nextImageUrl: toAbsolutePilotUrl(origin, byWordId[w.id]),
-    category: w.category?.label ?? null,
-  }));
+  function pickBest(hits) {
+    if (hits.length === 0) return null;
+    if (hits.length === 1) return hits[0];
+    const ranked = [...hits].sort((a, b) => {
+      const score = (w) =>
+        (w.isActive ? 4 : 0) + (w.category?.isPublished ? 2 : 0) + (w.imageUrl ? 1 : 0);
+      return score(b) - score(a);
+    });
+    const best = ranked[0];
+    const second = ranked[1];
+    const bestScore =
+      (best.isActive ? 4 : 0) + (best.category?.isPublished ? 2 : 0) + (best.imageUrl ? 1 : 0);
+    const secondScore =
+      (second.isActive ? 4 : 0) +
+      (second.category?.isPublished ? 2 : 0) +
+      (second.imageUrl ? 1 : 0);
+    if (bestScore === secondScore) return null; // still ambiguous
+    return best;
+  }
+
+  const matched = [];
+  const missing = [];
+  const ambiguous = [];
+
+  for (const item of items) {
+    const k = keyOf(item.category, item.text);
+    const hits = level1.filter((w) => keyOf(w.category?.label, w.text) === k);
+    const chosen = pickBest(hits);
+    if (chosen) {
+      matched.push({
+        id: chosen.id,
+        text: chosen.text,
+        category: chosen.category?.label ?? null,
+        previousImageUrl: chosen.imageUrl,
+        nextImageUrl: toAbsolutePilotUrl(origin, item.relPath),
+        stagingId: item.stagingId,
+        relPath: item.relPath,
+      });
+    } else if (hits.length === 0) {
+      missing.push(item);
+    } else {
+      ambiguous.push({ item, count: hits.length });
+    }
+  }
 
   const mediaRoot = path.join(ROOT, "server/storage/vocab-media/pilot/batch-d1");
-  const missingFiles = eligible
-    .filter((w) => !fs.existsSync(path.join(mediaRoot, `${w.id}.jpg`)))
-    .map((w) => w.id);
+  const missingFiles = matched
+    .filter((row) => {
+      const file = path.basename(row.relPath);
+      return !fs.existsSync(path.join(mediaRoot, file));
+    })
+    .map((row) => row.relPath);
 
   const summary = {
     db,
     apply,
-    mapPath,
+    payloadPath: payloadInfo.path,
     origin,
-    mappedIds: count,
-    foundInDb: words.length,
-    eligibleLevel1: eligible.length,
-    missingIds: missingIds.length,
-    wrongLevel: wrongLevel.length,
+    payloadItems: items.length,
+    level1InDb: level1.length,
+    matched: matched.length,
+    missing: missing.length,
+    ambiguous: ambiguous.length,
     missingFilesOnDisk: missingFiles.length,
-    sampleMissingIds: missingIds.slice(0, 10),
+    sampleMissing: missing.slice(0, 10).map((m) => `${m.category}|${m.text}`),
+    sampleAmbiguous: ambiguous.slice(0, 5).map((a) => `${a.item.category}|${a.item.text}×${a.count}`),
     sampleMissingFiles: missingFiles.slice(0, 10),
   };
   console.log(JSON.stringify(summary, null, 2));
 
-  if (missingIds.length || wrongLevel.length) {
-    console.error("Abort: every mapped id must exist as LEVEL_1. Fix map/DB before apply.");
-    await prisma.$disconnect();
-    process.exit(1);
-  }
-  if (missingFiles.length) {
-    console.error(
-      `Abort: ${missingFiles.length} JPG(s) missing under server/storage/vocab-media/pilot/batch-d1. Upload media first.`
-    );
+  if (missing.length || ambiguous.length || missingFiles.length) {
+    console.error("Abort: fix missing/ambiguous/files before apply.");
     await prisma.$disconnect();
     process.exit(1);
   }
@@ -151,7 +183,10 @@ async function main() {
   fs.mkdirSync(backupDir, { recursive: true });
   const stamp = new Date().toISOString().replace(/[:.]/g, "-");
   const backupPath = path.join(backupDir, `g1-3d-imageurl-backup-${stamp}.json`);
-  fs.writeFileSync(backupPath, JSON.stringify({ createdAt: new Date().toISOString(), origin, backup }, null, 2));
+  fs.writeFileSync(
+    backupPath,
+    JSON.stringify({ createdAt: new Date().toISOString(), origin, matched }, null, 2)
+  );
   console.log(`Backup written: ${backupPath}`);
 
   if (!apply) {
@@ -161,7 +196,7 @@ async function main() {
   }
 
   let updated = 0;
-  for (const row of backup) {
+  for (const row of matched) {
     await prisma.vocabularyWord.update({
       where: { id: row.id },
       data: { imageUrl: row.nextImageUrl },

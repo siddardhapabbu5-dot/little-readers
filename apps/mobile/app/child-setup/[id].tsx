@@ -134,8 +134,7 @@ export default function ChildSetupScreen() {
               <Card style={{ gap: 12 }}>
                 <Title>Learn Wise grade</Title>
                 <Text style={styles.meta}>
-                  Choose the grade {name} will learn. The age suggestion is only a guide, and
-                  changing a birthday never changes the grade. Family accounts need a plan per grade;
+                  Choose the grade {name} will learn. Family accounts need a plan per grade;
                   admin practice accounts can learn without a subscription.
                 </Text>
                 <GradePicker
@@ -145,7 +144,6 @@ export default function ChildSetupScreen() {
                     setLevelId(next);
                     setError(null);
                   }}
-                  birthYear={child?.birthYear}
                 />
                 <PrimaryButton label="Save" onPress={() => void saveLevel()} loading={busy} />
               </Card>

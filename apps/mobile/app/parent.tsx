@@ -4,6 +4,7 @@ import { useFocusEffect, useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Card, ErrorText, Field, KeyboardScroll, PrimaryButton, SoftButton } from "../components/ui";
 import { AuthGate } from "../components/AuthGate";
+import { GradePicker, type LearnWiseGrade } from "../components/GradePicker";
 import { ParentBottomNav } from "../components/ParentBottomNav";
 import { RequireParentGate } from "../components/RequireParentGate";
 import { RegistrationSteps } from "../components/RegistrationSteps";
@@ -53,20 +54,14 @@ type SeatInfo = {
   available: number;
 };
 
-function formatBirthdayInput(text: string) {
-  const digits = text.replace(/\D/g, "").slice(0, 8);
-  if (digits.length <= 2) return digits;
-  if (digits.length <= 4) return `${digits.slice(0, 2)}/${digits.slice(2)}`;
-  return `${digits.slice(0, 2)}/${digits.slice(2, 4)}/${digits.slice(4)}`;
-}
-
 export default function ParentScreen() {
   const router = useRouter();
   const [children, setChildren] = useState<ChildRow[]>([]);
   const [progressMap, setProgressMap] = useState<Record<string, any>>({});
   const [activeId, setActiveId] = useState<string | null>(null);
   const [name, setName] = useState("");
-  const [birthDate, setBirthDate] = useState("");
+  const [newLevelId, setNewLevelId] = useState<string | null>(null);
+  const [grades, setGrades] = useState<LearnWiseGrade[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -93,7 +88,7 @@ export default function ParentScreen() {
         await saveUser({ ...(localUser ?? {}), ...meApi });
       }
       if (me?.name) setParentName(me.name.split(" ")[0] || me.name);
-      const [kids, sub, access, agreements] = await Promise.all([
+      const [kids, sub, access, agreements, gradeList] = await Promise.all([
         apiRequest<ChildRow[]>("/children"),
         apiRequest<{
           seats?: SeatInfo;
@@ -106,8 +101,10 @@ export default function ParentScreen() {
         apiRequest<{ allPublished: boolean; allAccepted: boolean; documents: { acceptedAt: string | null }[] }>(
           "/agreements"
         ).catch(() => null),
+        apiRequest<LearnWiseGrade[]>("/children/learn-wise-grades").catch(() => []),
       ]);
       setChildren(kids);
+      setGrades(gradeList);
       setSeats(sub?.seats ?? null);
       setSubMeta({
         plan: sub?.plan ?? sub?.subscription?.plan ?? null,
@@ -159,6 +156,14 @@ export default function ParentScreen() {
   }
 
   async function addChild() {
+    if (!name.trim()) {
+      setError("Enter the child’s display name.");
+      return;
+    }
+    if (!newLevelId) {
+      setError("Choose a Learn Wise grade for this child.");
+      return;
+    }
     setBusy(true);
     setError(null);
     setInfo(null);
@@ -167,11 +172,11 @@ export default function ParentScreen() {
         method: "POST",
         body: JSON.stringify({
           displayName: name.trim(),
-          birthDate: birthDate.trim(),
+          levelId: newLevelId,
         }),
       });
       setName("");
-      setBirthDate("");
+      setNewLevelId(null);
       await saveActiveChild(created);
       setActiveId(created.id);
       router.push(`/child-setup/${created.id}`);
@@ -278,7 +283,7 @@ export default function ParentScreen() {
           {children.map((child) => {
             const summary = progressMap[child.id]?.summary;
             const isActive = activeId === child.id;
-            const birthday = child.birthDate ?? `01/01/${child.birthYear}`;
+            const birthday = child.birthDate?.trim() || null;
             const staffAccess = gradeAccess[child.id]?.via === "STAFF";
             const seated = Boolean(child.hasLearningSeat) || staffAccess;
             const canLearn =
@@ -323,7 +328,7 @@ export default function ParentScreen() {
                     ) : null}
                   </View>
                 </View>
-                <Text style={styles.meta}>Birthday {birthday}</Text>
+                {birthday ? <Text style={styles.meta}>Birthday {birthday}</Text> : null}
                 {gradeAccess[child.id] ? (
                   <Text style={gradeAccess[child.id].entitled ? styles.meta : styles.warn}>
                     {accessLine(gradeAccess[child.id])}
@@ -439,16 +444,17 @@ export default function ParentScreen() {
             <RegistrationSteps step={1} />
             <Text style={styles.section}>Add child</Text>
             <Field label="Display name" value={name} onChangeText={setName} />
-            <Field
-              label="Birthday (DD/MM/YYYY)"
-              keyboardType="number-pad"
-              placeholder="15/03/2021"
-              value={birthDate}
-              onChangeText={(v) => setBirthDate(formatBirthdayInput(v))}
-              maxLength={10}
+            <Text style={styles.meta}>Choose the Learn Wise grade for this child.</Text>
+            <GradePicker
+              grades={grades}
+              value={newLevelId}
+              onChange={(next) => {
+                setNewLevelId(next);
+                setError(null);
+              }}
             />
             <Text style={styles.meta}>
-              Birthday must be DD/MM/YYYY. Next you'll choose the grade and learning phone.
+              Next you’ll set up the learning phone and subscription if needed.
             </Text>
             <PrimaryButton label="Add child" onPress={() => void addChild()} loading={busy} />
           </Card>

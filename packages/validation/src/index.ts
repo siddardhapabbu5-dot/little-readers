@@ -177,13 +177,12 @@ export const createChildSchema = z
     gradeId: z.string().min(1).nullable().optional(),
   })
   .superRefine((data, ctx) => {
-    if (!data.birthDate && data.birthYear == null) {
+    if (!data.levelId && !data.level) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: "Birthday is required (DD/MM/YYYY)",
-        path: ["birthDate"],
+        message: "Choose a Learn Wise grade (level)",
+        path: ["levelId"],
       });
-      return;
     }
     if (data.birthDate) {
       try {

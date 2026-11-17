@@ -38,13 +38,6 @@ type ChildProfile = {
   device?: { registered: boolean; platform?: string; deviceLabel?: string | null };
 };
 
-function formatBirthdayInput(text: string) {
-  const digits = text.replace(/\D/g, "").slice(0, 8);
-  if (digits.length <= 2) return digits;
-  if (digits.length <= 4) return `${digits.slice(0, 2)}/${digits.slice(2)}`;
-  return `${digits.slice(0, 2)}/${digits.slice(2, 4)}/${digits.slice(4)}`;
-}
-
 type ProgressPayload = {
   child: { id: string; displayName: string; birthYear: number; level?: { code: string; label: string } | null };
   progress: { wordsLearned?: number; readingScore?: number; spellingScore?: number; minutesLearned?: number } | null;
@@ -133,7 +126,6 @@ export default function ChildDetailScreen() {
   } | null>(null);
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState("");
-  const [birthDate, setBirthDate] = useState("");
   const [learnWiseGrades, setLearnWiseGrades] = useState<LearnWiseGrade[]>([]);
   const [editLevelId, setEditLevelId] = useState<string | null>(null);
 
@@ -159,7 +151,6 @@ export default function ChildDetailScreen() {
       setProgress(prog);
       setDashboard(dash);
       setName(p.displayName);
-      setBirthDate(p.birthDate ?? `01/01/${p.birthYear}`);
       setEditLevelId(p.learnWiseGrade?.levelId ?? null);
       setLearnWiseGrades(
         await apiRequest<LearnWiseGrade[]>("/children/learn-wise-grades").catch(() => [])
@@ -187,7 +178,6 @@ export default function ChildDetailScreen() {
         method: "PATCH",
         body: JSON.stringify({
           displayName: name.trim(),
-          birthDate: birthDate.trim(),
           ...(editLevelId && editLevelId !== profile?.learnWiseGrade?.levelId
             ? { levelId: editLevelId }
             : {}),
@@ -201,7 +191,7 @@ export default function ChildDetailScreen() {
           id: childId,
           displayName: name.trim(),
           birthYear: updated.birthYear,
-          birthDate: updated.birthDate ?? birthDate.trim(),
+          birthDate: updated.birthDate ?? null,
           level: updated.level?.code ?? profile?.level?.code ?? "",
           levelId: updated.levelId ?? editLevelId,
         });
@@ -282,9 +272,9 @@ export default function ChildDetailScreen() {
                 <Text style={styles.section}>Profile</Text>
                 {!editing ? (
                   <>
-                    <Text style={styles.meta}>
-                      Birthday {profile.birthDate ?? `01/01/${profile.birthYear}`}
-                    </Text>
+                    {profile.birthDate ? (
+                      <Text style={styles.meta}>Birthday {profile.birthDate}</Text>
+                    ) : null}
                     <Text style={styles.meta}>
                       Learn Wise {profile.learnWiseGrade?.gradeLabel ?? "grade not set"}
                     </Text>
@@ -327,22 +317,12 @@ export default function ChildDetailScreen() {
                   <>
                     <Field label="Display name" value={name} onChangeText={setName} />
                     <Text style={styles.meta}>
-                      Learn Wise grade (changing a birthday never changes it; a new grade needs its
-                      own subscription)
+                      Learn Wise grade (a new grade needs its own subscription)
                     </Text>
                     <GradePicker
                       grades={learnWiseGrades}
                       value={editLevelId}
                       onChange={setEditLevelId}
-                      birthYear={profile.birthYear}
-                    />
-                    <Field
-                      label="Birthday (DD/MM/YYYY)"
-                      keyboardType="number-pad"
-                      placeholder="15/03/2021"
-                      value={birthDate}
-                      onChangeText={(v) => setBirthDate(formatBirthdayInput(v))}
-                      maxLength={10}
                     />
                     <View style={styles.row}>
                       <PrimaryButton label="Save" loading={saving} onPress={() => void saveEdits()} />

@@ -1,6 +1,5 @@
 import type { CreateChildInput, UpdateChildInput } from "@little-readers/validation";
 import { parseBirthDateDdMmYyyy } from "@little-readers/validation";
-import { inferLevelFromBirthYear } from "@little-readers/shared";
 import { AppError } from "../lib/errors.js";
 import { prisma } from "../lib/prisma.js";
 import { tryAssignLearningSeat } from "../subscriptions/subscription.service.js";
@@ -9,6 +8,9 @@ import {
   productGradeLabel,
   productGradeNumber,
 } from "../learning/grade-access.js";
+
+/** Stored when parent does not supply a birthday (column is still required). */
+const UNSPECIFIED_BIRTH_YEAR = 2000;
 
 /** A parent-chosen Learn Wise grade must be a live product grade. */
 function assertSelectableGrade(level: { code: string; isActive: boolean; isPublished: boolean }) {
@@ -28,43 +30,24 @@ type LevelRow = {
   isPublished: boolean;
 };
 
-/**
- * Resolve learning level + age band for a new child.
- * Age inference may point at Grade 2–4 before those rows exist on a Grade-1-only
- * deployment — fall back to Grade 1 / FOUNDATION instead of failing Save.
- */
+/** Resolve learning level + age band for a new child. Parent must choose the grade. */
 async function resolveLevelAndAgeGroupForCreate(input: {
   levelId?: string;
   level?: string;
-  birthYear: number;
 }) {
+  if (!input.levelId && !input.level) {
+    throw new AppError("Choose a Learn Wise grade", 400, { code: "LEVEL_REQUIRED" });
+  }
+
   let level: LevelRow | null =
     input.levelId != null
       ? await prisma.learningLevel.findUnique({ where: { id: input.levelId } })
       : null;
-  const requestedCode =
-    input.level ?? (level?.code as string | undefined) ?? inferLevelFromBirthYear(input.birthYear);
-  if (!level) {
-    level = await prisma.learningLevel.findUnique({ where: { code: requestedCode } });
+  if (!level && input.level) {
+    level = await prisma.learningLevel.findUnique({ where: { code: input.level } });
   }
-
-  const explicit = Boolean(input.levelId || input.level);
-  if (explicit) {
-    if (!level) throw new AppError("Learning level not found", 400, { code: "LEVEL_NOT_FOUND" });
-    assertSelectableGrade(level);
-  } else if (!level) {
-    level = await prisma.learningLevel.findUnique({
-      where: { code: LEGACY_DEFAULT_LEVEL_CODE },
-    });
-  }
-
-  if (!level) {
-    throw new AppError(
-      "Learning grades are not set up yet. Please try again later or contact support.",
-      503,
-      { code: "LEVELS_NOT_SEEDED" }
-    );
-  }
+  if (!level) throw new AppError("Learning level not found", 400, { code: "LEVEL_NOT_FOUND" });
+  assertSelectableGrade(level);
 
   const ageGroup =
     (await prisma.ageGroup.findUnique({ where: { code: level.code } })) ??
@@ -142,7 +125,7 @@ function resolveBirthFields(input: { birthDate?: string; birthYear?: number }) {
   if (input.birthDate) {
     try {
       const parsed = parseBirthDateDdMmYyyy(input.birthDate);
-      return { birthYear: parsed.year, birthDate: parsed.normalized };
+      return { birthYear: parsed.year, birthDate: parsed.normalized as string | null };
     } catch (err) {
       throw new AppError(err instanceof Error ? err.message : "Invalid birthday", 400);
     }
@@ -150,10 +133,10 @@ function resolveBirthFields(input: { birthDate?: string; birthYear?: number }) {
   if (input.birthYear != null) {
     return {
       birthYear: input.birthYear,
-      birthDate: `01/01/${input.birthYear}`,
+      birthDate: `01/01/${input.birthYear}` as string | null,
     };
   }
-  throw new AppError("Birthday is required (DD/MM/YYYY)", 400);
+  return { birthYear: UNSPECIFIED_BIRTH_YEAR, birthDate: null as string | null };
 }
 
 function isElevated(role: string) {
@@ -245,7 +228,6 @@ export async function createChild(parentId: string, input: CreateChildInput) {
   const { level, ageGroup, levelCode } = await resolveLevelAndAgeGroupForCreate({
     levelId: input.levelId,
     level: input.level,
-    birthYear,
   });
 
   const gradeId = await resolveAssignableGradeId(input.gradeId, level.id, {
@@ -315,7 +297,7 @@ export async function listChildrenForParent(parentId: string) {
     id: child.id,
     displayName: child.displayName,
     birthYear: child.birthYear,
-    birthDate: child.birthDate ?? `01/01/${child.birthYear}`,
+    birthDate: child.birthDate ?? null,
     level: child.level?.code ?? "FOUNDATION",
     levelId: child.level?.id ?? null,
     gradeId: child.grade?.id ?? null,
@@ -384,7 +366,7 @@ export async function getChildProfile(userId: string, role: string, childId: str
     id: child.id,
     displayName: child.displayName,
     birthYear: child.birthYear,
-    birthDate: child.birthDate ?? `01/01/${child.birthYear}`,
+    birthDate: child.birthDate ?? null,
     level: child.level,
     levelId: child.level?.id ?? null,
     grade: child.grade,
@@ -426,21 +408,17 @@ export async function updateChild(
     select: { birthYear: true, levelId: true, gradeId: true },
   });
 
-  // The grade is the parent's choice: a birthday edit only fills a missing level, never changes one.
+  // Grade is parent-chosen only — birthday never invents or changes a level.
   const explicitLevel = Boolean(input.levelId || input.level);
   let levelId: string | undefined;
   let ageGroupId: string | undefined;
-  if (explicitLevel || (birthPatch && !existing.levelId)) {
+  if (explicitLevel) {
     let level =
       input.levelId != null
         ? await prisma.learningLevel.findUnique({ where: { id: input.levelId } })
         : null;
-    const levelCode =
-      input.level ??
-      level?.code ??
-      inferLevelFromBirthYear(birthPatch?.birthYear ?? existing.birthYear);
-    if (!level) {
-      level = await prisma.learningLevel.findUnique({ where: { code: levelCode } });
+    if (!level && input.level) {
+      level = await prisma.learningLevel.findUnique({ where: { code: input.level } });
     }
     const ageGroup =
       (level
@@ -451,7 +429,7 @@ export async function updateChild(
     if (!level || !ageGroup) {
       throw new AppError("Learning level not found for update", 400);
     }
-    if (explicitLevel && level.id !== existing.levelId) assertSelectableGrade(level);
+    if (level.id !== existing.levelId) assertSelectableGrade(level);
     levelId = level.id;
     ageGroupId = ageGroup.id;
   }
@@ -502,7 +480,7 @@ export async function updateChild(
     id: updated.id,
     displayName: updated.displayName,
     birthYear: updated.birthYear,
-    birthDate: updated.birthDate ?? `01/01/${updated.birthYear}`,
+    birthDate: updated.birthDate ?? null,
     level: updated.level?.code ?? "FOUNDATION",
     levelId: updated.level?.id ?? null,
     gradeId: updated.grade?.id ?? null,

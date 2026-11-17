@@ -11,25 +11,15 @@ export type LearnWiseGrade = {
   available: boolean;
 };
 
-/** Age-based suggestion only; the parent's choice always decides the grade. */
-export function recommendedGrade(grades: LearnWiseGrade[], birthYear?: number | null) {
-  if (!birthYear) return null;
-  const age = new Date().getFullYear() - birthYear;
-  return grades.find((g) => age >= g.ageMin && age <= g.ageMax) ?? null;
-}
-
 export function GradePicker({
   grades,
   value,
   onChange,
-  birthYear,
 }: {
   grades: LearnWiseGrade[];
   value: string | null;
   onChange: (levelId: string) => void;
-  birthYear?: number | null;
 }) {
-  const recommended = recommendedGrade(grades, birthYear);
   return (
     <View style={styles.list}>
       {grades.map((g) => {
@@ -50,9 +40,6 @@ export function GradePicker({
               <Text style={styles.title}>Grade {g.gradeNumber}</Text>
               {!g.available ? <Text style={styles.meta}>Coming soon</Text> : null}
             </View>
-            {recommended?.levelId === g.levelId ? (
-              <Text style={styles.badge}>Suggested</Text>
-            ) : null}
           </Pressable>
         );
       })}
@@ -76,16 +63,6 @@ const styles = StyleSheet.create({
   optionOff: { opacity: 0.5 },
   title: { fontWeight: "800", color: colors.text, fontSize: 16 },
   meta: { color: colors.textMuted },
-  badge: {
-    fontSize: 12,
-    fontWeight: "800",
-    color: colors.primary,
-    backgroundColor: colors.primarySoft,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: radii.md,
-    overflow: "hidden",
-  },
   radio: {
     width: 22,
     height: 22,
@@ -96,5 +73,10 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   radioOn: { borderColor: colors.primary },
-  radioDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: colors.primary },
+  radioDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: colors.primary,
+  },
 });

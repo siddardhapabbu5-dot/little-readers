@@ -78,14 +78,14 @@ describe.skipIf(!hasDb)("Listen / Spell / progress persistence", () => {
     const childResA = await request(app)
       .post("/api/children")
       .set("Authorization", `Bearer ${parentAToken}`)
-      .send({ displayName: "PlayKidA", birthYear: 2023 });
+      .send({ displayName: "PlayKidA", level: "LEVEL_1" });
     expect(childResA.status).toBe(201);
     childA = childResA.body.data.id as string;
 
     const childResB = await request(app)
       .post("/api/children")
       .set("Authorization", `Bearer ${parentBToken}`)
-      .send({ displayName: "PlayKidB", birthYear: 2023 });
+      .send({ displayName: "PlayKidB", level: "LEVEL_1" });
     expect(childResB.status).toBe(201);
     childB = childResB.body.data.id as string;
 
@@ -98,15 +98,16 @@ describe.skipIf(!hasDb)("Listen / Spell / progress persistence", () => {
     );
     categoryId = cats[0].id;
 
-    // Fixture words for play tests (production seed keeps vocabulary empty).
+    // Fixture words for play tests — distinct emoji so Listen A–D stay unique.
     wordStamp = `playfix_${Date.now()}`;
+    const fixtureEmoji = ["🍎", "⚽", "🐱", "🐶", "🐘", "🐟", "🍇", "🏠"];
     for (let i = 0; i < 8; i++) {
       await prisma.vocabularyWord.create({
         data: {
           categoryId,
           text: `${wordStamp}_w${i}`,
           meaning: `fixture meaning ${i}`,
-          emoji: "📘",
+          emoji: fixtureEmoji[i],
           firstLetter: "P",
           sortOrder: i + 1,
           isActive: true,
@@ -145,6 +146,13 @@ describe.skipIf(!hasDb)("Listen / Spell / progress persistence", () => {
     // imageUrl / audioUrl may be null until owner uploads assets — never invented
     expect("imageUrl" in q0.word).toBe(true);
     expect("audioUrl" in q0.word).toBe(true);
+    const optionIds = q0.listenOptions.map((o: { wordId: string }) => o.wordId);
+    const visualKeys = q0.listenOptions.map(
+      (o: { visualKey?: string; emoji: string }) => o.visualKey ?? `emoji:${o.emoji}`
+    );
+    expect(new Set(optionIds).size).toBe(4);
+    expect(new Set(visualKeys).size).toBe(4);
+    expect(q0.listenOptions.filter((o: { isCorrect: boolean }) => o.isCorrect)).toHaveLength(1);
     correctKey = q0.listenOptions.find(
       (o: { isCorrect: boolean }) => o.isCorrect
     ).key;

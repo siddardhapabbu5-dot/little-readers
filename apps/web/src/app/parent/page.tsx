@@ -192,9 +192,9 @@ export default function ParentDashboardPage() {
     const formElement = event.currentTarget;
     const form = new FormData(formElement);
     try {
-      const birthYear = Number(form.get("birthYear"));
-      if (!Number.isFinite(birthYear) || birthYear < 1980) {
-        setError("Enter a valid birth year (e.g. 2019).");
+      const level = String(form.get("level") ?? "").trim();
+      if (!level) {
+        setError("Choose a Learn Wise grade.");
         return;
       }
       await apiRequest("/children", {
@@ -202,7 +202,7 @@ export default function ParentDashboardPage() {
         token,
         body: JSON.stringify({
           displayName: String(form.get("displayName") ?? "").trim(),
-          birthYear,
+          level,
         }),
       });
       formElement.reset();
@@ -457,14 +457,15 @@ export default function ParentDashboardPage() {
         <form onSubmit={onCreateChild} style={{ display: "grid", gap: 12 }}>
           <h3 style={{ margin: 0 }}>Add child</h3>
           <TextField label="Display name" name="displayName" required maxLength={50} />
-          <TextField
-            label="Birth year"
-            name="birthYear"
-            type="number"
-            required
-            min={1980}
-            max={new Date().getFullYear()}
-          />
+          <label style={{ display: "grid", gap: 6 }}>
+            <span>Learn Wise grade</span>
+            <select name="level" required defaultValue="LEVEL_1">
+              <option value="LEVEL_1">Grade 1</option>
+              <option value="LEVEL_2">Grade 2</option>
+              <option value="LEVEL_3">Grade 3</option>
+              <option value="LEVEL_4">Grade 4</option>
+            </select>
+          </label>
           <Button type="submit" loading={creating}>
             Save child profile
           </Button>

@@ -21,7 +21,6 @@ import { apiRequest, ApiError } from "../services/api";
 import { isValidEmail, routeForRole } from "../services/auth-errors";
 import {
   getOrCreateInstallationId,
-  saveActiveChild,
   saveRefreshToken,
   saveToken,
   saveUser,
@@ -42,35 +41,6 @@ type PublicPrivacy = {
 
 const BG_BOTTOM = require("../assets/login-bottom-scene.jpg");
 
-function formatBirthdayInput(text: string) {
-  const digits = text.replace(/\D/g, "").slice(0, 8);
-  if (digits.length <= 2) return digits;
-  if (digits.length <= 4) return `${digits.slice(0, 2)}/${digits.slice(2)}`;
-  return `${digits.slice(0, 2)}/${digits.slice(2, 4)}/${digits.slice(4)}`;
-}
-
-/** Valid calendar date in the past — parents may enter any student birthday. */
-function validateStudentBirthday(value: string): string | null {
-  const trimmed = value.trim();
-  if (!/^\d{2}\/\d{2}\/\d{4}$/.test(trimmed)) {
-    return "Enter student birthday as DD/MM/YYYY.";
-  }
-  const [dd, mm, yyyy] = trimmed.split("/").map(Number);
-  const dt = new Date(yyyy, mm - 1, dd);
-  if (dt.getFullYear() !== yyyy || dt.getMonth() !== mm - 1 || dt.getDate() !== dd) {
-    return "Birthday is not a valid calendar date.";
-  }
-  const today = new Date();
-  today.setHours(23, 59, 59, 999);
-  if (dt > today) {
-    return "Birthday cannot be in the future.";
-  }
-  if (yyyy < 1980) {
-    return "Enter a valid student birthday.";
-  }
-  return null;
-}
-
 export default function RegisterScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -78,15 +48,13 @@ export default function RegisterScreen() {
   const emailRef = useRef<TextInputType>(null);
   const passwordRef = useRef<TextInputType>(null);
   const mobileRef = useRef<TextInputType>(null);
-  const birthRef = useRef<TextInputType>(null);
 
-  const [studentName, setStudentName] = useState("");
+  const [parentName, setParentName] = useState("");
   const [guardianEmail, setGuardianEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [countryIso, setCountryIso] = useState<CountryCode>(DEFAULT_COUNTRY_ISO);
   const [mobile, setMobile] = useState("");
-  const [birthDate, setBirthDate] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [fieldHint, setFieldHint] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
@@ -129,10 +97,10 @@ export default function RegisterScreen() {
     setFieldHint(null);
     setInfo(null);
 
-    const name = studentName.trim();
+    const name = parentName.trim();
     const email = guardianEmail.trim();
     if (name.length < 2) {
-      showBlockingError("Enter the student’s full name.");
+      showBlockingError("Enter the parent/guardian full name.");
       return;
     }
     if (!email || !isValidEmail(email)) {
@@ -155,16 +123,6 @@ export default function RegisterScreen() {
         showBlockingError(phone.error);
         return;
       }
-    }
-    const birthdayError = validateStudentBirthday(birthDate);
-    if (birthdayError) {
-      setFieldHint(birthdayError);
-      setError(birthdayError);
-      birthRef.current?.focus();
-      if (Platform.OS !== "web") {
-        Alert.alert("Birthday not allowed", birthdayError);
-      }
-      return;
     }
     if (!privacyMeta?.published || !privacyMeta.policy?.version) {
       showBlockingError(
@@ -191,7 +149,7 @@ export default function RegisterScreen() {
         method: "POST",
         mobile: false,
         body: JSON.stringify({
-          // Guardian User (PARENT role) owns the student Child profile.
+          // Parent account only — add children from Parent Home (name + grade + plan).
           name,
           email,
           password,
@@ -213,35 +171,7 @@ export default function RegisterScreen() {
         await saveRefreshToken(data.tokens.refreshToken);
       }
       await saveUser(data.user);
-
-      try {
-        const child = await apiRequest<{
-          id: string;
-          displayName: string;
-          birthYear: number;
-          level: string;
-          levelId?: string | null;
-        }>("/children", {
-          method: "POST",
-          token: data.tokens.accessToken,
-          mobile: true,
-          body: JSON.stringify({
-            displayName: name,
-            birthDate: birthDate.trim(),
-          }),
-        });
-        await saveActiveChild(child);
-        router.replace(routeForRole(data.user.role) as never);
-      } catch (childErr) {
-        // Parent login exists; do NOT leave them stuck re-registering.
-        const why =
-          childErr instanceof ApiError
-            ? childErr.message
-            : "Could not create the student profile.";
-        const nextStep = `${why}\n\nYour parent account was created. Opening Parent Home so you can add the student.`;
-        setError(nextStep);
-        router.replace("/parent" as never);
-      }
+      router.replace(routeForRole(data.user.role) as never);
     } catch (err) {
       if (err instanceof ApiError) {
         if (err.code === "EMAIL_IN_USE") {
@@ -295,29 +225,29 @@ export default function RegisterScreen() {
           showsVerticalScrollIndicator={false}
         >
           <Text style={styles.title} accessibilityRole="header">
-            Create Student Account
+            Create parent account
           </Text>
           <Text style={styles.subtitle}>
-            First time only: create the parent login and first student. Same
-            account works on website and mobile. Already registered? Log in,
-            then add another child from Parent Home.
+            Create the parent login first. After that, add your child and choose
+            their grade from Parent Home. Same account works on website and
+            mobile.
           </Text>
 
           <View style={styles.card}>
-            <Text style={styles.label}>Student full name</Text>
+            <Text style={styles.label}>Parent / guardian full name</Text>
             <View style={styles.inputRow}>
               <TextInput
                 style={styles.input}
-                value={studentName}
-                onChangeText={setStudentName}
-                placeholder="Student’s name"
+                value={parentName}
+                onChangeText={setParentName}
+                placeholder="Your name"
                 placeholderTextColor="#9B8EC4"
                 autoCapitalize="words"
                 returnKeyType="next"
                 blurOnSubmit={false}
                 onSubmitEditing={() => emailRef.current?.focus()}
                 editable={!loading}
-                accessibilityLabel="Student full name"
+                accessibilityLabel="Parent or guardian full name"
               />
             </View>
 
@@ -412,51 +342,17 @@ export default function RegisterScreen() {
                 placeholderTextColor="#9B8EC4"
                 keyboardType="phone-pad"
                 textContentType="telephoneNumber"
-                returnKeyType="next"
+                returnKeyType="done"
                 blurOnSubmit={false}
-                onSubmitEditing={() => birthRef.current?.focus()}
+                onSubmitEditing={() => void onRegister()}
                 editable={!loading}
                 accessibilityLabel="Mobile number (optional)"
               />
             </View>
             <Text style={styles.fieldHelp}>
               Optional. Do not reuse a number already linked to another Learn Wise
-              account. Students do not need a mobile here.
+              account.
             </Text>
-
-            <Text style={styles.label}>Student birthday (DD/MM/YYYY)</Text>
-            <View
-              style={[
-                styles.inputRow,
-                birthDate.length === 10 && validateStudentBirthday(birthDate)
-                  ? styles.inputRowError
-                  : null,
-              ]}
-            >
-              <TextInput
-                ref={birthRef}
-                style={styles.input}
-                value={birthDate}
-                onChangeText={(v) => {
-                  setBirthDate(formatBirthdayInput(v));
-                  setError(null);
-                  setFieldHint(null);
-                }}
-                placeholder="Example: 15/03/2019"
-                placeholderTextColor="#9B8EC4"
-                keyboardType="number-pad"
-                returnKeyType="done"
-                onSubmitEditing={() => void onRegister()}
-                editable={!loading}
-                accessibilityLabel="Student birthday"
-              />
-            </View>
-            <Text style={styles.fieldHelp}>
-              Enter the student’s birthday (DD/MM/YYYY). Any past date is accepted.
-            </Text>
-            {birthDate.length === 10 && validateStudentBirthday(birthDate) ? (
-              <Text style={styles.inlineError}>{validateStudentBirthday(birthDate)}</Text>
-            ) : null}
 
             <View style={styles.consentBox}>
               {!privacyMeta?.published ? (
@@ -495,7 +391,7 @@ export default function RegisterScreen() {
                 checked={parentalConsent}
                 onToggle={() => setParentalConsent((v) => !v)}
                 disabled={loading || !privacyMeta?.published}
-                label="I confirm I am the parent/guardian and consent to create a learning profile for my child."
+                label="I confirm I am the parent/guardian and consent to manage my child’s learning account."
               />
             </View>
 
@@ -515,27 +411,18 @@ export default function RegisterScreen() {
 
             <Pressable
               accessibilityRole="button"
-              accessibilityLabel="Create Student Account"
-              disabled={
-                loading ||
-                !privacyMeta?.published ||
-                !emailVerified ||
-                Boolean(birthDate.length === 10 && validateStudentBirthday(birthDate))
-              }
+              accessibilityLabel="Create parent account"
+              disabled={loading || !privacyMeta?.published || !emailVerified}
               onPress={() => void onRegister()}
               style={({ pressed }) => [
                 styles.primaryBtn,
-                (pressed ||
-                  loading ||
-                  !privacyMeta?.published ||
-                  !emailVerified ||
-                  Boolean(birthDate.length === 10 && validateStudentBirthday(birthDate))) && {
+                (pressed || loading || !privacyMeta?.published || !emailVerified) && {
                   opacity: 0.6,
                 },
               ]}
             >
               <Text style={styles.primaryBtnText}>
-                {loading ? "Creating…" : "Create Student Account"}
+                {loading ? "Creating…" : "Create parent account"}
               </Text>
             </Pressable>
 

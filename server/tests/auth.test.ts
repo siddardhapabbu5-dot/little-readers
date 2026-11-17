@@ -97,7 +97,7 @@ describe.skipIf(!hasDb)("Auth API (Phase 1)", () => {
       .set("Authorization", `Bearer ${token}`)
       .send({
         displayName: "Leo",
-        birthYear: new Date().getFullYear() - 6,
+        level: "LEVEL_1",
       });
     expect(createRes.status).toBe(201);
     expect(createRes.body.data.displayName).toBe("Leo");

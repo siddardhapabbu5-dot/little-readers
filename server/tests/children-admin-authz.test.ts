@@ -54,14 +54,14 @@ describe.skipIf(!hasDb)("Children update/delete + admin parent directory authz",
     const c1 = await request(app)
       .post("/api/children")
       .set("Authorization", `Bearer ${parentToken}`)
-      .send({ displayName: "AuthzKid", birthYear: new Date().getFullYear() - 4 });
+      .send({ displayName: "AuthzKid", level: "LEVEL_1" });
     expect(c1.status).toBe(201);
     childId = c1.body.data.id;
 
     const c2 = await request(app)
       .post("/api/children")
       .set("Authorization", `Bearer ${otherToken}`)
-      .send({ displayName: "OtherKid", birthYear: new Date().getFullYear() - 5 });
+      .send({ displayName: "OtherKid", level: "LEVEL_1" });
     expect(c2.status).toBe(201);
     otherChildId = c2.body.data.id;
   });

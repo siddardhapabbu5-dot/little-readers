@@ -5,6 +5,7 @@ import { Alert, Button } from "@little-readers/ui";
 import { AdminShell } from "@/components/AdminShell";
 import { useAdminGate } from "@/lib/use-admin-gate";
 import { apiRequest, ApiClientError } from "@/lib/api";
+import { displayCurriculumLabel } from "@little-readers/shared";
 
 type Grade = { id: string; code: string; label: string };
 type Level = {
@@ -132,11 +133,11 @@ export default function ManageLevelsPage() {
         {rows.map((l) => (
           <article key={l.id} style={{ borderTop: "1px solid #ddd", paddingTop: 8 }}>
             <strong>
-              {l.code} — {l.label} [{l.kind}] {l.isActive ? "" : "(inactive)"}
+              {l.code} — {displayCurriculumLabel(l.code, l.label)} [{l.kind}]{" "}
+              {l.isActive ? "" : "(inactive)"}
             </strong>
             <p>
-              Grade {l.grade?.code ?? "—"} · ages {l.ageMin}–{l.ageMax} · groups{" "}
-              {l._count?.groups ?? 0}
+              Grade {l.grade?.code ?? "—"} · groups {l._count?.groups ?? 0}
             </p>
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
               <Button

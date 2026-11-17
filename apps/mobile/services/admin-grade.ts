@@ -14,7 +14,7 @@ export function isAdminProductGrade(code: string | null | undefined): code is Ad
 
 export function adminGradeLabel(code: string) {
   const g = ADMIN_PRODUCT_GRADES.find((x) => x.code === code);
-  return g ? `Grade ${g.number} · Ages ${g.ages}` : code;
+  return g ? `Grade ${g.number}` : code;
 }
 
 export function adminGradeForLevel(levelCode: string | null | undefined) {

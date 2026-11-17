@@ -22,10 +22,25 @@ export function productGradeNumber(levelCode: string | null | undefined): number
   return m ? Number(m[1]) : null;
 }
 
-/** "Grade 2 – Ages 4–6" for product grades; the level label otherwise. */
-export function productGradeLabel(level: { code: string; label: string; ageMin: number; ageMax: number }) {
+/** "Grade 2" for product grades; the level label otherwise. Age ranges stay internal only. */
+export function productGradeLabel(level: { code: string; label: string; ageMin?: number; ageMax?: number }) {
   const n = productGradeNumber(level.code);
-  return n ? `Grade ${n} – Ages ${level.ageMin}–${level.ageMax}` : level.label;
+  return n ? `Grade ${n}` : stripAgeRangeLabel(level.label);
+}
+
+/** "Level 2" for product levels; strips legacy "Ages …" from stored labels. */
+export function productLevelLabel(level: { code: string; label: string }) {
+  const n = productGradeNumber(level.code);
+  return n ? `Level ${n}` : stripAgeRangeLabel(level.label);
+}
+
+function stripAgeRangeLabel(label: string) {
+  return label
+    .replace(/\s*[–—-]\s*Ages?\s*\d+\s*[–—-]\s*\d+/gi, "")
+    .replace(/\s*·\s*Ages?\s*\d+\s*[–—-]\s*\d+/gi, "")
+    .replace(/\s*\(?\s*Ages?\s*\d+\s*[–—-]\s*\d+\s*\)?/gi, "")
+    .replace(/\s{2,}/g, " ")
+    .trim();
 }
 
 /** Grade 1 keeps its original codes so existing achievements are untouched. */

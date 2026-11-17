@@ -274,7 +274,6 @@ export default function ParentScreen() {
             const seated = Boolean(child.hasLearningSeat) || staffAccess;
             const canLearn =
               gradeAccess[child.id]?.entitled === true || Boolean(child.hasLearningSeat);
-            const age = Math.max(1, new Date().getFullYear() - child.birthYear);
             return (
               <View
                 key={child.id}
@@ -292,7 +291,7 @@ export default function ParentScreen() {
                     <View style={{ flex: 1 }}>
                       <Text style={styles.childName}>{child.displayName}</Text>
                       <Text style={styles.gradeLine}>
-                        {child.learnWiseGrade?.gradeLabel ?? "Grade not set"} · Age {age}
+                        {child.learnWiseGrade?.gradeLabel ?? "Grade not set"}
                       </Text>
                     </View>
                   </View>

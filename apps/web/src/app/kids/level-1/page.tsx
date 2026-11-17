@@ -6,6 +6,7 @@ import { Alert, Button } from "@little-readers/ui";
 import { apiRequest, ApiClientError } from "@/lib/api";
 import { getToken } from "@/lib/auth-storage";
 import { getActiveChild } from "@/lib/child-session";
+import { stripAgeRangeFromLabel } from "@little-readers/shared";
 
 interface CategoryCard {
   id: string;
@@ -105,10 +106,9 @@ export default function Level1HomePage() {
           </Button>
           <div>
             <p className="l1-eyebrow">Hi {child?.displayName ?? "friend"}!</p>
-            <h1>{data.level.label}</h1>
+            <h1>{stripAgeRangeFromLabel(data.level.label) || "Level 1"}</h1>
             <p>
-              Ages {data.level.ageMin}–{data.level.ageMax}. Tap a colorful card to
-              play.
+              Tap a colorful card to play.
             </p>
           </div>
         </header>

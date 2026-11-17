@@ -48,13 +48,10 @@ export function GradePicker({
             </View>
             <View style={{ flex: 1, gap: 2 }}>
               <Text style={styles.title}>Grade {g.gradeNumber}</Text>
-              <Text style={styles.meta}>
-                Ages {g.ageMin}–{g.ageMax}
-                {g.available ? "" : " · Coming soon"}
-              </Text>
+              {!g.available ? <Text style={styles.meta}>Coming soon</Text> : null}
             </View>
             {recommended?.levelId === g.levelId ? (
-              <Text style={styles.badge}>Suggested for age</Text>
+              <Text style={styles.badge}>Suggested</Text>
             ) : null}
           </Pressable>
         );

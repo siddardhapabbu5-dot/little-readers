@@ -31,7 +31,7 @@ export function AdminGradeSelector({
         {ADMIN_PRODUCT_GRADES.map((g) => (
           <SoftButton
             key={g.code}
-            label={`Grade ${g.number} · Ages ${g.ages}`}
+            label={`Grade ${g.number}`}
             active={value === g.code}
             onPress={() => onChange(g.code)}
           />

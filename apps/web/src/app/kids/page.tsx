@@ -21,7 +21,7 @@ interface ChildRow {
 
 const MODULES = [
   { title: "Lessons", href: "/kids/lessons", ready: true, emoji: "📗" },
-  { title: "Level 1 · Ages 1–3", href: "/kids/level-1", ready: true, emoji: "🧸" },
+  { title: "Level 1", href: "/kids/level-1", ready: true, emoji: "🧸" },
   { title: "Alphabet", href: "/kids/modules/alphabet", ready: false, emoji: "🔤" },
   { title: "Phonics", href: "/kids/modules/phonics", ready: false, emoji: "🔊" },
   { title: "Vocabulary", href: "/kids/modules/vocabulary", ready: false, emoji: "📚" },

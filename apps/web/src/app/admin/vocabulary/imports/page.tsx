@@ -6,6 +6,7 @@ import { Alert, Button } from "@little-readers/ui";
 import { AdminShell } from "@/components/AdminShell";
 import { apiRequest, ApiClientError } from "@/lib/api";
 import { useAdminGate } from "@/lib/use-admin-gate";
+import { stripAgeRangeFromLabel } from "@little-readers/shared";
 
 interface ImportRow {
   id: string;
@@ -81,7 +82,9 @@ export default function ImportHistoryPage() {
             <tr key={row.id}>
               <td>{new Date(row.createdAt).toLocaleString()}</td>
               <td>{row.originalFilename}</td>
-              <td>{row.level?.label}</td>
+              <td>
+                {row.level ? stripAgeRangeFromLabel(row.level.label) : "—"}
+              </td>
               <td>{row.category?.label}</td>
               <td>{row.status}</td>
               <td>

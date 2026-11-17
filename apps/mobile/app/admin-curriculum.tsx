@@ -13,6 +13,7 @@ import { apiDownloadBlob, apiRequest, apiUpload, ApiError } from "../services/ap
 import { ROLE_SETS } from "../services/auth-errors";
 import { displayEmoji } from "../services/emoji";
 import { colors } from "../theme";
+import { displayCurriculumLabel } from "@little-readers/shared";
 
 type Status = "DRAFT" | "PENDING_APPROVAL" | "APPROVED" | "PUBLISHED" | "UNPUBLISHED";
 
@@ -383,7 +384,6 @@ export default function AdminCurriculumScreen() {
                   accessibilityLabel={`Open ${o.level.label}`}
                 >
                   <Text style={styles.overviewTitle}>Grade {g?.number}</Text>
-                  <Text style={styles.overviewSub}>Ages {g?.ages}</Text>
                   <Text style={styles.overviewStat}>{o.totals.categories} topics</Text>
                   <Text style={styles.overviewStat}>{o.totals.words} words</Text>
                   <View style={styles.progressTrack}>
@@ -414,7 +414,9 @@ export default function AdminCurriculumScreen() {
 
           {summary && t ? (
             <Card>
-              <Text style={styles.sectionTitle}>{summary.level.label}</Text>
+              <Text style={styles.sectionTitle}>
+                {displayCurriculumLabel(summary.level.code, summary.level.label)}
+              </Text>
               <Text style={styles.note}>
                 {t.groups} groups · {t.categories} topics · {t.words} words · {t.categoriesWithWords}/{t.categories} topics have
                 words ({t.contentPct}%) · {t.byStatus.PUBLISHED} published ({t.publishedPct}%)

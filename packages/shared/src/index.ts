@@ -17,6 +17,25 @@ export const AGE_GROUPS: Record<
   ADVANCED: { label: "Advanced", ageMin: 9, ageMax: 12 },
 };
 
+/** UI-only: hide age-range text still stored in older level/grade labels. */
+export function stripAgeRangeFromLabel(label: string): string {
+  return label
+    .replace(/\s*[–—-]\s*Ages?\s*\d+\s*[–—-]\s*\d+/gi, "")
+    .replace(/\s*·\s*Ages?\s*\d+\s*[–—-]\s*\d+/gi, "")
+    .replace(/\s*\(?\s*Ages?\s*\d+\s*[–—-]\s*\d+\s*\)?/gi, "")
+    .replace(/\s{2,}/g, " ")
+    .trim();
+}
+
+/** Prefer Level/Grade N from code; otherwise strip ages from stored label. */
+export function displayCurriculumLabel(code?: string | null, label?: string | null): string {
+  const level = /^LEVEL_([1-4])$/i.exec(code ?? "");
+  if (level) return `Level ${level[1]}`;
+  const grade = /^GRADE_([1-4])$/i.exec(code ?? "");
+  if (grade) return `Grade ${grade[1]}`;
+  return stripAgeRangeFromLabel(label ?? code ?? "");
+}
+
 /** Map birth year → four-grade learning level (LEVEL_1…LEVEL_4). */
 export function inferLevelFromBirthYear(
   birthYear: number,

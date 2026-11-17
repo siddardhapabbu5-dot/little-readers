@@ -1,4 +1,4 @@
-/** Level 1 Ages 1–3: 10 categories × 75 unique vocabulary words = 750. */
+/** Level 1: 10 categories × 75 unique vocabulary words = 750. */
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";

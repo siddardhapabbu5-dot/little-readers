@@ -77,11 +77,11 @@ export async function ensureFourGrades(opts?: { createMissing?: boolean }) {
         ageMin: def.ageMin,
         ageMax: def.ageMax,
         kind: "GRADE_BAND",
-        label: `Level ${def.sortOrder} – Ages ${def.ageMin}–${def.ageMax} (${def.label})`,
+        label: `Level ${def.sortOrder}`,
       },
       create: {
         code: def.level,
-        label: `Level ${def.sortOrder} – Ages ${def.ageMin}–${def.ageMax} (${def.label})`,
+        label: `Level ${def.sortOrder}`,
         sortOrder: def.sortOrder - 1,
         ageMin: def.ageMin,
         ageMax: def.ageMax,

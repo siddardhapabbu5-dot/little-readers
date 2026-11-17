@@ -1,5 +1,5 @@
 /**
- * Level 1 Ages 1–3 vocabulary seed.
+ * Level 1 vocabulary seed.
  * Idempotent upsert of 10 categories × 75 unique words = 750.
  */
 import type { PrismaClient } from "@prisma/client";
@@ -85,7 +85,7 @@ export async function seedLevel1Vocabulary(
   const level1 = await prisma.learningLevel.upsert({
     where: { code: "LEVEL_1" },
     update: {
-      label: "Level 1 – Ages 1–3",
+      label: "Level 1",
       sortOrder: 0,
       description:
         "Structure ready — vocabulary uploaded by owner (no seeded English words)",
@@ -94,7 +94,7 @@ export async function seedLevel1Vocabulary(
     },
     create: {
       code: "LEVEL_1",
-      label: "Level 1 – Ages 1–3",
+      label: "Level 1",
       sortOrder: 0,
       description:
         "Structure ready — vocabulary uploaded by owner (no seeded English words)",

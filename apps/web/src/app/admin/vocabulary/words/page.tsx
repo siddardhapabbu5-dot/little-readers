@@ -6,6 +6,7 @@ import { Alert, Button } from "@little-readers/ui";
 import { AdminShell } from "@/components/AdminShell";
 import { API_URL, apiRequest, apiUpload, ApiClientError } from "@/lib/api";
 import { useAdminGate } from "@/lib/use-admin-gate";
+import { displayCurriculumLabel } from "@little-readers/shared";
 
 type Grade = { id: string; code: string; label: string };
 type Level = {
@@ -646,8 +647,12 @@ export default function ManageVocabularyWordsPage() {
                   </td>
                   <td>{w.meaning}</td>
                   <td>
-                    {w.category.group.level.grade?.code ?? "—"} / {w.category.group.level.label} /{" "}
-                    {w.category.label}
+                    {w.category.group.level.grade?.code ?? "—"} /{" "}
+                    {displayCurriculumLabel(
+                      w.category.group.level.code,
+                      w.category.group.level.label
+                    )}{" "}
+                    / {w.category.label}
                   </td>
                   <td>
                     {w.isActive ? "active" : "inactive"} · {w.origin}
@@ -772,7 +777,12 @@ export default function ManageVocabularyWordsPage() {
             >
               {categories.map((c) => (
                 <option key={c.id} value={c.id}>
-                  {c.group?.level?.grade?.label ?? "—"} / {c.group?.level?.label ?? "—"} /{" "}
+                  {c.group?.level?.grade?.label ?? "—"} /{" "}
+                  {displayCurriculumLabel(
+                    c.group?.level?.code,
+                    c.group?.level?.label
+                  )}{" "}
+                  /{" "}
                   {c.group?.label ?? "—"} / {c.label}
                 </option>
               ))}

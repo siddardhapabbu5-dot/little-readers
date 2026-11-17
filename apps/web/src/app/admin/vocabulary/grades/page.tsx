@@ -163,7 +163,7 @@ export default function ManageGradesPage() {
               {g.code} — {g.label} {g.isActive ? "" : "(inactive)"}
             </strong>
             <p>
-              Ages {g.ageMin}–{g.ageMax} · order {g.sortOrder} · levels {g._count?.levels ?? 0} ·
+              order {g.sortOrder} · levels {g._count?.levels ?? 0} ·
               assignments {g._count?.assignments ?? 0}
             </p>
             <p>{g.description}</p>
@@ -184,7 +184,7 @@ export default function ManageGradesPage() {
                     void patch(g.id, { ageMin: Number(min), ageMax: Number(max) });
                 }}
               >
-                Edit ages
+                Edit band
               </Button>
               <Button
                 onClick={() => {

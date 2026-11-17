@@ -96,7 +96,7 @@ export default function DictionaryDashboardPage() {
         {(data?.grades ?? []).map((g) => (
           <div key={g.grade.id} className="panel" style={{ padding: 16 }}>
             <strong>
-              {g.grade.label} (Ages {g.grade.ageMin}–{g.grade.ageMax})
+              {g.grade.label}
             </strong>
             <ul style={{ marginTop: 8, lineHeight: 1.6 }}>
               <li>Assigned: {g.assigned}</li>

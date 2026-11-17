@@ -290,7 +290,7 @@ export default function AdminStructureScreen() {
         method: "POST",
         body: JSON.stringify({
           code: `LEVEL_${num}`,
-          label: `${label} – Ages ${ageMin}–${ageMax}`,
+          label,
           kind: "GRADE_BAND",
           gradeId: grade.id,
           ageMin,
@@ -713,7 +713,6 @@ export default function AdminStructureScreen() {
                 View · {panelGrade.label} ({panelGrade.code})
               </Text>
               <Text style={styles.meta}>
-                Ages {panelGrade.ageMin}–{panelGrade.ageMax} ·{" "}
                 {panelGrade.isActive ? "Active" : "Inactive"} · sort{" "}
                 {panelGrade.sortOrder}
               </Text>
@@ -780,9 +779,6 @@ export default function AdminStructureScreen() {
                   <Text style={[styles.gradeLabel, on && styles.gradeOnText]}>
                     {g.label}
                   </Text>
-                  <Text style={[styles.gradeAges, on && styles.gradeOnText]}>
-                    Ages {g.ageMin}–{g.ageMax}
-                  </Text>
                   <Text style={[styles.gradeStatus, on && styles.gradeOnText]}>
                     {g.isActive ? "Active" : "Inactive"}
                   </Text>
@@ -835,7 +831,7 @@ export default function AdminStructureScreen() {
                 </>
               ) : activeLevel ? (
                 <Text style={styles.meta}>
-                  Level: {activeLevel.code} · {activeLevel.label}
+                  Level: {activeLevel.code}
                 </Text>
               ) : (
                 <Text style={styles.meta}>No level linked to this grade yet.</Text>

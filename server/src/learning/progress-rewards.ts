@@ -12,7 +12,7 @@
 import { MIX_MODES } from "@little-readers/shared";
 import { prisma } from "../lib/prisma.js";
 import { AppError } from "../lib/errors.js";
-import { effectiveLevelForChild } from "./grade-access.js";
+import { effectiveLevelForChild, productLevelLabel } from "./grade-access.js";
 
 /** Calendar day bounds in Asia/Kolkata (IST). Kept local to avoid circular imports. */
 function kolkataDayBounds(now = new Date()) {
@@ -687,7 +687,7 @@ export async function getChildProgressDashboard(
   for (const lvl of levels) {
     levelMap.set(lvl.code, {
       code: lvl.code,
-      label: lvl.label,
+      label: productLevelLabel(lvl),
       wordsLearned: 0,
       categoriesCompleted: 0,
       categoriesTouched: 0,
@@ -699,7 +699,7 @@ export async function getChildProgressDashboard(
     const code = p.category.group.level.code;
     const mutable = levelMap.get(code) ?? {
       code,
-      label: p.category.group.level.label,
+      label: productLevelLabel(p.category.group.level),
       wordsLearned: 0,
       categoriesCompleted: 0,
       categoriesTouched: 0,
@@ -768,7 +768,7 @@ export async function getChildProgressDashboard(
       label: p.category.label,
       emoji: p.category.emoji,
       group: p.category.group.label,
-      level: p.category.group.level.label,
+      level: productLevelLabel(p.category.group.level),
       levelCode: p.category.group.level.code,
       wordCount: p.category._count.words,
       wordsLearned: p.wordsLearned,

@@ -14,6 +14,7 @@ import {
   categoryAchievementCode,
   effectiveLevelForChild,
   productGradeLabel,
+  productLevelLabel,
 } from "./grade-access.js";
 import {
   awardMilestoneAchievements,
@@ -211,7 +212,7 @@ export async function getLevel1Curriculum(parentId: string, childId: string) {
     level: {
       id: level.id,
       code: level.code,
-      label: level.label,
+      label: productLevelLabel(level),
       ageMin: level.ageMin,
       ageMax: level.ageMax,
       description: level.description,
@@ -553,7 +554,7 @@ export async function startLearningSession(
       code: category.code,
       label: category.label,
       emoji: category.emoji,
-      levelLabel: category.group.level.label,
+      levelLabel: productLevelLabel(category.group.level),
       groupLabel: category.group.label,
     };
     const lessonMeta = {
@@ -641,7 +642,7 @@ export async function startLearningSession(
             code: category.code,
             label: category.label,
             emoji: category.emoji,
-            levelLabel: category.group.level.label,
+            levelLabel: productLevelLabel(category.group.level),
             groupLabel: category.group.label,
           },
           null,
@@ -737,7 +738,7 @@ export async function startLearningSession(
       code: category.code,
       label: category.label,
       emoji: category.emoji,
-      levelLabel: category.group.level.label,
+      levelLabel: productLevelLabel(category.group.level),
       groupLabel: category.group.label,
     },
     questionsTotal: selected.length,
@@ -800,7 +801,7 @@ export async function previewLearningSession(input: {
       code: category.code,
       label: category.label,
       emoji: category.emoji,
-      levelLabel: category.group.level.label,
+      levelLabel: productLevelLabel(category.group.level),
       groupLabel: category.group.label,
     },
     questionsTotal: selected.length,
@@ -1450,7 +1451,7 @@ function mapVocabularyRecord(word: WordWithRelations) {
     id: word.id,
     levelId: word.category.group.levelId,
     levelCode: word.category.group.level.code,
-    levelName: word.category.group.level.label,
+    levelName: productLevelLabel(word.category.group.level),
     groupName: word.category.group.label,
     groupCode: word.category.group.code,
     categoryId: word.category.id,
@@ -1510,7 +1511,7 @@ export async function listLearningLevels() {
     return {
       id: level.id,
       code: level.code,
-      label: level.label,
+      label: productLevelLabel(level),
       description: level.description,
       ageMin: level.ageMin,
       ageMax: level.ageMax,
@@ -1613,7 +1614,7 @@ async function listLevelGroupsById(
     level: {
       id: level.id,
       code: level.code,
-      label: level.label,
+      label: productLevelLabel(level),
       ageMin: level.ageMin,
       ageMax: level.ageMax,
       description: level.description,
@@ -1723,7 +1724,7 @@ export async function listLearningCategories(filters?: {
     groupCode: cat.group.code,
     levelId: cat.group.level.id,
     levelCode: cat.group.level.code,
-    levelName: cat.group.level.label,
+    levelName: productLevelLabel(cat.group.level),
     displayOrder: cat.sortOrder,
     isPublished: cat.isPublished,
   }));

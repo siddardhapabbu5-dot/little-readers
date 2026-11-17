@@ -192,12 +192,17 @@ export default function ParentDashboardPage() {
     const formElement = event.currentTarget;
     const form = new FormData(formElement);
     try {
+      const birthYear = Number(form.get("birthYear"));
+      if (!Number.isFinite(birthYear) || birthYear < 1980) {
+        setError("Enter a valid birth year (e.g. 2019).");
+        return;
+      }
       await apiRequest("/children", {
         method: "POST",
         token,
         body: JSON.stringify({
-          displayName: String(form.get("displayName") ?? ""),
-          birthYear: Number(form.get("birthYear")),
+          displayName: String(form.get("displayName") ?? "").trim(),
+          birthYear,
         }),
       });
       formElement.reset();
@@ -208,7 +213,7 @@ export default function ParentDashboardPage() {
           ? err.message
           : err instanceof Error
             ? err.message
-            : "Could not add child"
+            : "Could not save child profile"
       );
     } finally {
       setCreating(false);

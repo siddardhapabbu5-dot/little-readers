@@ -15,11 +15,14 @@ export function EmailOtpVerify({
   purpose,
   disabled,
   onVerified,
+  onAccountExists,
 }: {
   email: string;
   purpose: Purpose;
   disabled?: boolean;
   onVerified: (verificationToken: string) => void;
+  /** REGISTER only: email already has a parent account. */
+  onAccountExists?: () => void;
 }) {
   const [sentTo, setSentTo] = useState<string | null>(null);
   const [code, setCode] = useState("");
@@ -65,6 +68,17 @@ export function EmailOtpVerify({
       if (err instanceof ApiError && err.status === 429) {
         const wait = (err.details as { retryAfterSec?: number } | undefined)?.retryAfterSec;
         if (wait && wait < 120) setResendIn(wait);
+      }
+      const exists =
+        purpose === "REGISTER" &&
+        err instanceof ApiError &&
+        (err.status === 409 ||
+          err.code === "EMAIL_IN_USE" ||
+          /already (exists|registered)/i.test(err.message));
+      if (exists) {
+        setError(err instanceof ApiError ? err.message : "This email is already registered.");
+        onAccountExists?.();
+        return;
       }
       setError(err instanceof ApiError ? err.message : "Could not send the code. Please try again.");
     } finally {

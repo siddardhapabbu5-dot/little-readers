@@ -43,7 +43,11 @@ export async function registerParent(
   const email = input.email.toLowerCase();
   const existing = await prisma.user.findUnique({ where: { email } });
   if (existing) {
-    throw new AppError("An account with this email already exists", 409);
+    throw new AppError(
+      "This email is already registered. Log in, then add another child from Parent Home — do not create a new account.",
+      409,
+      { code: "EMAIL_IN_USE" }
+    );
   }
 
   let mobileE164: string | undefined;
@@ -54,7 +58,8 @@ export async function registerParent(
     if (mobileTaken) {
       throw new AppError(
         "This mobile number is already linked to another account",
-        409
+        409,
+        { code: "MOBILE_IN_USE" }
       );
     }
   }

@@ -36,9 +36,11 @@ export async function sendEmailOtp(input: { email: string; purpose: EmailOtpPurp
   });
 
   if (input.purpose === "REGISTER" && user) {
-    throw new AppError("An account with this email already exists", 409, {
-      code: "EMAIL_IN_USE",
-    });
+    throw new AppError(
+      "This email is already registered. Log in, then add another child from Parent Home — do not create a new account.",
+      409,
+      { code: "EMAIL_IN_USE" }
+    );
   }
 
   const response = {

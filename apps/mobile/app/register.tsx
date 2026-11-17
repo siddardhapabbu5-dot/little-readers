@@ -243,21 +243,30 @@ export default function RegisterScreen() {
         router.replace("/parent" as never);
       }
     } catch (err) {
-      if (err instanceof ApiError && (err.status === 409 || /already exists/i.test(err.message))) {
-        const msg =
-          "This email is already registered. Use Log in with this email, then add your student from Parent Home.";
-        setError(msg);
-        if (Platform.OS !== "web") {
-          Alert.alert("Account already exists", msg, [
-            { text: "Go to login", onPress: () => router.replace("/login" as never) },
-            { text: "OK" },
-          ]);
+      if (err instanceof ApiError) {
+        if (err.code === "EMAIL_IN_USE") {
+          const msg =
+            "This email is already registered. Log in, then add another child from Parent Home.";
+          setError(msg);
+          if (Platform.OS !== "web") {
+            Alert.alert("Account already exists", msg, [
+              { text: "Go to login", onPress: () => router.replace("/login" as never) },
+              { text: "OK" },
+            ]);
+          }
+          return;
         }
+        if (err.code === "MOBILE_IN_USE" || /mobile number is already/i.test(err.message)) {
+          showBlockingError(
+            "This mobile number is already used on another account. Clear Mobile (it is optional) or enter a different number, then try again."
+          );
+          return;
+        }
+        // Never rewrite other 409s (policy mismatch, etc.) as "email already registered".
+        showBlockingError(err.message);
         return;
       }
-      showBlockingError(
-        err instanceof ApiError ? err.message : "Student registration failed"
-      );
+      showBlockingError("Student registration failed");
     } finally {
       setLoading(false);
     }
@@ -289,8 +298,9 @@ export default function RegisterScreen() {
             Create Student Account
           </Text>
           <Text style={styles.subtitle}>
-            Register the student and link them to a parent/guardian login. Same
-            account works on website and mobile.
+            First time only: create the parent login and first student. Same
+            account works on website and mobile. Already registered? Log in,
+            then add another child from Parent Home.
           </Text>
 
           <View style={styles.card}>
@@ -342,6 +352,17 @@ export default function RegisterScreen() {
                   setEmailToken(token);
                   setVerifiedEmail(guardianEmail.trim().toLowerCase());
                 }}
+                onAccountExists={() => {
+                  const msg =
+                    "This email is already registered. Log in, then add another child from Parent Home.";
+                  setError(msg);
+                  if (Platform.OS !== "web") {
+                    Alert.alert("Account already exists", msg, [
+                      { text: "Go to login", onPress: () => router.replace("/login" as never) },
+                      { text: "OK" },
+                    ]);
+                  }
+                }}
               />
             )}
 
@@ -387,7 +408,7 @@ export default function RegisterScreen() {
                 style={styles.input}
                 value={mobile}
                 onChangeText={(v) => setMobile(sanitizeNationalInput(v))}
-                placeholder="Mobile number"
+                placeholder="Leave blank if unsure"
                 placeholderTextColor="#9B8EC4"
                 keyboardType="phone-pad"
                 textContentType="telephoneNumber"
@@ -398,6 +419,10 @@ export default function RegisterScreen() {
                 accessibilityLabel="Mobile number (optional)"
               />
             </View>
+            <Text style={styles.fieldHelp}>
+              Optional. Do not reuse a number already linked to another Learn Wise
+              account. Students do not need a mobile here.
+            </Text>
 
             <Text style={styles.label}>Student birthday (DD/MM/YYYY)</Text>
             <View

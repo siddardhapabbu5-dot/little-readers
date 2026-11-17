@@ -89,7 +89,17 @@ export default function RegisterPage() {
       router.push("/parent");
     } catch (err) {
       if (err instanceof ApiClientError) {
-        setError(err.message);
+        if (err.code === "EMAIL_IN_USE") {
+          setError(
+            "This email is already registered. Log in, then add another child from Parent Home."
+          );
+        } else if (err.code === "MOBILE_IN_USE" || /mobile number is already/i.test(err.message)) {
+          setError(
+            "This mobile number is already used on another account. Leave mobile blank or use a different number."
+          );
+        } else {
+          setError(err.message);
+        }
       } else {
         setError("Unable to register. Is the API running?");
       }
@@ -102,8 +112,9 @@ export default function RegisterPage() {
     <form className="card-form" onSubmit={onSubmit}>
       <h1 style={{ margin: 0 }}>Parent registration</h1>
       <p className="muted" style={{ margin: 0 }}>
-        Create an account to manage child profiles. Consent checkboxes start
-        unchecked and must be selected explicitly.
+        First-time parent signup only. Already have an account?{" "}
+        <a href="/login">Log in</a>, then add another child from Parent Home.
+        Consent checkboxes start unchecked and must be selected explicitly.
       </p>
       {error ? <Alert tone="error">{error}</Alert> : null}
       {!policyReady ? (

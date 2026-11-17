@@ -50,8 +50,12 @@ export default function ChildSetupScreen() {
           setChild(found);
           setGrades(gr);
           const current = gr.find((g) => g.available && g.levelId === found?.levelId);
-          setLevelId((cur) => cur ?? current?.levelId ?? null);
+          const firstLive = gr.find((g) => g.available);
+          setLevelId((cur) => cur ?? current?.levelId ?? firstLive?.levelId ?? null);
           if (!found) setError("Child not found.");
+          else if (!gr.some((g) => g.available)) {
+            setError("No Learn Wise grade is available yet. Please try again later.");
+          }
         } catch (err) {
           setError(err instanceof ApiError ? err.message : "Could not load");
         }

@@ -20,6 +20,68 @@ function assertSelectableGrade(level: { code: string; isActive: boolean; isPubli
   }
 }
 
+type LevelRow = {
+  id: string;
+  code: string;
+  label: string;
+  isActive: boolean;
+  isPublished: boolean;
+};
+
+/**
+ * Resolve learning level + age band for a new child.
+ * Age inference may point at Grade 2–4 before those rows exist on a Grade-1-only
+ * deployment — fall back to Grade 1 / FOUNDATION instead of failing Save.
+ */
+async function resolveLevelAndAgeGroupForCreate(input: {
+  levelId?: string;
+  level?: string;
+  birthYear: number;
+}) {
+  let level: LevelRow | null =
+    input.levelId != null
+      ? await prisma.learningLevel.findUnique({ where: { id: input.levelId } })
+      : null;
+  const requestedCode =
+    input.level ?? (level?.code as string | undefined) ?? inferLevelFromBirthYear(input.birthYear);
+  if (!level) {
+    level = await prisma.learningLevel.findUnique({ where: { code: requestedCode } });
+  }
+
+  const explicit = Boolean(input.levelId || input.level);
+  if (explicit) {
+    if (!level) throw new AppError("Learning level not found", 400, { code: "LEVEL_NOT_FOUND" });
+    assertSelectableGrade(level);
+  } else if (!level) {
+    level = await prisma.learningLevel.findUnique({
+      where: { code: LEGACY_DEFAULT_LEVEL_CODE },
+    });
+  }
+
+  if (!level) {
+    throw new AppError(
+      "Learning grades are not set up yet. Please try again later or contact support.",
+      503,
+      { code: "LEVELS_NOT_SEEDED" }
+    );
+  }
+
+  const ageGroup =
+    (await prisma.ageGroup.findUnique({ where: { code: level.code } })) ??
+    (await prisma.ageGroup.findUnique({ where: { code: LEGACY_DEFAULT_LEVEL_CODE } })) ??
+    (await prisma.ageGroup.findUnique({ where: { code: "FOUNDATION" } }));
+
+  if (!ageGroup) {
+    throw new AppError(
+      "Learning grades are not set up yet. Please try again later or contact support.",
+      503,
+      { code: "AGE_GROUPS_NOT_SEEDED" }
+    );
+  }
+
+  return { level, ageGroup, levelCode: level.code };
+}
+
 const EFFECTIVE_LEVEL_SELECT = {
   id: true,
   code: true,
@@ -180,22 +242,11 @@ export async function assertChildAccess(userId: string, role: string, childId: s
 export async function createChild(parentId: string, input: CreateChildInput) {
   const { birthYear, birthDate } = resolveBirthFields(input);
 
-  let level =
-    input.levelId != null
-      ? await prisma.learningLevel.findUnique({ where: { id: input.levelId } })
-      : null;
-  const levelCode = input.level ?? (level?.code as string | undefined) ?? inferLevelFromBirthYear(birthYear);
-  if (!level) {
-    level = await prisma.learningLevel.findUnique({ where: { code: levelCode } });
-  }
-  const ageGroup = await prisma.ageGroup.findUnique({
-    where: { code: level?.code ?? levelCode },
+  const { level, ageGroup, levelCode } = await resolveLevelAndAgeGroupForCreate({
+    levelId: input.levelId,
+    level: input.level,
+    birthYear,
   });
-
-  if (!level || !ageGroup) {
-    throw new AppError("Learning levels are not seeded. Run db:seed.", 500);
-  }
-  if (input.levelId != null || input.level) assertSelectableGrade(level);
 
   const gradeId = await resolveAssignableGradeId(input.gradeId, level.id, {
     forNewAssignment: true,
@@ -391,9 +442,12 @@ export async function updateChild(
     if (!level) {
       level = await prisma.learningLevel.findUnique({ where: { code: levelCode } });
     }
-    const ageGroup = await prisma.ageGroup.findUnique({
-      where: { code: level?.code ?? levelCode },
-    });
+    const ageGroup =
+      (level
+        ? await prisma.ageGroup.findUnique({ where: { code: level.code } })
+        : null) ??
+      (await prisma.ageGroup.findUnique({ where: { code: LEGACY_DEFAULT_LEVEL_CODE } })) ??
+      (await prisma.ageGroup.findUnique({ where: { code: "FOUNDATION" } }));
     if (!level || !ageGroup) {
       throw new AppError("Learning level not found for update", 400);
     }

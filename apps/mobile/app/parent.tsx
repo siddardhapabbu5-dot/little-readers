@@ -9,7 +9,7 @@ import { RequireParentGate } from "../components/RequireParentGate";
 import { RegistrationSteps } from "../components/RegistrationSteps";
 import { apiRequest, ApiError } from "../services/api";
 import { ROLE_SETS } from "../services/auth-errors";
-import { getActiveChild, getUser, saveActiveChild } from "../services/secure";
+import { getActiveChild, getUser, saveActiveChild, saveUser } from "../services/secure";
 import { colors, radii, shadow } from "../theme";
 
 type ChildRow = {
@@ -82,7 +82,16 @@ export default function ParentScreen() {
 
   const load = useCallback(async () => {
     try {
-      const me = await getUser<{ name?: string }>();
+      const [meApi, localUser] = await Promise.all([
+        apiRequest<{ name?: string; email?: string; id?: string; role?: string }>("/auth/me").catch(
+          () => null
+        ),
+        getUser<{ name?: string; email?: string; id?: string; role?: string }>(),
+      ]);
+      const me = meApi ?? localUser;
+      if (meApi) {
+        await saveUser({ ...(localUser ?? {}), ...meApi });
+      }
       if (me?.name) setParentName(me.name.split(" ")[0] || me.name);
       const [kids, sub, access, agreements] = await Promise.all([
         apiRequest<ChildRow[]>("/children"),

@@ -296,6 +296,47 @@ export async function getCurrentUser(userId: string) {
   };
 }
 
+/** Update the signed-in user's display name and/or login email. */
+export async function updateMyProfile(
+  userId: string,
+  input: { name?: string; email?: string }
+) {
+  const name = input.name?.trim();
+  const email = input.email?.trim().toLowerCase();
+
+  if (name !== undefined && (name.length < 1 || name.length > 120)) {
+    throw new AppError("Name must be 1–120 characters", 400, { code: "INVALID_NAME" });
+  }
+  if (email !== undefined) {
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      throw new AppError("Enter a valid email address", 400, { code: "INVALID_EMAIL" });
+    }
+    const taken = await prisma.user.findFirst({
+      where: { email, NOT: { id: userId } },
+      select: { id: true },
+    });
+    if (taken) {
+      throw new AppError("This email is already registered to another account", 409, {
+        code: "EMAIL_IN_USE",
+      });
+    }
+  }
+  if (name === undefined && email === undefined) {
+    throw new AppError("Nothing to update", 400, { code: "EMPTY_UPDATE" });
+  }
+
+  const user = await prisma.user.update({
+    where: { id: userId },
+    data: {
+      ...(name !== undefined ? { name } : {}),
+      ...(email !== undefined ? { email } : {}),
+    },
+    select: { id: true, name: true, email: true, role: true },
+  });
+
+  return toAuthUser(user);
+}
+
 /**
  * Creates a reset token and delivers email. Fails if delivery cannot be confirmed.
  * Unknown emails: no token created; returns a neutral message without claiming delivery.

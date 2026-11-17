@@ -20,6 +20,7 @@ import {
   requestPasswordReset,
   resetPasswordWithEmailOtp,
   resetPasswordWithToken,
+  updateMyProfile,
 } from "./auth.service.js";
 import { sendEmailOtp, verifyEmailOtp } from "./email-otp.service.js";
 import { env } from "../config/env.js";
@@ -182,6 +183,31 @@ authRouter.get("/me", requireAuth, async (req: AuthenticatedRequest, res, next) 
     next(error);
   }
 });
+
+authRouter.patch(
+  "/me",
+  requireAuth,
+  validateBody(
+    z
+      .object({
+        name: z.string().trim().min(1).max(120).optional(),
+        email: z.string().trim().email().max(254).optional(),
+      })
+      .refine((b) => b.name !== undefined || b.email !== undefined, {
+        message: "Provide a name and/or email to update",
+      })
+  ),
+  async (req: AuthenticatedRequest, res, next) => {
+    try {
+      const user = await updateMyProfile(req.user!.id, req.body);
+      res.status(200).json({
+        data: { ...user, permissions: permissionsForRole(user.role) },
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
 
 authRouter.get("/me/avatar", requireAuth, async (req: AuthenticatedRequest, res, next) => {
   try {

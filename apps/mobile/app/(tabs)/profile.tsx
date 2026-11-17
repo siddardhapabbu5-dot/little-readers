@@ -5,6 +5,8 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { ProfilePhoto } from "../../components/ProfilePhoto";
 import {
   Card,
+  ErrorText,
+  Field,
   PrimaryButton,
   SoftButton,
   Title,
@@ -14,7 +16,8 @@ import {
   isParentGateUnlocked,
 } from "../../components/ParentGateModal";
 import { selectAdminPracticeLearner } from "../../services/admin-nav";
-import { clearSession, getUser } from "../../services/secure";
+import { apiRequest, ApiError } from "../../services/api";
+import { clearSession, getUser, saveUser } from "../../services/secure";
 import { colors } from "../../theme";
 import { SkyBackground } from "../../components/kids";
 
@@ -33,12 +36,79 @@ export default function ProfileTab() {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [gateOpen, setGateOpen] = useState(false);
   const [gateTarget, setGateTarget] = useState<GateTarget | null>(null);
+  const [editing, setEditing] = useState(false);
+  const [editName, setEditName] = useState("");
+  const [editEmail, setEditEmail] = useState("");
+  const [editError, setEditError] = useState<string | null>(null);
+  const [editBusy, setEditBusy] = useState(false);
+  const [editInfo, setEditInfo] = useState<string | null>(null);
 
   useFocusEffect(
     useCallback(() => {
-      void getUser<AuthUser>().then(setUser);
+      void (async () => {
+        const local = await getUser<AuthUser>();
+        setUser(local);
+        try {
+          const me = await apiRequest<AuthUser>("/auth/me");
+          const next = {
+            id: me.id,
+            name: me.name,
+            email: me.email,
+            role: me.role,
+          };
+          setUser(next);
+          await saveUser({ ...(local ?? {}), ...next });
+        } catch {
+          // Keep cached profile if offline.
+        }
+      })();
     }, [])
   );
+
+  function startEdit() {
+    setEditName(user?.name ?? "");
+    setEditEmail(user?.email ?? "");
+    setEditError(null);
+    setEditInfo(null);
+    setEditing(true);
+  }
+
+  async function saveProfile() {
+    setEditError(null);
+    setEditInfo(null);
+    const name = editName.trim();
+    const email = editEmail.trim().toLowerCase();
+    if (!name) {
+      setEditError("Name is required.");
+      return;
+    }
+    if (!email || !email.includes("@")) {
+      setEditError("Enter a valid email address.");
+      return;
+    }
+    setEditBusy(true);
+    try {
+      const updated = await apiRequest<AuthUser>("/auth/me", {
+        method: "PATCH",
+        body: JSON.stringify({ name, email }),
+      });
+      const next = {
+        id: updated.id,
+        name: updated.name,
+        email: updated.email,
+        role: updated.role,
+      };
+      const local = await getUser<AuthUser>();
+      await saveUser({ ...(local ?? {}), ...next });
+      setUser(next);
+      setEditing(false);
+      setEditInfo("Profile updated.");
+    } catch (err) {
+      setEditError(err instanceof ApiError ? err.message : "Could not save profile.");
+    } finally {
+      setEditBusy(false);
+    }
+  }
 
   async function logout() {
     await clearSession();
@@ -84,12 +154,55 @@ export default function ProfileTab() {
       <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.header}>
           <ProfilePhoto size={72} />
-          <View style={{ flex: 1 }}>
+          <View style={{ flex: 1, gap: 4 }}>
             <Title>{user?.name ?? "Profile"}</Title>
             <Text style={styles.meta}>{user?.email}</Text>
             <Text style={styles.role}>{user?.role}</Text>
+            {!editing ? (
+              <Pressable onPress={startEdit} accessibilityRole="button" style={styles.editLink}>
+                <Text style={styles.editLinkText}>Edit name & email</Text>
+              </Pressable>
+            ) : null}
           </View>
         </View>
+
+        {editing ? (
+          <Card style={{ gap: 10 }}>
+            <Text style={styles.editTitle}>Edit profile</Text>
+            <Field
+              label="Name"
+              value={editName}
+              onChangeText={setEditName}
+              autoCapitalize="words"
+              editable={!editBusy}
+            />
+            <Field
+              label="Email ID"
+              value={editEmail}
+              onChangeText={setEditEmail}
+              autoCapitalize="none"
+              keyboardType="email-address"
+              editable={!editBusy}
+            />
+            <ErrorText>{editError}</ErrorText>
+            <View style={styles.editActions}>
+              <SoftButton
+                label="Cancel"
+                onPress={() => {
+                  if (editBusy) return;
+                  setEditing(false);
+                  setEditError(null);
+                }}
+              />
+              <PrimaryButton
+                label={editBusy ? "Saving…" : "Save"}
+                onPress={() => void saveProfile()}
+                disabled={editBusy}
+              />
+            </View>
+          </Card>
+        ) : null}
+        {editInfo ? <Text style={styles.ok}>{editInfo}</Text> : null}
 
         <Card style={{ gap: 10 }}>
           {isParentFamily ? (
@@ -216,6 +329,11 @@ const styles = StyleSheet.create({
   header: { flexDirection: "row", gap: 14, alignItems: "center" },
   meta: { color: colors.textMuted },
   role: { color: colors.primary, fontWeight: "800", marginTop: 2 },
+  editLink: { alignSelf: "flex-start", marginTop: 4, paddingVertical: 2 },
+  editLinkText: { color: colors.primary, fontWeight: "800", fontSize: 14 },
+  editTitle: { fontWeight: "900", color: colors.text, fontSize: 16 },
+  editActions: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+  ok: { color: colors.green, fontWeight: "800" },
   row: {
     flexDirection: "row",
     justifyContent: "space-between",

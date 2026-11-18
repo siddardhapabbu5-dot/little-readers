@@ -11,7 +11,7 @@ import { adminPasswordSchema, passwordSchema } from "@little-readers/validation"
 import { AppError } from "../lib/errors.js";
 import { sendPasswordResetEmail } from "../lib/email.js";
 import { passwordVersion, signAccessToken } from "../lib/jwt.js";
-import { hashPassword, verifyPassword } from "../lib/password.js";
+import { hashPassword, verifyLoginPassword, verifyPassword } from "../lib/password.js";
 import { assertNotLocked, clearFailedAttempts, recordFailedAttempt } from "../lib/lockout.js";
 import { prisma } from "../lib/prisma.js";
 import { env } from "../config/env.js";
@@ -187,14 +187,15 @@ export async function registerParent(
 
 export async function loginUser(input: LoginInput) {
   const email = input.email.trim().toLowerCase();
-  const password = input.password.trim();
+  // Keep the submitted password as-is; verifyLoginPassword handles trim compatibility.
+  const password = input.password;
   const user = await prisma.user.findUnique({ where: { email } });
   if (!user || !user.isActive) {
     throw new AppError("Invalid email or password", 401);
   }
   assertNotLocked("login", user.loginLockedUntil);
 
-  const valid = await verifyPassword(password, user.passwordHash);
+  const valid = await verifyLoginPassword(password, user.passwordHash);
   if (!valid) {
     await recordFailedAttempt("login", user.id);
     throw new AppError("Invalid email or password", 401);

@@ -1,8 +1,9 @@
 "use client";
 
-import { FormEvent, Suspense, useMemo, useState } from "react";
+import { FormEvent, Suspense, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { apiRequest, ApiClientError } from "@/lib/api";
+import { apiRequest, LOGIN_REQUEST_TIMEOUT_MS } from "@/lib/api";
+import { friendlyLoginError } from "@/lib/auth-errors";
 import { saveToken } from "@/lib/auth-storage";
 import { resolvePostLoginPath } from "@/lib/auth-redirect";
 import type { LoginResponse } from "@little-readers/types";
@@ -52,6 +53,8 @@ function LoginForm() {
   const [showPassword, setShowPassword] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [roleOpen, setRoleOpen] = useState(false);
+  const loginRequestIdRef = useRef(0);
+  const loadingRef = useRef(false);
 
   const next = useMemo(
     () => safeNextPath(searchParams.get("next")),
@@ -72,28 +75,34 @@ function LoginForm() {
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    // Single-flight: block duplicate click/Enter before React re-renders disabled.
+    if (loadingRef.current) return;
     setError(null);
     const form = new FormData(event.currentTarget);
     const email = String(form.get("email") ?? "");
     const password = String(form.get("password") ?? "");
     if (!validate(email, password)) return;
 
+    const requestId = ++loginRequestIdRef.current;
+    loadingRef.current = true;
     setLoading(true);
     try {
       const data = await apiRequest<LoginResponse>("/auth/login", {
         method: "POST",
+        timeoutMs: LOGIN_REQUEST_TIMEOUT_MS,
         body: JSON.stringify({ email, password }),
       });
+      if (loginRequestIdRef.current !== requestId) return;
       saveToken(data.tokens.accessToken);
       router.push(resolvePostLoginPath(data.user, next));
     } catch (err) {
-      setError(
-        err instanceof ApiClientError
-          ? err.message
-          : "Unable to log in. Please try again."
-      );
+      if (loginRequestIdRef.current !== requestId) return;
+      setError(friendlyLoginError(err));
     } finally {
-      setLoading(false);
+      if (loginRequestIdRef.current === requestId) {
+        loadingRef.current = false;
+        setLoading(false);
+      }
     }
   }
 
@@ -217,6 +226,7 @@ function LoginForm() {
                   type="email"
                   autoComplete="email"
                   required
+                  disabled={loading}
                   placeholder="Enter your email address"
                   aria-invalid={Boolean(fieldErrors.email)}
                 />
@@ -236,12 +246,14 @@ function LoginForm() {
                   autoComplete="current-password"
                   required
                   minLength={8}
+                  disabled={loading}
                   placeholder="Enter your password"
                   aria-invalid={Boolean(fieldErrors.password)}
                 />
                 <button
                   type="button"
                   className="lr-pro-eye"
+                  disabled={loading}
                   onClick={() => setShowPassword((v) => !v)}
                   aria-label={showPassword ? "Hide password" : "Show password"}
                 >
@@ -253,7 +265,7 @@ function LoginForm() {
               ) : null}
             </label>
 
-            <button type="submit" className="lr-pro-submit" disabled={loading}>
+            <button type="submit" className="lr-pro-submit" disabled={loading} aria-busy={loading}>
               {loading ? "Signing in…" : "→ Log In"}
             </button>
 

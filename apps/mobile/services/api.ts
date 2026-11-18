@@ -59,18 +59,57 @@ function handleAuthFailure(
   notifyUnauthorized();
 }
 
+export const LOGIN_REQUEST_TIMEOUT_MS = 25_000;
+
+function mergeAbortSignals(
+  external: AbortSignal | null | undefined,
+  timeoutMs: number | undefined
+): { signal?: AbortSignal; clear: () => void } {
+  if (!timeoutMs || timeoutMs <= 0) {
+    return { signal: external ?? undefined, clear: () => undefined };
+  }
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  const onExternalAbort = () => controller.abort();
+  if (external) {
+    if (external.aborted) controller.abort();
+    else external.addEventListener("abort", onExternalAbort, { once: true });
+  }
+  return {
+    signal: controller.signal,
+    clear: () => {
+      clearTimeout(timer);
+      external?.removeEventListener("abort", onExternalAbort);
+    },
+  };
+}
+
 export async function apiRequest<T>(
   path: string,
-  options: RequestInit & { token?: string; mobile?: boolean } = {}
+  options: RequestInit & {
+    token?: string;
+    mobile?: boolean;
+    /** Client-side request timeout in ms (login uses ~25s). No automatic retries. */
+    timeoutMs?: number;
+  } = {}
 ): Promise<T> {
-  const { token, mobile = isNativeMobileClient(), headers, ...rest } = options;
+  const {
+    token,
+    mobile = isNativeMobileClient(),
+    headers,
+    timeoutMs,
+    signal: externalSignal,
+    ...rest
+  } = options;
   const auth = token ?? (await getToken()) ?? undefined;
   const installationId = mobile ? await getOrCreateInstallationId() : undefined;
+  const { signal, clear } = mergeAbortSignals(externalSignal, timeoutMs);
 
   let response: Response;
   try {
     response = await fetch(`${API_URL}${path}`, {
       ...rest,
+      signal,
       headers: {
         "Content-Type": "application/json",
         ...(auth ? { Authorization: `Bearer ${auth}` } : {}),
@@ -83,13 +122,21 @@ export async function apiRequest<T>(
       },
     });
   } catch (err) {
+    clear();
     markNetworkUnreachable();
+    const aborted =
+      (err instanceof Error && err.name === "AbortError") ||
+      (typeof DOMException !== "undefined" && err instanceof DOMException && err.name === "AbortError");
     throw new ApiError(
-      "We couldn't reach Learn Wise. Check your connection and try again.",
+      aborted
+        ? "The sign-in request timed out. Please try again."
+        : "We couldn't reach Learn Wise. Check your connection and try again.",
       0,
       undefined,
-      "NETWORK_UNAVAILABLE"
+      aborted ? "REQUEST_TIMEOUT" : "NETWORK_UNAVAILABLE"
     );
+  } finally {
+    clear();
   }
 
   markNetworkReachable();

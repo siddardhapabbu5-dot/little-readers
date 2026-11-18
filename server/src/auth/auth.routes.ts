@@ -24,6 +24,7 @@ import {
 } from "./auth.service.js";
 import { sendEmailOtp, verifyEmailOtp } from "./email-otp.service.js";
 import { env } from "../config/env.js";
+import { passwordAttemptRateLimit } from "../lib/password-rate-limit.js";
 import { requireAuth, type AuthenticatedRequest } from "../middleware/auth.js";
 import { permissionsForRole } from "./permissions.js";
 import { validateBody } from "../middleware/validate.js";
@@ -39,23 +40,12 @@ const emailOtpRateLimit = rateLimit({
     const email = String((req.body as { email?: string })?.email ?? "").toLowerCase();
     return `email-otp:${req.ip}:${email}`;
   },
-  message: { error: "Too many verification requests. Please try again later." },
+  message: { error: "Too many verification requests. Please try again later.", code: "RATE_LIMITED" },
   skip: () => process.env.VITEST === "true" || process.env.NODE_ENV === "test",
 });
 
-/** Per IP + email; the per-account lockout in loginUser covers attackers rotating IPs. */
-const passwordAttemptRateLimit = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: env.NODE_ENV === "production" ? 20 : 200,
-  standardHeaders: true,
-  legacyHeaders: false,
-  keyGenerator: (req) => {
-    const email = String((req.body as { email?: string })?.email ?? "").toLowerCase();
-    return `pw:${req.path}:${req.ip}:${email}`;
-  },
-  message: { error: "Too many attempts. Please try again later.", code: "RATE_LIMITED" },
-  skip: () => process.env.VITEST === "true" || process.env.NODE_ENV === "test",
-});
+/** Shared Redis-backed (or bounded memory fallback) password-attempt limiter. */
+const passwordAttemptLimiter = passwordAttemptRateLimit();
 
 authRouter.post(
   "/email-otp/send",
@@ -108,7 +98,7 @@ authRouter.post("/register", validateBody(registerSchema), async (req, res, next
   }
 });
 
-authRouter.post("/login", passwordAttemptRateLimit, validateBody(loginSchema), async (req, res, next) => {
+authRouter.post("/login", passwordAttemptLimiter, validateBody(loginSchema), async (req, res, next) => {
   try {
     const result = await loginUser(req.body);
     res.status(200).json({ data: result });
@@ -119,7 +109,7 @@ authRouter.post("/login", passwordAttemptRateLimit, validateBody(loginSchema), a
 
 authRouter.post(
   "/forgot-password",
-  passwordAttemptRateLimit,
+  passwordAttemptLimiter,
   validateBody(forgotPasswordSchema),
   async (req, res, next) => {
     try {
@@ -134,7 +124,7 @@ authRouter.post(
 
 authRouter.post(
   "/reset-password",
-  passwordAttemptRateLimit,
+  passwordAttemptLimiter,
   validateBody(resetPasswordSchema),
   async (req, res, next) => {
     try {

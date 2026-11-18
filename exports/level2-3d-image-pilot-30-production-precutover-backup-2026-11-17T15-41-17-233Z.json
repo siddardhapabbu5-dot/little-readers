@@ -1,0 +1,314 @@
+{
+  "createdAt": "2026-11-17T15:41:17.582Z",
+  "purpose": "pre-cutover-backup-read-only",
+  "batch": "batch-d2-pilot-30",
+  "level": "LEVEL_2",
+  "matchBy": "wordId",
+  "databaseWrites": 0,
+  "db": {
+    "mode": "local",
+    "host": "loca…"
+  },
+  "rows": [
+    {
+      "wordId": "cmwczbkik006fkoeuf2lekxiu",
+      "word": "bunch",
+      "categoryCode": "TYPES_OF_NOUNS",
+      "categoryLabel": "Types of Nouns",
+      "groupCode": "D",
+      "levelCode": "LEVEL_2",
+      "currentImageUrl": null,
+      "proposedImageUrl": "https://api.siwiapp.shop/media/vocab/pilot/batch-d2/cmwczbkik006fkoeuf2lekxiu.jpg"
+    },
+    {
+      "wordId": "cmwczbkih006dkoeudx49i6jt",
+      "word": "class",
+      "categoryCode": "TYPES_OF_NOUNS",
+      "categoryLabel": "Types of Nouns",
+      "groupCode": "D",
+      "levelCode": "LEVEL_2",
+      "currentImageUrl": null,
+      "proposedImageUrl": "https://api.siwiapp.shop/media/vocab/pilot/batch-d2/cmwczbkih006dkoeudx49i6jt.jpg"
+    },
+    {
+      "wordId": "cmwczbkim006hkoeuiog08c3v",
+      "word": "crowd",
+      "categoryCode": "TYPES_OF_NOUNS",
+      "categoryLabel": "Types of Nouns",
+      "groupCode": "D",
+      "levelCode": "LEVEL_2",
+      "currentImageUrl": null,
+      "proposedImageUrl": "https://api.siwiapp.shop/media/vocab/pilot/batch-d2/cmwczbkim006hkoeuiog08c3v.jpg"
+    },
+    {
+      "wordId": "cmwczbkia0067koeu65wdwo7q",
+      "word": "flock",
+      "categoryCode": "TYPES_OF_NOUNS",
+      "categoryLabel": "Types of Nouns",
+      "groupCode": "D",
+      "levelCode": "LEVEL_2",
+      "currentImageUrl": null,
+      "proposedImageUrl": "https://api.siwiapp.shop/media/vocab/pilot/batch-d2/cmwczbkia0067koeu65wdwo7q.jpg"
+    },
+    {
+      "wordId": "cmwczbkic0069koeuf06u51px",
+      "word": "herd",
+      "categoryCode": "TYPES_OF_NOUNS",
+      "categoryLabel": "Types of Nouns",
+      "groupCode": "D",
+      "levelCode": "LEVEL_2",
+      "currentImageUrl": null,
+      "proposedImageUrl": "https://api.siwiapp.shop/media/vocab/pilot/batch-d2/cmwczbkic0069koeuf06u51px.jpg"
+    },
+    {
+      "wordId": "cmwf0g9le00g1kocw4qtmhhu4",
+      "word": "market",
+      "categoryCode": "TYPES_OF_NOUNS",
+      "categoryLabel": "Types of Nouns",
+      "groupCode": "D",
+      "levelCode": "LEVEL_2",
+      "currentImageUrl": null,
+      "proposedImageUrl": "https://api.siwiapp.shop/media/vocab/pilot/batch-d2/cmwf0g9le00g1kocw4qtmhhu4.jpg"
+    },
+    {
+      "wordId": "cmwf0g9lh00g3kocw2gb4add2",
+      "word": "medal",
+      "categoryCode": "TYPES_OF_NOUNS",
+      "categoryLabel": "Types of Nouns",
+      "groupCode": "D",
+      "levelCode": "LEVEL_2",
+      "currentImageUrl": null,
+      "proposedImageUrl": "https://api.siwiapp.shop/media/vocab/pilot/batch-d2/cmwf0g9lh00g3kocw2gb4add2.jpg"
+    },
+    {
+      "wordId": "cmwf0g9lk00g5kocwnud7a95z",
+      "word": "melody",
+      "categoryCode": "TYPES_OF_NOUNS",
+      "categoryLabel": "Types of Nouns",
+      "groupCode": "D",
+      "levelCode": "LEVEL_2",
+      "currentImageUrl": null,
+      "proposedImageUrl": "https://api.siwiapp.shop/media/vocab/pilot/batch-d2/cmwf0g9lk00g5kocwnud7a95z.jpg"
+    },
+    {
+      "wordId": "cmwf0g9lm00g7kocwp08ribxp",
+      "word": "memory",
+      "categoryCode": "TYPES_OF_NOUNS",
+      "categoryLabel": "Types of Nouns",
+      "groupCode": "D",
+      "levelCode": "LEVEL_2",
+      "currentImageUrl": null,
+      "proposedImageUrl": "https://api.siwiapp.shop/media/vocab/pilot/batch-d2/cmwf0g9lm00g7kocwp08ribxp.jpg"
+    },
+    {
+      "wordId": "cmwf0g9lp00g9kocwizzq83o8",
+      "word": "message",
+      "categoryCode": "TYPES_OF_NOUNS",
+      "categoryLabel": "Types of Nouns",
+      "groupCode": "D",
+      "levelCode": "LEVEL_2",
+      "currentImageUrl": null,
+      "proposedImageUrl": "https://api.siwiapp.shop/media/vocab/pilot/batch-d2/cmwf0g9lp00g9kocwizzq83o8.jpg"
+    },
+    {
+      "wordId": "cmwf0g9lr00gbkocw0v2pvk8t",
+      "word": "metal",
+      "categoryCode": "TYPES_OF_NOUNS",
+      "categoryLabel": "Types of Nouns",
+      "groupCode": "D",
+      "levelCode": "LEVEL_2",
+      "currentImageUrl": null,
+      "proposedImageUrl": "https://api.siwiapp.shop/media/vocab/pilot/batch-d2/cmwf0g9lr00gbkocw0v2pvk8t.jpg"
+    },
+    {
+      "wordId": "cmwf0g9lt00gdkocwdw8bz8xa",
+      "word": "microscope",
+      "categoryCode": "TYPES_OF_NOUNS",
+      "categoryLabel": "Types of Nouns",
+      "groupCode": "D",
+      "levelCode": "LEVEL_2",
+      "currentImageUrl": null,
+      "proposedImageUrl": "https://api.siwiapp.shop/media/vocab/pilot/batch-d2/cmwf0g9lt00gdkocwdw8bz8xa.jpg"
+    },
+    {
+      "wordId": "cmwf0g9lw00gfkocwzmiuth9r",
+      "word": "midnight",
+      "categoryCode": "TYPES_OF_NOUNS",
+      "categoryLabel": "Types of Nouns",
+      "groupCode": "D",
+      "levelCode": "LEVEL_2",
+      "currentImageUrl": null,
+      "proposedImageUrl": "https://api.siwiapp.shop/media/vocab/pilot/batch-d2/cmwf0g9lw00gfkocwzmiuth9r.jpg"
+    },
+    {
+      "wordId": "cmwf0g9lx00ghkocw7tsvmz4c",
+      "word": "milk",
+      "categoryCode": "TYPES_OF_NOUNS",
+      "categoryLabel": "Types of Nouns",
+      "groupCode": "D",
+      "levelCode": "LEVEL_2",
+      "currentImageUrl": null,
+      "proposedImageUrl": "https://api.siwiapp.shop/media/vocab/pilot/batch-d2/cmwf0g9lx00ghkocw7tsvmz4c.jpg"
+    },
+    {
+      "wordId": "cmwf0g9m000gjkocwbdb2os2k",
+      "word": "mineral",
+      "categoryCode": "TYPES_OF_NOUNS",
+      "categoryLabel": "Types of Nouns",
+      "groupCode": "D",
+      "levelCode": "LEVEL_2",
+      "currentImageUrl": null,
+      "proposedImageUrl": "https://api.siwiapp.shop/media/vocab/pilot/batch-d2/cmwf0g9m000gjkocwbdb2os2k.jpg"
+    },
+    {
+      "wordId": "cmwf0g9m300glkocw2wunxywl",
+      "word": "mirror",
+      "categoryCode": "TYPES_OF_NOUNS",
+      "categoryLabel": "Types of Nouns",
+      "groupCode": "D",
+      "levelCode": "LEVEL_2",
+      "currentImageUrl": null,
+      "proposedImageUrl": "https://api.siwiapp.shop/media/vocab/pilot/batch-d2/cmwf0g9m300glkocw2wunxywl.jpg"
+    },
+    {
+      "wordId": "cmwf0g9m800gnkocwrb6i7qho",
+      "word": "mixture",
+      "categoryCode": "TYPES_OF_NOUNS",
+      "categoryLabel": "Types of Nouns",
+      "groupCode": "D",
+      "levelCode": "LEVEL_2",
+      "currentImageUrl": null,
+      "proposedImageUrl": "https://api.siwiapp.shop/media/vocab/pilot/batch-d2/cmwf0g9m800gnkocwrb6i7qho.jpg"
+    },
+    {
+      "wordId": "cmwf0g9md00gpkocwjysxsqcx",
+      "word": "model",
+      "categoryCode": "TYPES_OF_NOUNS",
+      "categoryLabel": "Types of Nouns",
+      "groupCode": "D",
+      "levelCode": "LEVEL_2",
+      "currentImageUrl": null,
+      "proposedImageUrl": "https://api.siwiapp.shop/media/vocab/pilot/batch-d2/cmwf0g9md00gpkocwjysxsqcx.jpg"
+    },
+    {
+      "wordId": "cmwf0g9mi00grkocwwh8v5tdx",
+      "word": "moment",
+      "categoryCode": "TYPES_OF_NOUNS",
+      "categoryLabel": "Types of Nouns",
+      "groupCode": "D",
+      "levelCode": "LEVEL_2",
+      "currentImageUrl": null,
+      "proposedImageUrl": "https://api.siwiapp.shop/media/vocab/pilot/batch-d2/cmwf0g9mi00grkocwwh8v5tdx.jpg"
+    },
+    {
+      "wordId": "cmwf0g9mo00gtkocwcwtxbft1",
+      "word": "money",
+      "categoryCode": "TYPES_OF_NOUNS",
+      "categoryLabel": "Types of Nouns",
+      "groupCode": "D",
+      "levelCode": "LEVEL_2",
+      "currentImageUrl": null,
+      "proposedImageUrl": "https://api.siwiapp.shop/media/vocab/pilot/batch-d2/cmwf0g9mo00gtkocwcwtxbft1.jpg"
+    },
+    {
+      "wordId": "cmwf0g9mr00gvkocwp4reh47v",
+      "word": "monkey",
+      "categoryCode": "TYPES_OF_NOUNS",
+      "categoryLabel": "Types of Nouns",
+      "groupCode": "D",
+      "levelCode": "LEVEL_2",
+      "currentImageUrl": null,
+      "proposedImageUrl": "https://api.siwiapp.shop/media/vocab/pilot/batch-d2/cmwf0g9mr00gvkocwp4reh47v.jpg"
+    },
+    {
+      "wordId": "cmwf0g9mu00gxkocw6estxyvn",
+      "word": "monster",
+      "categoryCode": "TYPES_OF_NOUNS",
+      "categoryLabel": "Types of Nouns",
+      "groupCode": "D",
+      "levelCode": "LEVEL_2",
+      "currentImageUrl": null,
+      "proposedImageUrl": "https://api.siwiapp.shop/media/vocab/pilot/batch-d2/cmwf0g9mu00gxkocw6estxyvn.jpg"
+    },
+    {
+      "wordId": "cmwf0g9mw00gzkocwxtl5cypj",
+      "word": "moon",
+      "categoryCode": "TYPES_OF_NOUNS",
+      "categoryLabel": "Types of Nouns",
+      "groupCode": "D",
+      "levelCode": "LEVEL_2",
+      "currentImageUrl": null,
+      "proposedImageUrl": "https://api.siwiapp.shop/media/vocab/pilot/batch-d2/cmwf0g9mw00gzkocwxtl5cypj.jpg"
+    },
+    {
+      "wordId": "cmwf0g9mz00h1kocwmqigv5qq",
+      "word": "mosquito",
+      "categoryCode": "TYPES_OF_NOUNS",
+      "categoryLabel": "Types of Nouns",
+      "groupCode": "D",
+      "levelCode": "LEVEL_2",
+      "currentImageUrl": null,
+      "proposedImageUrl": "https://api.siwiapp.shop/media/vocab/pilot/batch-d2/cmwf0g9mz00h1kocwmqigv5qq.jpg"
+    },
+    {
+      "wordId": "cmwf0g9n300h3kocwyzj7sq3n",
+      "word": "mountain",
+      "categoryCode": "TYPES_OF_NOUNS",
+      "categoryLabel": "Types of Nouns",
+      "groupCode": "D",
+      "levelCode": "LEVEL_2",
+      "currentImageUrl": null,
+      "proposedImageUrl": "https://api.siwiapp.shop/media/vocab/pilot/batch-d2/cmwf0g9n300h3kocwyzj7sq3n.jpg"
+    },
+    {
+      "wordId": "cmwf0g9n600h5kocw0jyorqv7",
+      "word": "museum",
+      "categoryCode": "TYPES_OF_NOUNS",
+      "categoryLabel": "Types of Nouns",
+      "groupCode": "D",
+      "levelCode": "LEVEL_2",
+      "currentImageUrl": null,
+      "proposedImageUrl": "https://api.siwiapp.shop/media/vocab/pilot/batch-d2/cmwf0g9n600h5kocw0jyorqv7.jpg"
+    },
+    {
+      "wordId": "cmwf0g9n900h7kocwzl3ep5ax",
+      "word": "musician",
+      "categoryCode": "TYPES_OF_NOUNS",
+      "categoryLabel": "Types of Nouns",
+      "groupCode": "D",
+      "levelCode": "LEVEL_2",
+      "currentImageUrl": null,
+      "proposedImageUrl": "https://api.siwiapp.shop/media/vocab/pilot/batch-d2/cmwf0g9n900h7kocwzl3ep5ax.jpg"
+    },
+    {
+      "wordId": "cmwf0g9nc00h9kocw56357u8q",
+      "word": "mystery",
+      "categoryCode": "TYPES_OF_NOUNS",
+      "categoryLabel": "Types of Nouns",
+      "groupCode": "D",
+      "levelCode": "LEVEL_2",
+      "currentImageUrl": null,
+      "proposedImageUrl": "https://api.siwiapp.shop/media/vocab/pilot/batch-d2/cmwf0g9nc00h9kocw56357u8q.jpg"
+    },
+    {
+      "wordId": "cmwf0g9ng00hbkocwoyaxuup8",
+      "word": "nation",
+      "categoryCode": "TYPES_OF_NOUNS",
+      "categoryLabel": "Types of Nouns",
+      "groupCode": "D",
+      "levelCode": "LEVEL_2",
+      "currentImageUrl": null,
+      "proposedImageUrl": "https://api.siwiapp.shop/media/vocab/pilot/batch-d2/cmwf0g9ng00hbkocwoyaxuup8.jpg"
+    },
+    {
+      "wordId": "cmwczbkif006bkoeusx2v21uk",
+      "word": "team",
+      "categoryCode": "TYPES_OF_NOUNS",
+      "categoryLabel": "Types of Nouns",
+      "groupCode": "D",
+      "levelCode": "LEVEL_2",
+      "currentImageUrl": null,
+      "proposedImageUrl": "https://api.siwiapp.shop/media/vocab/pilot/batch-d2/cmwczbkif006bkoeusx2v21uk.jpg"
+    }
+  ]
+}

@@ -1,0 +1,322 @@
+{
+    "batch":  "level2-pilot-30",
+    "filenamePattern":  "{wordId}.jpg",
+    "categoryCode":  "TYPES_OF_NOUNS",
+    "items":  [
+                  {
+                      "word":  "bunch",
+                      "categoryCode":  "TYPES_OF_NOUNS",
+                      "wordId":  "cmwczbkik006fkoeuf2lekxiu",
+                      "description":  "Cute 3D cartoon of a friendly bunch of bright bananas tied together with a soft ribbon, soft pastel yellows and greens, rounded shapes, soft lighting, clean light background, no text.",
+                      "filename":  "cmwczbkik006fkoeuf2lekxiu.jpg",
+                      "imagePath":  "/media/vocab/pilot/batch-d2/cmwczbkik006fkoeuf2lekxiu.jpg",
+                      "categoryLabel":  "Types of Nouns",
+                      "groupCode":  "D"
+                  },
+                  {
+                      "word":  "class",
+                      "categoryCode":  "TYPES_OF_NOUNS",
+                      "wordId":  "cmwczbkih006dkoeudx49i6jt",
+                      "description":  "Cute 3D cartoon classroom scene with a small group of friendly kids sitting at rounded desks and a smiling teacher figure, soft pastel colours, soft lighting, clean light background, no text.",
+                      "filename":  "cmwczbkih006dkoeudx49i6jt.jpg",
+                      "imagePath":  "/media/vocab/pilot/batch-d2/cmwczbkih006dkoeudx49i6jt.jpg",
+                      "categoryLabel":  "Types of Nouns",
+                      "groupCode":  "D"
+                  },
+                  {
+                      "word":  "crowd",
+                      "categoryCode":  "TYPES_OF_NOUNS",
+                      "wordId":  "cmwczbkim006hkoeuiog08c3v",
+                      "description":  "Cute 3D cartoon of a cheerful crowd of tiny rounded people standing together happily, soft pastel colours, large friendly eyes, soft lighting, clean light background, no text.",
+                      "filename":  "cmwczbkim006hkoeuiog08c3v.jpg",
+                      "imagePath":  "/media/vocab/pilot/batch-d2/cmwczbkim006hkoeuiog08c3v.jpg",
+                      "categoryLabel":  "Types of Nouns",
+                      "groupCode":  "D"
+                  },
+                  {
+                      "word":  "flock",
+                      "categoryCode":  "TYPES_OF_NOUNS",
+                      "wordId":  "cmwczbkia0067koeu65wdwo7q",
+                      "description":  "Cute 3D cartoon flock of soft fluffy birds flying together in a gentle sky, pastel blues and whites, rounded shapes, soft lighting, clean light background, no text.",
+                      "filename":  "cmwczbkia0067koeu65wdwo7q.jpg",
+                      "imagePath":  "/media/vocab/pilot/batch-d2/cmwczbkia0067koeu65wdwo7q.jpg",
+                      "categoryLabel":  "Types of Nouns",
+                      "groupCode":  "D"
+                  },
+                  {
+                      "word":  "herd",
+                      "categoryCode":  "TYPES_OF_NOUNS",
+                      "wordId":  "cmwczbkic0069koeuf06u51px",
+                      "description":  "Cute 3D cartoon herd of friendly cows standing together on soft green grass, large expressive eyes, pastel colours, soft lighting, clean light background, no text.",
+                      "filename":  "cmwczbkic0069koeuf06u51px.jpg",
+                      "imagePath":  "/media/vocab/pilot/batch-d2/cmwczbkic0069koeuf06u51px.jpg",
+                      "categoryLabel":  "Types of Nouns",
+                      "groupCode":  "D"
+                  },
+                  {
+                      "word":  "market",
+                      "categoryCode":  "TYPES_OF_NOUNS",
+                      "wordId":  "cmwf0g9le00g1kocw4qtmhhu4",
+                      "description":  "Cute 3D cartoon outdoor market stall with colourful fruits and vegetables on rounded tables, soft pastel colours, soft lighting, clean light background, no text.",
+                      "filename":  "cmwf0g9le00g1kocw4qtmhhu4.jpg",
+                      "imagePath":  "/media/vocab/pilot/batch-d2/cmwf0g9le00g1kocw4qtmhhu4.jpg",
+                      "categoryLabel":  "Types of Nouns",
+                      "groupCode":  "D"
+                  },
+                  {
+                      "word":  "medal",
+                      "categoryCode":  "TYPES_OF_NOUNS",
+                      "wordId":  "cmwf0g9lh00g3kocw2gb4add2",
+                      "description":  "Cute 3D cartoon shiny gold medal with a soft ribbon, glowing gently, rounded premium look, soft pastel colours, soft lighting, clean light background, no text.",
+                      "filename":  "cmwf0g9lh00g3kocw2gb4add2.jpg",
+                      "imagePath":  "/media/vocab/pilot/batch-d2/cmwf0g9lh00g3kocw2gb4add2.jpg",
+                      "categoryLabel":  "Types of Nouns",
+                      "groupCode":  "D"
+                  },
+                  {
+                      "word":  "melody",
+                      "categoryCode":  "TYPES_OF_NOUNS",
+                      "wordId":  "cmwf0g9lk00g5kocwnud7a95z",
+                      "description":  "Cute 3D cartoon of floating colourful music notes and a small friendly musical bird, soft pastel colours, rounded shapes, soft lighting, clean light background, no text.",
+                      "filename":  "cmwf0g9lk00g5kocwnud7a95z.jpg",
+                      "imagePath":  "/media/vocab/pilot/batch-d2/cmwf0g9lk00g5kocwnud7a95z.jpg",
+                      "categoryLabel":  "Types of Nouns",
+                      "groupCode":  "D"
+                  },
+                  {
+                      "word":  "memory",
+                      "categoryCode":  "TYPES_OF_NOUNS",
+                      "wordId":  "cmwf0g9lm00g7kocwp08ribxp",
+                      "description":  "Cute 3D cartoon of a soft glowing scrapbook photo album with a tiny smiling star memory spark, pastel colours, soft lighting, clean light background, no text.",
+                      "filename":  "cmwf0g9lm00g7kocwp08ribxp.jpg",
+                      "imagePath":  "/media/vocab/pilot/batch-d2/cmwf0g9lm00g7kocwp08ribxp.jpg",
+                      "categoryLabel":  "Types of Nouns",
+                      "groupCode":  "D"
+                  },
+                  {
+                      "word":  "message",
+                      "categoryCode":  "TYPES_OF_NOUNS",
+                      "wordId":  "cmwf0g9lp00g9kocwizzq83o8",
+                      "description":  "Cute 3D cartoon of a friendly sealed envelope with a tiny heart sticker, soft pastel pinks and creams, rounded shapes, soft lighting, clean light background, no text.",
+                      "filename":  "cmwf0g9lp00g9kocwizzq83o8.jpg",
+                      "imagePath":  "/media/vocab/pilot/batch-d2/cmwf0g9lp00g9kocwizzq83o8.jpg",
+                      "categoryLabel":  "Types of Nouns",
+                      "groupCode":  "D"
+                  },
+                  {
+                      "word":  "metal",
+                      "categoryCode":  "TYPES_OF_NOUNS",
+                      "wordId":  "cmwf0g9lr00gbkocw0v2pvk8t",
+                      "description":  "Cute 3D cartoon of a smooth shiny metal cube and a friendly rounded magnet character, soft silver and pastel accents, soft lighting, clean light background, no text.",
+                      "filename":  "cmwf0g9lr00gbkocw0v2pvk8t.jpg",
+                      "imagePath":  "/media/vocab/pilot/batch-d2/cmwf0g9lr00gbkocw0v2pvk8t.jpg",
+                      "categoryLabel":  "Types of Nouns",
+                      "groupCode":  "D"
+                  },
+                  {
+                      "word":  "microscope",
+                      "categoryCode":  "TYPES_OF_NOUNS",
+                      "wordId":  "cmwf0g9lt00gdkocwdw8bz8xa",
+                      "description":  "Cute 3D cartoon microscope with a smiling face on the eyepiece, soft pastel lab colours, rounded shapes, soft lighting, clean light background, no text.",
+                      "filename":  "cmwf0g9lt00gdkocwdw8bz8xa.jpg",
+                      "imagePath":  "/media/vocab/pilot/batch-d2/cmwf0g9lt00gdkocwdw8bz8xa.jpg",
+                      "categoryLabel":  "Types of Nouns",
+                      "groupCode":  "D"
+                  },
+                  {
+                      "word":  "midnight",
+                      "categoryCode":  "TYPES_OF_NOUNS",
+                      "wordId":  "cmwf0g9lw00gfkocwzmiuth9r",
+                      "description":  "Cute 3D cartoon night scene with a soft crescent moon, twinkling stars, and a sleepy friendly owl, deep pastel blues, soft lighting, clean light background, no text.",
+                      "filename":  "cmwf0g9lw00gfkocwzmiuth9r.jpg",
+                      "imagePath":  "/media/vocab/pilot/batch-d2/cmwf0g9lw00gfkocwzmiuth9r.jpg",
+                      "categoryLabel":  "Types of Nouns",
+                      "groupCode":  "D"
+                  },
+                  {
+                      "word":  "milk",
+                      "categoryCode":  "TYPES_OF_NOUNS",
+                      "wordId":  "cmwf0g9lx00ghkocw7tsvmz4c",
+                      "description":  "Cute 3D cartoon glass of milk with a friendly splash character, soft white and pastel blue, rounded shapes, soft lighting, clean light background, no text.",
+                      "filename":  "cmwf0g9lx00ghkocw7tsvmz4c.jpg",
+                      "imagePath":  "/media/vocab/pilot/batch-d2/cmwf0g9lx00ghkocw7tsvmz4c.jpg",
+                      "categoryLabel":  "Types of Nouns",
+                      "groupCode":  "D"
+                  },
+                  {
+                      "word":  "mineral",
+                      "categoryCode":  "TYPES_OF_NOUNS",
+                      "wordId":  "cmwf0g9m000gjkocwbdb2os2k",
+                      "description":  "Cute 3D cartoon sparkling crystal mineral gem sitting on soft rock, pastel rainbow shine, rounded edges, soft lighting, clean light background, no text.",
+                      "filename":  "cmwf0g9m000gjkocwbdb2os2k.jpg",
+                      "imagePath":  "/media/vocab/pilot/batch-d2/cmwf0g9m000gjkocwbdb2os2k.jpg",
+                      "categoryLabel":  "Types of Nouns",
+                      "groupCode":  "D"
+                  },
+                  {
+                      "word":  "mirror",
+                      "categoryCode":  "TYPES_OF_NOUNS",
+                      "wordId":  "cmwf0g9m300glkocw2wunxywl",
+                      "description":  "Cute 3D cartoon oval mirror with a friendly reflection of a smiling child character, soft pastel frame, soft lighting, clean light background, no text.",
+                      "filename":  "cmwf0g9m300glkocw2wunxywl.jpg",
+                      "imagePath":  "/media/vocab/pilot/batch-d2/cmwf0g9m300glkocw2wunxywl.jpg",
+                      "categoryLabel":  "Types of Nouns",
+                      "groupCode":  "D"
+                  },
+                  {
+                      "word":  "mixture",
+                      "categoryCode":  "TYPES_OF_NOUNS",
+                      "wordId":  "cmwf0g9m800gnkocwrb6i7qho",
+                      "description":  "Cute 3D cartoon bowl with a colourful swirl mixture of soft fruits or paints blending together, pastel colours, soft lighting, clean light background, no text.",
+                      "filename":  "cmwf0g9m800gnkocwrb6i7qho.jpg",
+                      "imagePath":  "/media/vocab/pilot/batch-d2/cmwf0g9m800gnkocwrb6i7qho.jpg",
+                      "categoryLabel":  "Types of Nouns",
+                      "groupCode":  "D"
+                  },
+                  {
+                      "word":  "model",
+                      "categoryCode":  "TYPES_OF_NOUNS",
+                      "wordId":  "cmwf0g9md00gpkocwjysxsqcx",
+                      "description":  "Cute 3D cartoon toy model airplane on a stand, friendly rounded design, soft pastel colours, soft lighting, clean light background, no text.",
+                      "filename":  "cmwf0g9md00gpkocwjysxsqcx.jpg",
+                      "imagePath":  "/media/vocab/pilot/batch-d2/cmwf0g9md00gpkocwjysxsqcx.jpg",
+                      "categoryLabel":  "Types of Nouns",
+                      "groupCode":  "D"
+                  },
+                  {
+                      "word":  "moment",
+                      "categoryCode":  "TYPES_OF_NOUNS",
+                      "wordId":  "cmwf0g9mi00grkocwwh8v5tdx",
+                      "description":  "Cute 3D cartoon of a soft glowing hourglass capturing a tiny sparkle moment, pastel golds and blues, rounded shapes, soft lighting, clean light background, no text.",
+                      "filename":  "cmwf0g9mi00grkocwwh8v5tdx.jpg",
+                      "imagePath":  "/media/vocab/pilot/batch-d2/cmwf0g9mi00grkocwwh8v5tdx.jpg",
+                      "categoryLabel":  "Types of Nouns",
+                      "groupCode":  "D"
+                  },
+                  {
+                      "word":  "money",
+                      "categoryCode":  "TYPES_OF_NOUNS",
+                      "wordId":  "cmwf0g9mo00gtkocwcwtxbft1",
+                      "description":  "Cute 3D cartoon of friendly rounded coins and a small banknote character with a smile, soft pastel greens and golds, soft lighting, clean light background, no text.",
+                      "filename":  "cmwf0g9mo00gtkocwcwtxbft1.jpg",
+                      "imagePath":  "/media/vocab/pilot/batch-d2/cmwf0g9mo00gtkocwcwtxbft1.jpg",
+                      "categoryLabel":  "Types of Nouns",
+                      "groupCode":  "D"
+                  },
+                  {
+                      "word":  "monkey",
+                      "categoryCode":  "TYPES_OF_NOUNS",
+                      "wordId":  "cmwf0g9mr00gvkocwp4reh47v",
+                      "description":  "Cute 3D cartoon monkey with large expressive eyes hanging from a soft tree branch, pastel browns and greens, soft lighting, clean light background, no text.",
+                      "filename":  "cmwf0g9mr00gvkocwp4reh47v.jpg",
+                      "imagePath":  "/media/vocab/pilot/batch-d2/cmwf0g9mr00gvkocwp4reh47v.jpg",
+                      "categoryLabel":  "Types of Nouns",
+                      "groupCode":  "D"
+                  },
+                  {
+                      "word":  "monster",
+                      "categoryCode":  "TYPES_OF_NOUNS",
+                      "wordId":  "cmwf0g9mu00gxkocw6estxyvn",
+                      "description":  "Cute 3D cartoon friendly little monster with big eyes and a soft smile, pastel purple and teal, rounded shapes, soft lighting, clean light background, no text.",
+                      "filename":  "cmwf0g9mu00gxkocw6estxyvn.jpg",
+                      "imagePath":  "/media/vocab/pilot/batch-d2/cmwf0g9mu00gxkocw6estxyvn.jpg",
+                      "categoryLabel":  "Types of Nouns",
+                      "groupCode":  "D"
+                  },
+                  {
+                      "word":  "moon",
+                      "categoryCode":  "TYPES_OF_NOUNS",
+                      "wordId":  "cmwf0g9mw00gzkocwxtl5cypj",
+                      "description":  "Cute 3D cartoon soft glowing moon with a gentle sleepy face, pastel yellow and blue night sky accents, soft lighting, clean light background, no text.",
+                      "filename":  "cmwf0g9mw00gzkocwxtl5cypj.jpg",
+                      "imagePath":  "/media/vocab/pilot/batch-d2/cmwf0g9mw00gzkocwxtl5cypj.jpg",
+                      "categoryLabel":  "Types of Nouns",
+                      "groupCode":  "D"
+                  },
+                  {
+                      "word":  "mosquito",
+                      "categoryCode":  "TYPES_OF_NOUNS",
+                      "wordId":  "cmwf0g9mz00h1kocwmqigv5qq",
+                      "description":  "Cute 3D cartoon tiny mosquito character with big eyes and thin wings, soft pastel colours, friendly not scary, soft lighting, clean light background, no text.",
+                      "filename":  "cmwf0g9mz00h1kocwmqigv5qq.jpg",
+                      "imagePath":  "/media/vocab/pilot/batch-d2/cmwf0g9mz00h1kocwmqigv5qq.jpg",
+                      "categoryLabel":  "Types of Nouns",
+                      "groupCode":  "D"
+                  },
+                  {
+                      "word":  "mountain",
+                      "categoryCode":  "TYPES_OF_NOUNS",
+                      "wordId":  "cmwf0g9n300h3kocwyzj7sq3n",
+                      "description":  "Cute 3D cartoon soft rounded mountain with snowy peak and a tiny smiling cloud, pastel greens and whites, soft lighting, clean light background, no text.",
+                      "filename":  "cmwf0g9n300h3kocwyzj7sq3n.jpg",
+                      "imagePath":  "/media/vocab/pilot/batch-d2/cmwf0g9n300h3kocwyzj7sq3n.jpg",
+                      "categoryLabel":  "Types of Nouns",
+                      "groupCode":  "D"
+                  },
+                  {
+                      "word":  "museum",
+                      "categoryCode":  "TYPES_OF_NOUNS",
+                      "wordId":  "cmwf0g9n600h5kocw0jyorqv7",
+                      "description":  "Cute 3D cartoon museum building with wide friendly doors and a tiny dinosaur statue outside, soft pastel colours, soft lighting, clean light background, no text.",
+                      "filename":  "cmwf0g9n600h5kocw0jyorqv7.jpg",
+                      "imagePath":  "/media/vocab/pilot/batch-d2/cmwf0g9n600h5kocw0jyorqv7.jpg",
+                      "categoryLabel":  "Types of Nouns",
+                      "groupCode":  "D"
+                  },
+                  {
+                      "word":  "musician",
+                      "categoryCode":  "TYPES_OF_NOUNS",
+                      "wordId":  "cmwf0g9n900h7kocwzl3ep5ax",
+                      "description":  "Cute 3D cartoon child musician playing a soft rounded guitar, large expressive eyes, pastel clothes, soft lighting, clean light background, no text.",
+                      "filename":  "cmwf0g9n900h7kocwzl3ep5ax.jpg",
+                      "imagePath":  "/media/vocab/pilot/batch-d2/cmwf0g9n900h7kocwzl3ep5ax.jpg",
+                      "categoryLabel":  "Types of Nouns",
+                      "groupCode":  "D"
+                  },
+                  {
+                      "word":  "mystery",
+                      "categoryCode":  "TYPES_OF_NOUNS",
+                      "wordId":  "cmwf0g9nc00h9kocw56357u8q",
+                      "description":  "Cute 3D cartoon friendly detective magnifying glass over a soft glowing question-mark shaped sparkle (no letters), pastel colours, soft lighting, clean light background, no text.",
+                      "filename":  "cmwf0g9nc00h9kocw56357u8q.jpg",
+                      "imagePath":  "/media/vocab/pilot/batch-d2/cmwf0g9nc00h9kocw56357u8q.jpg",
+                      "categoryLabel":  "Types of Nouns",
+                      "groupCode":  "D"
+                  },
+                  {
+                      "word":  "nation",
+                      "categoryCode":  "TYPES_OF_NOUNS",
+                      "wordId":  "cmwf0g9ng00hbkocwoyaxuup8",
+                      "description":  "Cute 3D cartoon of a soft globe with friendly children holding hands around it, pastel colours, soft lighting, clean light background, no text or flags with text.",
+                      "filename":  "cmwf0g9ng00hbkocwoyaxuup8.jpg",
+                      "imagePath":  "/media/vocab/pilot/batch-d2/cmwf0g9ng00hbkocwoyaxuup8.jpg",
+                      "categoryLabel":  "Types of Nouns",
+                      "groupCode":  "D"
+                  },
+                  {
+                      "word":  "team",
+                      "categoryCode":  "TYPES_OF_NOUNS",
+                      "wordId":  "cmwczbkif006bkoeusx2v21uk",
+                      "description":  "Cute 3D cartoon kids sports team huddle with soft jerseys and big smiles, pastel colours, rounded shapes, soft lighting, clean light background, no text.",
+                      "filename":  "cmwczbkif006bkoeusx2v21uk.jpg",
+                      "imagePath":  "/media/vocab/pilot/batch-d2/cmwczbkif006bkoeusx2v21uk.jpg",
+                      "categoryLabel":  "Types of Nouns",
+                      "groupCode":  "D"
+                  }
+              ],
+    "categoryLabel":  "Types of Nouns",
+    "destinationFolder":  "server/storage/vocab-media/pilot/batch-d2/",
+    "groupCode":  "D",
+    "visualStyle":  [
+                        "Cute premium-quality 3D cartoon",
+                        "Friendly characters and objects",
+                        "Large expressive eyes where appropriate",
+                        "Soft pastel colours",
+                        "Smooth rounded shapes",
+                        "Soft lighting and shadows",
+                        "Clean light background",
+                        "One clear concept per image",
+                        "Square aspect ratio",
+                        "No text letters labels or watermarks"
+                    ]
+}

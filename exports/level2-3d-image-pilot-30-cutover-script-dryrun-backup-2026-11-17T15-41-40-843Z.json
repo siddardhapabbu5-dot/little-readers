@@ -1,0 +1,309 @@
+{
+  "createdAt": "2026-11-17T15:41:40.844Z",
+  "origin": "https://api.siwiapp.shop",
+  "batch": "batch-d2-pilot-30",
+  "level": "LEVEL_2",
+  "matchBy": "wordId",
+  "rows": [
+    {
+      "id": "cmwczbkik006fkoeuf2lekxiu",
+      "text": "bunch",
+      "categoryCode": "TYPES_OF_NOUNS",
+      "categoryLabel": "Types of Nouns",
+      "levelCode": "LEVEL_2",
+      "previousImageUrl": null,
+      "nextImageUrl": "https://api.siwiapp.shop/media/vocab/pilot/batch-d2/cmwczbkik006fkoeuf2lekxiu.jpg",
+      "filename": "cmwczbkik006fkoeuf2lekxiu.jpg"
+    },
+    {
+      "id": "cmwczbkih006dkoeudx49i6jt",
+      "text": "class",
+      "categoryCode": "TYPES_OF_NOUNS",
+      "categoryLabel": "Types of Nouns",
+      "levelCode": "LEVEL_2",
+      "previousImageUrl": null,
+      "nextImageUrl": "https://api.siwiapp.shop/media/vocab/pilot/batch-d2/cmwczbkih006dkoeudx49i6jt.jpg",
+      "filename": "cmwczbkih006dkoeudx49i6jt.jpg"
+    },
+    {
+      "id": "cmwczbkim006hkoeuiog08c3v",
+      "text": "crowd",
+      "categoryCode": "TYPES_OF_NOUNS",
+      "categoryLabel": "Types of Nouns",
+      "levelCode": "LEVEL_2",
+      "previousImageUrl": null,
+      "nextImageUrl": "https://api.siwiapp.shop/media/vocab/pilot/batch-d2/cmwczbkim006hkoeuiog08c3v.jpg",
+      "filename": "cmwczbkim006hkoeuiog08c3v.jpg"
+    },
+    {
+      "id": "cmwczbkia0067koeu65wdwo7q",
+      "text": "flock",
+      "categoryCode": "TYPES_OF_NOUNS",
+      "categoryLabel": "Types of Nouns",
+      "levelCode": "LEVEL_2",
+      "previousImageUrl": null,
+      "nextImageUrl": "https://api.siwiapp.shop/media/vocab/pilot/batch-d2/cmwczbkia0067koeu65wdwo7q.jpg",
+      "filename": "cmwczbkia0067koeu65wdwo7q.jpg"
+    },
+    {
+      "id": "cmwczbkic0069koeuf06u51px",
+      "text": "herd",
+      "categoryCode": "TYPES_OF_NOUNS",
+      "categoryLabel": "Types of Nouns",
+      "levelCode": "LEVEL_2",
+      "previousImageUrl": null,
+      "nextImageUrl": "https://api.siwiapp.shop/media/vocab/pilot/batch-d2/cmwczbkic0069koeuf06u51px.jpg",
+      "filename": "cmwczbkic0069koeuf06u51px.jpg"
+    },
+    {
+      "id": "cmwf0g9le00g1kocw4qtmhhu4",
+      "text": "market",
+      "categoryCode": "TYPES_OF_NOUNS",
+      "categoryLabel": "Types of Nouns",
+      "levelCode": "LEVEL_2",
+      "previousImageUrl": null,
+      "nextImageUrl": "https://api.siwiapp.shop/media/vocab/pilot/batch-d2/cmwf0g9le00g1kocw4qtmhhu4.jpg",
+      "filename": "cmwf0g9le00g1kocw4qtmhhu4.jpg"
+    },
+    {
+      "id": "cmwf0g9lh00g3kocw2gb4add2",
+      "text": "medal",
+      "categoryCode": "TYPES_OF_NOUNS",
+      "categoryLabel": "Types of Nouns",
+      "levelCode": "LEVEL_2",
+      "previousImageUrl": null,
+      "nextImageUrl": "https://api.siwiapp.shop/media/vocab/pilot/batch-d2/cmwf0g9lh00g3kocw2gb4add2.jpg",
+      "filename": "cmwf0g9lh00g3kocw2gb4add2.jpg"
+    },
+    {
+      "id": "cmwf0g9lk00g5kocwnud7a95z",
+      "text": "melody",
+      "categoryCode": "TYPES_OF_NOUNS",
+      "categoryLabel": "Types of Nouns",
+      "levelCode": "LEVEL_2",
+      "previousImageUrl": null,
+      "nextImageUrl": "https://api.siwiapp.shop/media/vocab/pilot/batch-d2/cmwf0g9lk00g5kocwnud7a95z.jpg",
+      "filename": "cmwf0g9lk00g5kocwnud7a95z.jpg"
+    },
+    {
+      "id": "cmwf0g9lm00g7kocwp08ribxp",
+      "text": "memory",
+      "categoryCode": "TYPES_OF_NOUNS",
+      "categoryLabel": "Types of Nouns",
+      "levelCode": "LEVEL_2",
+      "previousImageUrl": null,
+      "nextImageUrl": "https://api.siwiapp.shop/media/vocab/pilot/batch-d2/cmwf0g9lm00g7kocwp08ribxp.jpg",
+      "filename": "cmwf0g9lm00g7kocwp08ribxp.jpg"
+    },
+    {
+      "id": "cmwf0g9lp00g9kocwizzq83o8",
+      "text": "message",
+      "categoryCode": "TYPES_OF_NOUNS",
+      "categoryLabel": "Types of Nouns",
+      "levelCode": "LEVEL_2",
+      "previousImageUrl": null,
+      "nextImageUrl": "https://api.siwiapp.shop/media/vocab/pilot/batch-d2/cmwf0g9lp00g9kocwizzq83o8.jpg",
+      "filename": "cmwf0g9lp00g9kocwizzq83o8.jpg"
+    },
+    {
+      "id": "cmwf0g9lr00gbkocw0v2pvk8t",
+      "text": "metal",
+      "categoryCode": "TYPES_OF_NOUNS",
+      "categoryLabel": "Types of Nouns",
+      "levelCode": "LEVEL_2",
+      "previousImageUrl": null,
+      "nextImageUrl": "https://api.siwiapp.shop/media/vocab/pilot/batch-d2/cmwf0g9lr00gbkocw0v2pvk8t.jpg",
+      "filename": "cmwf0g9lr00gbkocw0v2pvk8t.jpg"
+    },
+    {
+      "id": "cmwf0g9lt00gdkocwdw8bz8xa",
+      "text": "microscope",
+      "categoryCode": "TYPES_OF_NOUNS",
+      "categoryLabel": "Types of Nouns",
+      "levelCode": "LEVEL_2",
+      "previousImageUrl": null,
+      "nextImageUrl": "https://api.siwiapp.shop/media/vocab/pilot/batch-d2/cmwf0g9lt00gdkocwdw8bz8xa.jpg",
+      "filename": "cmwf0g9lt00gdkocwdw8bz8xa.jpg"
+    },
+    {
+      "id": "cmwf0g9lw00gfkocwzmiuth9r",
+      "text": "midnight",
+      "categoryCode": "TYPES_OF_NOUNS",
+      "categoryLabel": "Types of Nouns",
+      "levelCode": "LEVEL_2",
+      "previousImageUrl": null,
+      "nextImageUrl": "https://api.siwiapp.shop/media/vocab/pilot/batch-d2/cmwf0g9lw00gfkocwzmiuth9r.jpg",
+      "filename": "cmwf0g9lw00gfkocwzmiuth9r.jpg"
+    },
+    {
+      "id": "cmwf0g9lx00ghkocw7tsvmz4c",
+      "text": "milk",
+      "categoryCode": "TYPES_OF_NOUNS",
+      "categoryLabel": "Types of Nouns",
+      "levelCode": "LEVEL_2",
+      "previousImageUrl": null,
+      "nextImageUrl": "https://api.siwiapp.shop/media/vocab/pilot/batch-d2/cmwf0g9lx00ghkocw7tsvmz4c.jpg",
+      "filename": "cmwf0g9lx00ghkocw7tsvmz4c.jpg"
+    },
+    {
+      "id": "cmwf0g9m000gjkocwbdb2os2k",
+      "text": "mineral",
+      "categoryCode": "TYPES_OF_NOUNS",
+      "categoryLabel": "Types of Nouns",
+      "levelCode": "LEVEL_2",
+      "previousImageUrl": null,
+      "nextImageUrl": "https://api.siwiapp.shop/media/vocab/pilot/batch-d2/cmwf0g9m000gjkocwbdb2os2k.jpg",
+      "filename": "cmwf0g9m000gjkocwbdb2os2k.jpg"
+    },
+    {
+      "id": "cmwf0g9m300glkocw2wunxywl",
+      "text": "mirror",
+      "categoryCode": "TYPES_OF_NOUNS",
+      "categoryLabel": "Types of Nouns",
+      "levelCode": "LEVEL_2",
+      "previousImageUrl": null,
+      "nextImageUrl": "https://api.siwiapp.shop/media/vocab/pilot/batch-d2/cmwf0g9m300glkocw2wunxywl.jpg",
+      "filename": "cmwf0g9m300glkocw2wunxywl.jpg"
+    },
+    {
+      "id": "cmwf0g9m800gnkocwrb6i7qho",
+      "text": "mixture",
+      "categoryCode": "TYPES_OF_NOUNS",
+      "categoryLabel": "Types of Nouns",
+      "levelCode": "LEVEL_2",
+      "previousImageUrl": null,
+      "nextImageUrl": "https://api.siwiapp.shop/media/vocab/pilot/batch-d2/cmwf0g9m800gnkocwrb6i7qho.jpg",
+      "filename": "cmwf0g9m800gnkocwrb6i7qho.jpg"
+    },
+    {
+      "id": "cmwf0g9md00gpkocwjysxsqcx",
+      "text": "model",
+      "categoryCode": "TYPES_OF_NOUNS",
+      "categoryLabel": "Types of Nouns",
+      "levelCode": "LEVEL_2",
+      "previousImageUrl": null,
+      "nextImageUrl": "https://api.siwiapp.shop/media/vocab/pilot/batch-d2/cmwf0g9md00gpkocwjysxsqcx.jpg",
+      "filename": "cmwf0g9md00gpkocwjysxsqcx.jpg"
+    },
+    {
+      "id": "cmwf0g9mi00grkocwwh8v5tdx",
+      "text": "moment",
+      "categoryCode": "TYPES_OF_NOUNS",
+      "categoryLabel": "Types of Nouns",
+      "levelCode": "LEVEL_2",
+      "previousImageUrl": null,
+      "nextImageUrl": "https://api.siwiapp.shop/media/vocab/pilot/batch-d2/cmwf0g9mi00grkocwwh8v5tdx.jpg",
+      "filename": "cmwf0g9mi00grkocwwh8v5tdx.jpg"
+    },
+    {
+      "id": "cmwf0g9mo00gtkocwcwtxbft1",
+      "text": "money",
+      "categoryCode": "TYPES_OF_NOUNS",
+      "categoryLabel": "Types of Nouns",
+      "levelCode": "LEVEL_2",
+      "previousImageUrl": null,
+      "nextImageUrl": "https://api.siwiapp.shop/media/vocab/pilot/batch-d2/cmwf0g9mo00gtkocwcwtxbft1.jpg",
+      "filename": "cmwf0g9mo00gtkocwcwtxbft1.jpg"
+    },
+    {
+      "id": "cmwf0g9mr00gvkocwp4reh47v",
+      "text": "monkey",
+      "categoryCode": "TYPES_OF_NOUNS",
+      "categoryLabel": "Types of Nouns",
+      "levelCode": "LEVEL_2",
+      "previousImageUrl": null,
+      "nextImageUrl": "https://api.siwiapp.shop/media/vocab/pilot/batch-d2/cmwf0g9mr00gvkocwp4reh47v.jpg",
+      "filename": "cmwf0g9mr00gvkocwp4reh47v.jpg"
+    },
+    {
+      "id": "cmwf0g9mu00gxkocw6estxyvn",
+      "text": "monster",
+      "categoryCode": "TYPES_OF_NOUNS",
+      "categoryLabel": "Types of Nouns",
+      "levelCode": "LEVEL_2",
+      "previousImageUrl": null,
+      "nextImageUrl": "https://api.siwiapp.shop/media/vocab/pilot/batch-d2/cmwf0g9mu00gxkocw6estxyvn.jpg",
+      "filename": "cmwf0g9mu00gxkocw6estxyvn.jpg"
+    },
+    {
+      "id": "cmwf0g9mw00gzkocwxtl5cypj",
+      "text": "moon",
+      "categoryCode": "TYPES_OF_NOUNS",
+      "categoryLabel": "Types of Nouns",
+      "levelCode": "LEVEL_2",
+      "previousImageUrl": null,
+      "nextImageUrl": "https://api.siwiapp.shop/media/vocab/pilot/batch-d2/cmwf0g9mw00gzkocwxtl5cypj.jpg",
+      "filename": "cmwf0g9mw00gzkocwxtl5cypj.jpg"
+    },
+    {
+      "id": "cmwf0g9mz00h1kocwmqigv5qq",
+      "text": "mosquito",
+      "categoryCode": "TYPES_OF_NOUNS",
+      "categoryLabel": "Types of Nouns",
+      "levelCode": "LEVEL_2",
+      "previousImageUrl": null,
+      "nextImageUrl": "https://api.siwiapp.shop/media/vocab/pilot/batch-d2/cmwf0g9mz00h1kocwmqigv5qq.jpg",
+      "filename": "cmwf0g9mz00h1kocwmqigv5qq.jpg"
+    },
+    {
+      "id": "cmwf0g9n300h3kocwyzj7sq3n",
+      "text": "mountain",
+      "categoryCode": "TYPES_OF_NOUNS",
+      "categoryLabel": "Types of Nouns",
+      "levelCode": "LEVEL_2",
+      "previousImageUrl": null,
+      "nextImageUrl": "https://api.siwiapp.shop/media/vocab/pilot/batch-d2/cmwf0g9n300h3kocwyzj7sq3n.jpg",
+      "filename": "cmwf0g9n300h3kocwyzj7sq3n.jpg"
+    },
+    {
+      "id": "cmwf0g9n600h5kocw0jyorqv7",
+      "text": "museum",
+      "categoryCode": "TYPES_OF_NOUNS",
+      "categoryLabel": "Types of Nouns",
+      "levelCode": "LEVEL_2",
+      "previousImageUrl": null,
+      "nextImageUrl": "https://api.siwiapp.shop/media/vocab/pilot/batch-d2/cmwf0g9n600h5kocw0jyorqv7.jpg",
+      "filename": "cmwf0g9n600h5kocw0jyorqv7.jpg"
+    },
+    {
+      "id": "cmwf0g9n900h7kocwzl3ep5ax",
+      "text": "musician",
+      "categoryCode": "TYPES_OF_NOUNS",
+      "categoryLabel": "Types of Nouns",
+      "levelCode": "LEVEL_2",
+      "previousImageUrl": null,
+      "nextImageUrl": "https://api.siwiapp.shop/media/vocab/pilot/batch-d2/cmwf0g9n900h7kocwzl3ep5ax.jpg",
+      "filename": "cmwf0g9n900h7kocwzl3ep5ax.jpg"
+    },
+    {
+      "id": "cmwf0g9nc00h9kocw56357u8q",
+      "text": "mystery",
+      "categoryCode": "TYPES_OF_NOUNS",
+      "categoryLabel": "Types of Nouns",
+      "levelCode": "LEVEL_2",
+      "previousImageUrl": null,
+      "nextImageUrl": "https://api.siwiapp.shop/media/vocab/pilot/batch-d2/cmwf0g9nc00h9kocw56357u8q.jpg",
+      "filename": "cmwf0g9nc00h9kocw56357u8q.jpg"
+    },
+    {
+      "id": "cmwf0g9ng00hbkocwoyaxuup8",
+      "text": "nation",
+      "categoryCode": "TYPES_OF_NOUNS",
+      "categoryLabel": "Types of Nouns",
+      "levelCode": "LEVEL_2",
+      "previousImageUrl": null,
+      "nextImageUrl": "https://api.siwiapp.shop/media/vocab/pilot/batch-d2/cmwf0g9ng00hbkocwoyaxuup8.jpg",
+      "filename": "cmwf0g9ng00hbkocwoyaxuup8.jpg"
+    },
+    {
+      "id": "cmwczbkif006bkoeusx2v21uk",
+      "text": "team",
+      "categoryCode": "TYPES_OF_NOUNS",
+      "categoryLabel": "Types of Nouns",
+      "levelCode": "LEVEL_2",
+      "previousImageUrl": null,
+      "nextImageUrl": "https://api.siwiapp.shop/media/vocab/pilot/batch-d2/cmwczbkif006bkoeusx2v21uk.jpg",
+      "filename": "cmwczbkif006bkoeusx2v21uk.jpg"
+    }
+  ]
+}

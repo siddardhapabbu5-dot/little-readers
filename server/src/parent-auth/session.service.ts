@@ -129,7 +129,7 @@ export async function activateParentDeviceSession(input: {
         : "";
     if (code === "P2002") {
       throw new AppError(
-        "Another device just signed in. Please try again.",
+        "This account is already active on another device. Sign in again from that device, or complete a device transfer from the approved device. Learn Wise allows one active parent device at a time.",
         409,
         { code: "SESSION_CONFLICT" }
       );

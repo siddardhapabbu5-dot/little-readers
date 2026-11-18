@@ -13,11 +13,14 @@ const FIELDS = {
 
 function lockedError(kind: Kind, until: Date) {
   const minutes = Math.max(1, Math.ceil((until.getTime() - Date.now()) / 60_000));
-  return new AppError(
-    `Too many incorrect ${FIELDS[kind].what} attempts. Try again in ${minutes} minute${minutes === 1 ? "" : "s"}.`,
-    429,
-    { code: FIELDS[kind].code, retryAfterSeconds: Math.ceil((until.getTime() - Date.now()) / 1000) }
-  );
+  const message =
+    kind === "login"
+      ? `Your account is temporarily locked after multiple unsuccessful login attempts. Please try again after the lockout period (about ${minutes} minute${minutes === 1 ? "" : "s"}).`
+      : `Too many incorrect ${FIELDS[kind].what} attempts. Try again in ${minutes} minute${minutes === 1 ? "" : "s"}.`;
+  return new AppError(message, 429, {
+    code: FIELDS[kind].code,
+    retryAfterSeconds: Math.ceil((until.getTime() - Date.now()) / 1000),
+  });
 }
 
 /** Throws 429 while the account is locked for this kind of secret. */

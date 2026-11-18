@@ -42,20 +42,72 @@ function sessionMessage(status: number, code?: string, fallback?: string) {
   return fallback || "Request failed";
 }
 
+export const LOGIN_REQUEST_TIMEOUT_MS = 25_000;
+
+function mergeAbortSignals(
+  external: AbortSignal | null | undefined,
+  timeoutMs: number | undefined
+): { signal?: AbortSignal; clear: () => void } {
+  if (!timeoutMs || timeoutMs <= 0) {
+    return { signal: external ?? undefined, clear: () => undefined };
+  }
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  const onExternalAbort = () => controller.abort();
+  if (external) {
+    if (external.aborted) controller.abort();
+    else external.addEventListener("abort", onExternalAbort, { once: true });
+  }
+  return {
+    signal: controller.signal,
+    clear: () => {
+      clearTimeout(timer);
+      external?.removeEventListener("abort", onExternalAbort);
+    },
+  };
+}
+
 export async function apiRequest<T>(
   path: string,
-  options: RequestInit & { token?: string } = {}
+  options: RequestInit & {
+    token?: string;
+    /** Client-side request timeout in ms. Login uses ~25s. No automatic retries. */
+    timeoutMs?: number;
+  } = {}
 ): Promise<T> {
-  const { token, headers, ...rest } = options;
-  const response = await fetch(`${API_URL}${path}`, {
-    ...rest,
-    headers: {
-      "Content-Type": "application/json",
-      "X-Client-Platform": "web",
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      ...headers,
-    },
-  });
+  const { token, headers, timeoutMs, signal: externalSignal, ...rest } = options;
+  const { signal, clear } = mergeAbortSignals(externalSignal, timeoutMs);
+
+  let response: Response;
+  try {
+    response = await fetch(`${API_URL}${path}`, {
+      ...rest,
+      signal,
+      headers: {
+        "Content-Type": "application/json",
+        "X-Client-Platform": "web",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        ...headers,
+      },
+    });
+  } catch (err) {
+    clear();
+    const aborted =
+      (err instanceof Error && err.name === "AbortError") ||
+      (typeof DOMException !== "undefined" &&
+        err instanceof DOMException &&
+        err.name === "AbortError");
+    throw new ApiClientError(
+      aborted
+        ? "The sign-in request timed out. Please try again."
+        : "Unable to connect. Please check your internet connection and try again.",
+      0,
+      undefined,
+      aborted ? "REQUEST_TIMEOUT" : "NETWORK_UNAVAILABLE"
+    );
+  } finally {
+    clear();
+  }
 
   const body = await response.json().catch(() => ({}));
   if (!response.ok) {

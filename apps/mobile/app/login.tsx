@@ -14,9 +14,10 @@ import {
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { KeyboardAwareScroll } from "../components/keyboard";
-import { apiRequest, ApiError } from "../services/api";
+import { apiRequest, LOGIN_REQUEST_TIMEOUT_MS } from "../services/api";
 import {
   friendlyAuthError,
+  isRateLimitedAuthError,
   isValidEmail,
   routeForRole,
 } from "../services/auth-errors";
@@ -40,6 +41,7 @@ export default function LoginScreen() {
   const insets = useSafeAreaInsets();
   const { height: winH } = useWindowDimensions();
   const passwordRef = useRef<TextInputType>(null);
+  const loginRequestIdRef = useRef(0);
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -77,6 +79,7 @@ export default function LoginScreen() {
       return;
     }
 
+    const requestId = ++loginRequestIdRef.current;
     setLoading(true);
     try {
       const deviceId = await getOrCreateInstallationId();
@@ -86,6 +89,7 @@ export default function LoginScreen() {
       }>("/auth/login", {
         method: "POST",
         mobile: false,
+        timeoutMs: LOGIN_REQUEST_TIMEOUT_MS,
         body: JSON.stringify({
           email: trimmed,
           password,
@@ -94,6 +98,7 @@ export default function LoginScreen() {
           deviceName: `${Platform.OS} device`,
         }),
       });
+      if (loginRequestIdRef.current !== requestId) return;
       await saveToken(data.tokens.accessToken);
       if (data.tokens.refreshToken) {
         await saveRefreshToken(data.tokens.refreshToken);
@@ -105,12 +110,15 @@ export default function LoginScreen() {
       }
       router.replace(routeForRole(data.user.role) as never);
     } catch (err) {
+      if (loginRequestIdRef.current !== requestId) return;
       setError(friendlyAuthError(err));
-      if (err instanceof ApiError && err.status === 429) {
-        setInfo("Tip: wait about a minute before trying again.");
+      if (isRateLimitedAuthError(err)) {
+        setInfo("Tip: wait a few minutes before trying again.");
       }
     } finally {
-      setLoading(false);
+      if (loginRequestIdRef.current === requestId) {
+        setLoading(false);
+      }
     }
   }
 

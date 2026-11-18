@@ -103,6 +103,15 @@ const envSchema = z.object({
     .string()
     .optional()
     .transform((v) => v === "1"),
+  /**
+   * Optional Redis URL for shared login rate-limit counters across API instances.
+   * When unset or unreachable, login rate limiting falls back to bounded in-memory
+   * counters (never unlimited). Do not put secrets in docs or logs.
+   */
+  REDIS_URL: z.preprocess(
+    (v) => (typeof v === "string" && v.trim() === "" ? undefined : v),
+    z.string().min(1).optional()
+  ),
 });
 
 const PLACEHOLDER_SECRET = /change[-_ ]?me|replace[-_ ]?me|example|placeholder|dev[-_]?secret|test[-_]?secret|^(.)\1+$/i;

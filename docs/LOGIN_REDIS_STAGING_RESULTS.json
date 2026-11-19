@@ -1,0 +1,111 @@
+{
+  "stagingRedis": "redis://127.0.0.1:6379",
+  "ports": [
+    4111,
+    4112
+  ],
+  "windowMs": 900000,
+  "results": [
+    {
+      "name": "Redis connection",
+      "ok": true,
+      "detail": "ping=PONG"
+    },
+    {
+      "name": "Two-instance shared counter (Redis clients)",
+      "ok": true,
+      "detail": "A.incr=1 B.incr=2 get=2 keyHasRawEmail=false"
+    },
+    {
+      "name": "Safe key (no raw email)",
+      "ok": true,
+      "detail": "rl:pw:/login:203.0.113.50:c4189d6eb25d6942893cf7…"
+    },
+    {
+      "name": "Counter TTL expiry",
+      "ok": true,
+      "detail": "pttl_before=2000 pttl_after=-2 value_after=null"
+    },
+    {
+      "name": "API instance A health",
+      "ok": true,
+      "detail": "port=4111"
+    },
+    {
+      "name": "API instance B health",
+      "ok": true,
+      "detail": "port=4112"
+    },
+    {
+      "name": "Limiter wrote Redis key after login attempt",
+      "ok": true,
+      "detail": "keys=1"
+    },
+    {
+      "name": "Two API instances share HTTP rate-limit counter",
+      "ok": true,
+      "detail": "value_after_A_then_B=7 (started at 5)"
+    },
+    {
+      "name": "RATE_LIMITED from shared counter",
+      "ok": true,
+      "detail": "A status=429 code=RATE_LIMITED"
+    },
+    {
+      "name": "RATE_LIMITED visible on second instance",
+      "ok": true,
+      "detail": "B status=429 code=RATE_LIMITED"
+    },
+    {
+      "name": "Test account create (local DB via Prisma)",
+      "ok": true,
+      "detail": "ok"
+    },
+    {
+      "name": "ACCOUNT_LOCKED distinct from RATE_LIMITED",
+      "ok": true,
+      "detail": "status=429 code=ACCOUNT_LOCKED"
+    },
+    {
+      "name": "Lockout enforced across instances",
+      "ok": true,
+      "detail": "correct_password_while_locked status=429 code=ACCOUNT_LOCKED"
+    },
+    {
+      "name": "API responds during Redis outage (bounded/fallback path)",
+      "ok": true,
+      "detail": "statuses=401,401,401"
+    },
+    {
+      "name": "Redis restarted",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Auto-recover shared Redis counters without API restart",
+      "ok": true,
+      "detail": "keys=1 value=2"
+    },
+    {
+      "name": "Second outage still bounded",
+      "ok": true,
+      "detail": "status=401"
+    },
+    {
+      "name": "Redis ready after second restart",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Second recovery shares counters without new API processes",
+      "ok": true,
+      "detail": "keys=1 value=2"
+    },
+    {
+      "name": "TTL expiry after auto-recovery",
+      "ok": true,
+      "detail": "pttl_before=1500 pttl_after=-2"
+    }
+  ],
+  "at": "2026-11-18T15:56:37.594Z"
+}

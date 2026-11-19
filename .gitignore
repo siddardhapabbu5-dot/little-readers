@@ -22,6 +22,7 @@ apps/mobile/ios/
 **/.env.*
 !.env.example
 !**/.env.example
+.secrets/
 
 # Local-only root Expo config (the real app config lives in apps/mobile)
 /app.json

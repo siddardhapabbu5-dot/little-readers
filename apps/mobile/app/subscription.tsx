@@ -1,5 +1,6 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
+  ActivityIndicator,
   Alert,
   Platform,
   Pressable,
@@ -17,7 +18,7 @@ import { RequireParentGate } from "../components/RequireParentGate";
 import { RegistrationSteps } from "../components/RegistrationSteps";
 import { apiRequest, ApiError } from "../services/api";
 import { ROLE_SETS } from "../services/auth-errors";
-import { getUser } from "../services/secure";
+import { getActiveChild, getUser } from "../services/secure";
 import { colors, radii, shadow } from "../theme";
 
 type Plan = {
@@ -134,8 +135,105 @@ function planKey(p: Plan) {
   return p.planId ?? p.id ?? null;
 }
 
+/**
+ * Students may open this route from Home/Learn/Games when learning is locked.
+ * Purchase/management stays Parent-only — never call parent billing APIs with a
+ * student JWT (those 401s clear the session via the global unauthorized handler).
+ */
 export default function SubscriptionScreen() {
+  return (
+    <AuthGate roles={ROLE_SETS.parentOrStudentBilling}>
+      <SubscriptionRoleRouter />
+    </AuthGate>
+  );
+}
+
+function SubscriptionRoleRouter() {
+  const [role, setRole] = useState<string | null | undefined>(undefined);
+
+  useEffect(() => {
+    let alive = true;
+    void getUser<{ role: string }>().then((u) => {
+      if (alive) setRole(u?.role ?? null);
+    });
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  if (role === undefined) {
+    return (
+      <View style={styles.roleLoading}>
+        <ActivityIndicator color={colors.primary} size="large" />
+      </View>
+    );
+  }
+
+  if (role === "STUDENT") {
+    return <StudentSubscriptionSafeView />;
+  }
+
+  return <ParentFamilySubscriptionScreen />;
+}
+
+/** Read-only status + parent guidance. No /subscriptions/* or /payments/* calls. */
+function StudentSubscriptionSafeView() {
   const router = useRouter();
+  const [seatHint, setSeatHint] = useState<string | null>(null);
+
+  useEffect(() => {
+    let alive = true;
+    void (async () => {
+      const child = await getActiveChild<{
+        displayName?: string;
+        hasLearningSeat?: boolean;
+      }>();
+      if (!alive) return;
+      if (!child) {
+        setSeatHint(null);
+        return;
+      }
+      setSeatHint(
+        child.hasLearningSeat
+          ? `${child.displayName ?? "Your"} learning access is active. Ask a parent if something still looks locked.`
+          : "Learning is not unlocked yet. Ask your parent to manage your subscription."
+      );
+    })();
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  return (
+    <SafeAreaView style={styles.safe}>
+      <ScrollView contentContainerStyle={styles.content}>
+        <SoftButton
+          label="← Back"
+          onPress={() =>
+            router.canGoBack() ? router.back() : router.replace("/(tabs)/home")
+          }
+        />
+        <Title>Subscription</Title>
+        <Card style={{ gap: 12 }}>
+          <Text style={styles.studentTitle}>Ask your parent to manage your subscription</Text>
+          <Text style={styles.note}>
+            Subscription purchase and seat management are for your parent account. Your student
+            login stays signed in — nothing here will log you out.
+          </Text>
+          {seatHint ? <Text style={styles.studentStatus}>{seatHint}</Text> : null}
+        </Card>
+        <PrimaryButton
+          label="Back to home"
+          onPress={() => router.replace("/(tabs)/home")}
+        />
+      </ScrollView>
+    </SafeAreaView>
+  );
+}
+
+function ParentFamilySubscriptionScreen() {
+  const router = useRouter();
+  /** `setup=1` only after first-time Grade + Learning Phone; renewals open `/subscription` without it. */
   const { setup } = useLocalSearchParams<{ setup?: string }>();
   const [selectedPlanId, setSelectedPlanId] = useState<string | null>(null);
   const [data, setData] = useState<any>(null);
@@ -227,7 +325,6 @@ export default function SubscriptionScreen() {
   const selectedChild = kids.find((c) => c.childId === selectedChildId) ?? null;
 
   return (
-    <AuthGate roles={ROLE_SETS.parentFamily}>
       <RequireParentGate>
       <SafeAreaView style={styles.safe}>
         <ScrollView contentContainerStyle={styles.content}>
@@ -235,7 +332,9 @@ export default function SubscriptionScreen() {
             label="← Back"
             onPress={() => (router.canGoBack() ? router.back() : router.replace("/parent"))}
           />
-          {setup ? <RegistrationSteps step={4} /> : null}
+          {setup ? (
+            <RegistrationSteps step={selectedPlanId ? 5 : 4} />
+          ) : null}
           <Title>Subscription</Title>
           <ErrorText>{error}</ErrorText>
 
@@ -569,7 +668,6 @@ export default function SubscriptionScreen() {
         </ScrollView>
       </SafeAreaView>
       </RequireParentGate>
-    </AuthGate>
   );
 }
 
@@ -584,8 +682,16 @@ function Row({ label, value }: { label: string; value: string }) {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.bg },
+  roleLoading: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: colors.bg,
+  },
   content: { padding: 20, gap: 12, paddingBottom: 40 },
   section: { fontWeight: "800", fontSize: 16, color: colors.text },
+  studentTitle: { fontWeight: "800", fontSize: 17, color: colors.text, lineHeight: 24 },
+  studentStatus: { fontWeight: "700", color: colors.primaryDark, lineHeight: 22 },
   note: { color: colors.textMuted, lineHeight: 20 },
   fieldLabel: {
     fontWeight: "700",

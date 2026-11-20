@@ -37,9 +37,28 @@ export function AuthGate({
 
         let role = cached.role;
         try {
-          const me = await apiRequest<AuthUser>("/auth/me", { mobile: false });
-          await saveUser(me);
-          role = me.role;
+          // Student JWTs are CHILD principals — GET /auth/me only accepts User tokens.
+          // Calling /auth/me with a student session clears the session and bounces to login
+          // (the post–password-change failure mode).
+          if (cached.role === "STUDENT") {
+            const me = await apiRequest<{
+              principal: string;
+              childId: string;
+              studentLoginId: string;
+              child?: { displayName?: string | null } | null;
+            }>("/student/auth/me", { mobile: false });
+            await saveUser({
+              id: me.childId,
+              email: me.studentLoginId,
+              name: me.child?.displayName ?? cached.name,
+              role: "STUDENT",
+            });
+            role = "STUDENT";
+          } else {
+            const me = await apiRequest<AuthUser>("/auth/me", { mobile: false });
+            await saveUser(me);
+            role = me.role;
+          }
         } catch (err) {
           if (err instanceof ApiError && (err.status === 401 || err.status === 403)) {
             await clearSession();

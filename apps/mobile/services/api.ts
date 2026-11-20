@@ -2,6 +2,7 @@ import { Platform } from "react-native";
 import {
   getOrCreateInstallationId,
   getToken,
+  getUser,
   saveSessionRevokedMessage,
 } from "./secure";
 import {
@@ -61,6 +62,25 @@ function handleAuthFailure(
 
 export const LOGIN_REQUEST_TIMEOUT_MS = 25_000;
 
+/** Fetch rejects plain objects as body (becomes "[object Object]"). Stringify them. */
+function serializeRequestBody(
+  body: BodyInit | Record<string, unknown> | unknown[] | null | undefined
+): BodyInit | undefined {
+  if (body == null) return undefined;
+  if (typeof body === "string") return body;
+  if (typeof Blob !== "undefined" && body instanceof Blob) return body;
+  if (typeof FormData !== "undefined" && body instanceof FormData) return body;
+  if (typeof URLSearchParams !== "undefined" && body instanceof URLSearchParams) {
+    return body;
+  }
+  if (typeof ArrayBuffer !== "undefined" && body instanceof ArrayBuffer) return body;
+  if (typeof ArrayBuffer !== "undefined" && ArrayBuffer.isView(body)) {
+    return body as BodyInit;
+  }
+  if (typeof body === "object") return JSON.stringify(body);
+  return body as BodyInit;
+}
+
 function mergeAbortSignals(
   external: AbortSignal | null | undefined,
   timeoutMs: number | undefined
@@ -86,11 +106,13 @@ function mergeAbortSignals(
 
 export async function apiRequest<T>(
   path: string,
-  options: RequestInit & {
+  options: Omit<RequestInit, "body"> & {
     token?: string;
     mobile?: boolean;
     /** Client-side request timeout in ms (login uses ~25s). No automatic retries. */
     timeoutMs?: number;
+    /** Plain objects are JSON-stringified; FormData/Blob/string pass through. */
+    body?: BodyInit | Record<string, unknown> | unknown[] | null;
   } = {}
 ): Promise<T> {
   const {
@@ -99,6 +121,7 @@ export async function apiRequest<T>(
     headers,
     timeoutMs,
     signal: externalSignal,
+    body: requestBody,
     ...rest
   } = options;
   const auth = token ?? (await getToken()) ?? undefined;
@@ -109,6 +132,7 @@ export async function apiRequest<T>(
   try {
     response = await fetch(`${API_URL}${path}`, {
       ...rest,
+      body: serializeRequestBody(requestBody),
       signal,
       headers: {
         "Content-Type": "application/json",
@@ -269,14 +293,18 @@ export async function apiDownloadBlob(
 /**
  * Lightweight session check on app resume.
  * /auth/me runs requireAuth — OTP parents with sid get SESSION_REVOKED if replaced.
+ * Student sessions must use /student/auth/me; /auth/me 401 must not look like a revoke.
  */
 export async function checkParentSessionAlive(): Promise<
   "ok" | "revoked" | "skip"
 > {
   const auth = await getToken();
   if (!auth) return "skip";
+  const cached = await getUser<{ role?: string }>();
+  const path =
+    cached?.role === "STUDENT" ? "/student/auth/me" : "/auth/me";
   try {
-    await apiRequest("/auth/me", { mobile: true });
+    await apiRequest(path, { mobile: true });
     return "ok";
   } catch (err) {
     if (err instanceof ApiError && err.code === "SESSION_REVOKED") {

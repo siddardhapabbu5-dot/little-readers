@@ -37,6 +37,7 @@ const PROTECTED_PREFIXES = [
   "/child",
   "/child-setup",
   "/subscription",
+  "/subscription-entry",
   "/agreements",
   "/receipt",
   "/payment-return",

@@ -1,22 +1,30 @@
 import { StyleSheet, Text, View } from "react-native";
 import { colors, radii } from "../theme";
 
+/**
+ * Progress labels for the unique parent subscription path (same live checkout).
+ * Parent PIN is a gate (`RequireParentGate` / `ParentGateModal`), not a replaceable Add Child step.
+ * Entry: `/subscription-entry` (after Parent PIN) → setup branch or renewal `/subscription`.
+ * Route map: Grade/Phone → `/child-setup`; Subscription + Choose a Plan → `/subscription`;
+ * Agreements + Payment Method → `/agreements`; receipt remains post-payment confirmation.
+ */
 export const REGISTRATION_STEPS = [
-  "Add Child",
-  "Level & Grade",
-  "Device",
+  "Parent PIN",
+  "Learn Wise Grade",
+  "Learning Phone",
   "Subscription",
-  "Agreements",
-  "Payment",
-  "Receipt",
+  "Choose a Plan",
+  "Learn Wise Agreements",
+  "Payment Method",
 ] as const;
 
-/** Progress header shared by the 7-step parent registration screens. */
+/** Progress header shared by the parent registration / subscription screens. */
 export function RegistrationSteps({ step }: { step: number }) {
+  const name = REGISTRATION_STEPS[step - 1] ?? REGISTRATION_STEPS[0];
   return (
-    <View style={styles.wrap} accessibilityLabel={`Step ${step} of 7: ${REGISTRATION_STEPS[step - 1]}`}>
+    <View style={styles.wrap} accessibilityLabel={`Step ${step} of 7: ${name}`}>
       <Text style={styles.label}>
-        Step {step} of 7 · <Text style={styles.name}>{REGISTRATION_STEPS[step - 1]}</Text>
+        Step {step} of 7 · <Text style={styles.name}>{name}</Text>
       </Text>
       <View style={styles.track}>
         {REGISTRATION_STEPS.map((_, i) => (

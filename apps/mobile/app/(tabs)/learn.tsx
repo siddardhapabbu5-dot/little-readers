@@ -230,7 +230,6 @@ export default function LearnTab() {
                 `Each grade has its own subscription, so a parent needs to subscribe to ${gradeName} first.`}
             </Text>
             <SoftButton label="Open subscription" onPress={() => router.push("/subscription")} />
-            <SoftButton label="Parent dashboard" onPress={() => router.push("/parent")} />
           </View>
         ) : loading ? (
           <ActivityIndicator color={colors.primary} />

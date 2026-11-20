@@ -265,7 +265,7 @@ export default function AgreementsScreen() {
         <SafeAreaView style={styles.safe}>
           <KeyboardScroll contentContainerStyle={styles.content}>
             <SoftButton label="← Back" onPress={() => !paying && router.back()} />
-            <RegistrationSteps step={paying ? 6 : 5} />
+            <RegistrationSteps step={paying ? 7 : 6} />
             <Title>Learn Wise – Agreements</Title>
             <Text style={styles.meta}>
               Please read each document and tick every box to continue.

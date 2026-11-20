@@ -30,9 +30,25 @@ export default function Index() {
       }
 
       try {
-        const me = await apiRequest<AuthUser>("/auth/me", { mobile: false });
-        await saveUser(me);
-        setHref(routeForRole(me.role));
+        // Student JWTs are CHILD principals — GET /auth/me only accepts User tokens.
+        if (cached.role === "STUDENT") {
+          const me = await apiRequest<{
+            childId: string;
+            studentLoginId: string;
+            child?: { displayName?: string | null } | null;
+          }>("/student/auth/me", { mobile: false });
+          await saveUser({
+            id: me.childId,
+            email: me.studentLoginId,
+            name: me.child?.displayName ?? cached.name,
+            role: "STUDENT",
+          });
+          setHref(routeForRole("STUDENT"));
+        } else {
+          const me = await apiRequest<AuthUser>("/auth/me", { mobile: false });
+          await saveUser(me);
+          setHref(routeForRole(me.role));
+        }
       } catch (err) {
         if (err instanceof ApiError && (err.status === 401 || err.status === 403)) {
           await clearSession();

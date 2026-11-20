@@ -16,6 +16,7 @@ import {
   phoneLabel,
   saveActiveChild,
 } from "../../services/secure";
+import { markChildSetupComplete } from "../../services/subscription-entry";
 import { colors, radii } from "../../theme";
 
 type ChildRow = {
@@ -51,7 +52,10 @@ export default function ChildSetupScreen() {
           setGrades(gr);
           const current = gr.find((g) => g.available && g.levelId === found?.levelId);
           const firstLive = gr.find((g) => g.available);
-          setLevelId((cur) => cur ?? current?.levelId ?? firstLive?.levelId ?? null);
+          const resolvedLevel = current?.levelId ?? firstLive?.levelId ?? null;
+          setLevelId((cur) => cur ?? resolvedLevel);
+          // Grade already on child → skip to Learning Phone (flowchart step 3).
+          if (found?.levelId && current) setStep(3);
           if (!found) setError("Child not found.");
           else if (!gr.some((g) => g.available)) {
             setError("No Learn Wise grade is available yet. Please try again later.");
@@ -105,9 +109,11 @@ export default function ChildSetupScreen() {
           }),
         });
       }
+      await markChildSetupComplete(String(id));
       const user = await getUser<{ role: string }>();
       const isStaff = user?.role === "ADMIN" || user?.role === "SUPER_ADMIN";
       // Staff practice accounts skip checkout — learning is unlocked without a plan.
+      // Parents: Subscription status+plan → Continue → Agreements+Pay → backend verify → receipt.
       router.replace(isStaff ? "/parent" : "/subscription?setup=1");
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Could not register the phone");

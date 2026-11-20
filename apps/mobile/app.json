@@ -6,6 +6,11 @@
     "orientation": "portrait",
     "scheme": "littlereaders",
     "userInterfaceStyle": "light",
+    "web": {
+      "bundler": "metro",
+      "output": "static",
+      "favicon": "./assets/icon.png"
+    },
     "icon": "./assets/icon.png",
     "splash": {
       "image": "./assets/splash.png",
@@ -38,7 +43,7 @@
     },
     "android": {
       "package": "com.littlereaders.app",
-      "versionCode": 27,
+      "versionCode": 28,
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
       "adaptiveIcon": {

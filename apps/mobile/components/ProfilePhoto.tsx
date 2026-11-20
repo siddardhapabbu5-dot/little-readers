@@ -3,19 +3,33 @@ import { ActivityIndicator, Image, Platform, Pressable, StyleSheet, Text, View }
 import * as ImagePicker from "expo-image-picker";
 import * as ImageManipulator from "expo-image-manipulator";
 import { apiRequest, ApiError } from "../services/api";
+import { canUseUserAvatarApi, USER_AVATAR_PATH } from "../services/avatar-auth";
 import { getCachedAvatar, publishAvatar as publish, subscribeAvatar } from "../services/avatar-cache";
+import { getUser } from "../services/secure";
 import { colors } from "../theme";
 
-/** Current user's profile photo (shared across screens, fetched once per session). */
+/**
+ * Current user's profile photo (shared across screens, fetched once per session).
+ * STUDENT: never calls /auth/me/avatar — that User-only route 401s and clears the session.
+ */
 export function useMyAvatar() {
   const [url, setUrl] = useState<string | null>(getCachedAvatar() ?? null);
   useEffect(() => {
     const unsubscribe = subscribeAvatar(setUrl);
-    if (getCachedAvatar() === undefined) {
-      apiRequest<{ avatarUrl: string | null }>("/auth/me/avatar")
-        .then((d) => publish(d.avatarUrl))
-        .catch(() => undefined);
-    }
+    void (async () => {
+      if (getCachedAvatar() !== undefined) return;
+      const user = await getUser<{ role?: string }>();
+      if (!canUseUserAvatarApi(user?.role)) {
+        publish(null);
+        return;
+      }
+      try {
+        const d = await apiRequest<{ avatarUrl: string | null }>(USER_AVATAR_PATH);
+        publish(d.avatarUrl);
+      } catch {
+        // Offline / transient — keep default avatar; do not escalate.
+      }
+    })();
     return unsubscribe;
   }, []);
   return url;
@@ -55,6 +69,11 @@ export function ProfilePhoto({
   async function choose(source: "camera" | "gallery") {
     setError(null);
     try {
+      const user = await getUser<{ role?: string }>();
+      if (!canUseUserAvatarApi(user?.role)) {
+        setError("Profile photos are managed by a parent account.");
+        return;
+      }
       const result = await pickImage(source);
       if (result.canceled || !result.assets?.[0]) return;
       setBusy(true);
@@ -65,7 +84,7 @@ export function ProfilePhoto({
       );
       if (!small.base64) throw new Error("Could not read the photo.");
       const image = `data:image/jpeg;base64,${small.base64}`;
-      const saved = await apiRequest<{ avatarUrl: string | null }>("/auth/me/avatar", {
+      const saved = await apiRequest<{ avatarUrl: string | null }>(USER_AVATAR_PATH, {
         method: "PUT",
         body: JSON.stringify({ image }),
       });
@@ -81,7 +100,15 @@ export function ProfilePhoto({
     setError(null);
     setBusy(true);
     try {
-      await apiRequest("/auth/me/avatar", { method: "PUT", body: JSON.stringify({ image: null }) });
+      const user = await getUser<{ role?: string }>();
+      if (!canUseUserAvatarApi(user?.role)) {
+        setError("Profile photos are managed by a parent account.");
+        return;
+      }
+      await apiRequest(USER_AVATAR_PATH, {
+        method: "PUT",
+        body: JSON.stringify({ image: null }),
+      });
       publish(null);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Could not remove photo");

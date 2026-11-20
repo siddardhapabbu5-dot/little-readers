@@ -26,6 +26,7 @@ type AuthUser = { id: string; name: string; email: string; role: string };
 type GateTarget =
   | "/parent"
   | "/subscription"
+  | "/subscription-entry"
   | "/devices"
   | "/tv-connect"
   | "/privacy-request"
@@ -49,15 +50,31 @@ export default function ProfileTab() {
         const local = await getUser<AuthUser>();
         setUser(local);
         try {
-          const me = await apiRequest<AuthUser>("/auth/me");
-          const next = {
-            id: me.id,
-            name: me.name,
-            email: me.email,
-            role: me.role,
-          };
-          setUser(next);
-          await saveUser({ ...(local ?? {}), ...next });
+          if (local?.role === "STUDENT") {
+            const me = await apiRequest<{
+              childId: string;
+              studentLoginId: string;
+              child?: { displayName?: string | null } | null;
+            }>("/student/auth/me");
+            const next = {
+              id: me.childId,
+              name: me.child?.displayName ?? local.name,
+              email: me.studentLoginId,
+              role: "STUDENT" as const,
+            };
+            setUser(next);
+            await saveUser({ ...(local ?? {}), ...next });
+          } else {
+            const me = await apiRequest<AuthUser>("/auth/me");
+            const next = {
+              id: me.id,
+              name: me.name,
+              email: me.email,
+              role: me.role,
+            };
+            setUser(next);
+            await saveUser({ ...(local ?? {}), ...next });
+          }
         } catch {
           // Keep cached profile if offline.
         }
@@ -147,18 +164,21 @@ export default function ProfileTab() {
   }
   const isTeacher = role === "TEACHER" || role === "SCHOOL_ADMIN";
   const isStudent = role === "STUDENT";
+  /** Parent/Admin/Teacher profile tools — off until role is known, and never for STUDENT. */
+  const allowUserProfileTools = Boolean(role) && !isStudent;
 
   return (
     <SkyBackground>
     <SafeAreaView style={styles.safe} edges={["top"]}>
       <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.header}>
-          <ProfilePhoto size={72} />
+          {/* Students: default avatar only — User /auth/me/avatar 401 clears student sessions. */}
+          <ProfilePhoto size={72} editable={allowUserProfileTools} />
           <View style={{ flex: 1, gap: 4 }}>
             <Title>{user?.name ?? "Profile"}</Title>
             <Text style={styles.meta}>{user?.email}</Text>
             <Text style={styles.role}>{user?.role}</Text>
-            {!editing ? (
+            {!editing && allowUserProfileTools ? (
               <Pressable onPress={startEdit} accessibilityRole="button" style={styles.editLink}>
                 <Text style={styles.editLinkText}>Edit name & email</Text>
               </Pressable>
@@ -166,7 +186,7 @@ export default function ProfileTab() {
           </View>
         </View>
 
-        {editing ? (
+        {editing && allowUserProfileTools ? (
           <Card style={{ gap: 10 }}>
             <Text style={styles.editTitle}>Edit profile</Text>
             <Field
@@ -213,7 +233,7 @@ export default function ProfileTab() {
               />
               <MenuRow
                 label="Subscription"
-                onPress={() => openAdult("/subscription")}
+                onPress={() => openAdult("/subscription-entry")}
               />
               <MenuRow
                 label="Device management"

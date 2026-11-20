@@ -1,5 +1,9 @@
 import assert from "node:assert/strict";
-import { friendlyAuthError, isRateLimitedAuthError } from "./auth-errors";
+import {
+  friendlyAuthError,
+  isRateLimitedAuthError,
+  shouldBindParentDeviceSession,
+} from "./auth-errors";
 
 function err(
   message: string,
@@ -20,7 +24,35 @@ assert.equal(
   "Too many login attempts. Please wait before trying again."
 );
 
-assert.equal(friendlyAuthError(err("bad", 401)), "Email or password is incorrect.");
+assert.equal(
+  friendlyAuthError(err("bad", 401)),
+  "Email or password is incorrect."
+);
+
+assert.equal(
+  friendlyAuthError(err("gone", 403, "ACCOUNT_INACTIVE")),
+  "This account is inactive. Contact Learn Wise support."
+);
+
+assert.equal(
+  friendlyAuthError(err("no id", 401, "STUDENT_ID_UNKNOWN")),
+  "That Student ID was not found."
+);
+
+assert.equal(
+  friendlyAuthError(err("bad pw", 401, "STUDENT_PASSWORD_INVALID")),
+  "That password is incorrect."
+);
+
+assert.equal(
+  friendlyAuthError(err("otp", 401, "OTP_INVALID")),
+  "That code is incorrect. Please try again."
+);
+
+assert.equal(
+  friendlyAuthError(err("exp", 400, "OTP_EXPIRED")),
+  "That code has expired. Request a new one."
+);
 
 assert.equal(
   friendlyAuthError(err("conflict", 409, "SESSION_CONFLICT")).includes("another device"),
@@ -41,5 +73,7 @@ assert.equal(isRateLimitedAuthError(err("rl", 429, "RATE_LIMITED")), true);
 assert.equal(isRateLimitedAuthError(err("locked", 429, "ACCOUNT_LOCKED")), false);
 
 assert.equal(friendlyAuthError(err("boom", 500)).includes("too many"), false);
+assert.equal(shouldBindParentDeviceSession("web"), false);
+assert.equal(shouldBindParentDeviceSession("android"), true);
 
 console.log("mobile auth-errors tests OK");

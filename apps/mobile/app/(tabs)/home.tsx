@@ -279,7 +279,9 @@ export default function HomeTab() {
                 {access?.reason ?? `${child.displayName} needs a ${level} subscription.`}
               </Text>
               <SoftButton label="Subscription" onPress={() => router.push("/subscription")} />
-              <SoftButton label="Parent dashboard" onPress={() => router.push("/parent")} />
+              {user?.role !== "STUDENT" ? (
+                <SoftButton label="Parent dashboard" onPress={() => router.push("/parent")} />
+              ) : null}
             </View>
           ) : null}
 

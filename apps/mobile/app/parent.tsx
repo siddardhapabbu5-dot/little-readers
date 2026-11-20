@@ -7,7 +7,6 @@ import { AuthGate } from "../components/AuthGate";
 import { GradePicker, type LearnWiseGrade } from "../components/GradePicker";
 import { ParentBottomNav } from "../components/ParentBottomNav";
 import { RequireParentGate } from "../components/RequireParentGate";
-import { RegistrationSteps } from "../components/RegistrationSteps";
 import { apiRequest, ApiError } from "../services/api";
 import { ROLE_SETS } from "../services/auth-errors";
 import { getActiveChild, getUser, saveActiveChild, saveUser } from "../services/secure";
@@ -217,7 +216,7 @@ export default function ParentScreen() {
     void setActive(child).then(() => {
       const access = gradeAccess[child.id];
       if (access ? !access.entitled : !child.hasLearningSeat) {
-        router.push("/subscription");
+        router.push("/subscription-entry");
         return;
       }
       router.push("/(tabs)/learn");
@@ -244,7 +243,7 @@ export default function ParentScreen() {
             </View>
             <Pressable
               accessibilityLabel="Notifications"
-              onPress={() => router.push("/subscription")}
+              onPress={() => router.push("/subscription-entry")}
               style={styles.iconBtn}
             >
               <Text style={styles.iconEmoji}>🔔</Text>
@@ -436,12 +435,12 @@ export default function ParentScreen() {
             ) : null}
             <PrimaryButton
               label={activeAccess?.entitled ? "Manage plan" : "Renew / activate"}
-              onPress={() => router.push("/subscription")}
+              onPress={() => router.push("/subscription-entry")}
             />
           </Card>
 
           <Card style={{ gap: 10 }}>
-            <RegistrationSteps step={1} />
+            {/* Parent PIN is the gate before this screen; Add Child is not a RegistrationSteps index. */}
             <Text style={styles.section}>Add child</Text>
             <Field label="Display name" value={name} onChangeText={setName} />
             <Text style={styles.meta}>Choose the Learn Wise grade for this child.</Text>

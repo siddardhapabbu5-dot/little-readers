@@ -5,17 +5,27 @@ type AuthLikeError = {
   details?: unknown;
 };
 
-const INVALID_CREDENTIALS = "Email or password is incorrect.";
+const INVALID_EMAIL_PASSWORD = "Email or password is incorrect.";
+const UNKNOWN_EMAIL = "No account was found for that email.";
+const INVALID_PASSWORD = "That password is incorrect.";
+const UNKNOWN_STUDENT_ID = "That Student ID was not found.";
+const INVALID_OTP = "That code is incorrect. Please try again.";
+const EXPIRED_OTP = "That code has expired. Request a new one.";
 const RATE_LIMITED =
   "Too many login attempts. Please wait before trying again.";
 const ACCOUNT_LOCKED =
   "Your account is temporarily locked after multiple unsuccessful login attempts. Please try again after the lockout period.";
+const ACCOUNT_INACTIVE =
+  "This account is inactive. Contact Learn Wise support.";
 const NETWORK =
   "Unable to connect. Please check your internet connection and try again.";
 const DEVICE_CONFLICT =
   "This account is already active on another device. Use that device, or complete a device transfer from the approved device. Learn Wise allows one active parent device at a time.";
 const SESSION_REVOKED =
   "You've been signed out because this account was opened on another device.";
+const TIMEOUT = "The sign-in request timed out. Please try again.";
+const SERVER =
+  "Our servers are taking a short break. Please try again shortly.";
 
 function asAuthError(err: unknown): AuthLikeError | null {
   if (!err || typeof err !== "object") return null;
@@ -45,30 +55,29 @@ export function friendlyAuthError(err: unknown): string {
   if (apiErr) {
     const code = errorCode(apiErr);
 
-    if (code === "ACCOUNT_LOCKED") {
+    if (code === "ACCOUNT_LOCKED" || code === "PIN_LOCKED") {
       return /temporarily locked|lockout period|try again/i.test(apiErr.message)
         ? apiErr.message
         : ACCOUNT_LOCKED;
     }
-    if (code === "PIN_LOCKED") {
-      return apiErr.message || ACCOUNT_LOCKED;
+    if (code === "ACCOUNT_INACTIVE") return ACCOUNT_INACTIVE;
+    if (code === "RATE_LIMITED" || code === "OTP_HOURLY_LIMIT") return RATE_LIMITED;
+    if (code === "OTP_RESEND_COOLDOWN") {
+      return apiErr.message || "Please wait before requesting another code.";
     }
-    if (code === "RATE_LIMITED") {
-      return RATE_LIMITED;
+    if (code === "OTP_INVALID" || code === "INVALID_OTP") return INVALID_OTP;
+    if (code === "OTP_EXPIRED" || code === "OTP_NOT_FOUND") return EXPIRED_OTP;
+    if (code === "OTP_MAX_ATTEMPTS") {
+      return "Too many incorrect codes. Request a new OTP.";
     }
-    if (code === "SESSION_CONFLICT") {
-      return DEVICE_CONFLICT;
-    }
-    if (code === "SESSION_REVOKED") {
-      return SESSION_REVOKED;
-    }
+    if (code === "STUDENT_ID_UNKNOWN") return UNKNOWN_STUDENT_ID;
+    if (code === "STUDENT_PASSWORD_INVALID") return INVALID_PASSWORD;
+    if (code === "SESSION_CONFLICT") return DEVICE_CONFLICT;
+    if (code === "SESSION_REVOKED") return SESSION_REVOKED;
     if (code === "NETWORK_UNAVAILABLE" || code === "REQUEST_TIMEOUT" || apiErr.status === 0) {
-      return code === "REQUEST_TIMEOUT"
-        ? "The sign-in request timed out. Please try again."
-        : NETWORK;
+      return code === "REQUEST_TIMEOUT" ? TIMEOUT : NETWORK;
     }
 
-    // Unclassified 429 — prefer rate-limit copy only when message looks like RL.
     if (apiErr.status === 429) {
       if (/locked/i.test(apiErr.message)) return ACCOUNT_LOCKED;
       return RATE_LIMITED;
@@ -78,24 +87,34 @@ export function friendlyAuthError(err: unknown): string {
       return DEVICE_CONFLICT;
     }
 
+    // Prefer specific copy when backend message already distinguishes cases.
+    if (/student id was not found|unknown student/i.test(apiErr.message)) {
+      return UNKNOWN_STUDENT_ID;
+    }
+    if (/password is incorrect/i.test(apiErr.message)) {
+      return INVALID_PASSWORD;
+    }
+    if (/inactive/i.test(apiErr.message)) {
+      return ACCOUNT_INACTIVE;
+    }
+    if (/otp expired|request a new/i.test(apiErr.message) && /otp|code/i.test(apiErr.message)) {
+      return EXPIRED_OTP;
+    }
+    if (/incorrect otp|invalid otp/i.test(apiErr.message)) {
+      return INVALID_OTP;
+    }
+
     if (apiErr.status === 401 || apiErr.status === 403) {
-      return INVALID_CREDENTIALS;
+      // Email/password login intentionally uses one message for unknown email
+      // and wrong password (anti-enumeration), except ACCOUNT_INACTIVE above.
+      return INVALID_EMAIL_PASSWORD;
     }
-    if (apiErr.status >= 500) {
-      return "Our servers are taking a short break. Please try again shortly.";
-    }
-    if (/invalid|credentials|password|email/i.test(apiErr.message)) {
-      return INVALID_CREDENTIALS;
-    }
+    if (apiErr.status >= 500) return SERVER;
   }
 
   if (err instanceof Error) {
-    if (/abort|timeout/i.test(err.message)) {
-      return "The sign-in request timed out. Please try again.";
-    }
-    if (/failed to fetch|network request failed/i.test(err.message)) {
-      return NETWORK;
-    }
+    if (/abort|timeout/i.test(err.message)) return TIMEOUT;
+    if (/failed to fetch|network request failed/i.test(err.message)) return NETWORK;
   }
 
   return "We couldn't log you in. Please try again.";
@@ -138,6 +157,7 @@ export function routeForRole(role: string): string {
 
 export const ROLE_SETS = {
   parentFamily: ["PARENT", "ADMIN", "SUPER_ADMIN", "SCHOOL_ADMIN"] as const,
+  parentOrStudentBilling: ["PARENT", "STUDENT", "ADMIN", "SUPER_ADMIN", "SCHOOL_ADMIN"] as const,
   kidsLearning: ["PARENT", "STUDENT", "ADMIN", "SUPER_ADMIN", "SCHOOL_ADMIN"] as const,
   teacher: ["TEACHER", "ADMIN", "SUPER_ADMIN", "SCHOOL_ADMIN"] as const,
   admin: ["ADMIN", "SUPER_ADMIN"] as const,
@@ -155,4 +175,9 @@ export const ROLE_SETS = {
 
 export function roleAllowed(role: string, allowed: readonly string[]): boolean {
   return allowed.includes(role);
+}
+
+/** Native phones participate in Parent one-device sessions; browser /app/ does not. */
+export function shouldBindParentDeviceSession(platform: string): boolean {
+  return platform === "ios" || platform === "android";
 }

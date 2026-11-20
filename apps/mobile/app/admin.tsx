@@ -326,6 +326,22 @@ export default function AdminScreen() {
 
   const quickActions = [
     {
+      title: "Create Student (Grade 1)",
+      subtitle: "OTP-verified Student ID + temporary password (system sponsor)",
+      href: "/admin-create-student-grade1",
+      icon: "person-add" as const,
+      tint: dash.green,
+      soft: dash.greenSoft,
+    },
+    {
+      title: "Edit Student ID",
+      subtitle: "Rename an existing Student ID without resetting password",
+      href: "/admin-edit-student-id",
+      icon: "create" as const,
+      tint: dash.purple,
+      soft: dash.purpleSoft,
+    },
+    {
       title: "Review vocabulary",
       subtitle: learning.pending
         ? `${learning.pending} pending review`

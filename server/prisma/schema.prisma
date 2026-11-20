@@ -161,6 +161,7 @@ model User {
   dictionaryImports DictionaryImportBatch[]
   vocabAssignmentsReviewed VocabularyGradeAssignment[] @relation("AssignmentReviewer")
   dictionaryPublishEvents  DictionaryPublishEvent[] @relation("DictionaryPublishActor")
+  studentCredentialsCreated ChildStudentCredential[] @relation("StudentCredentialCreatedBy")
   passwordResetTokens PasswordResetToken[]
   adminPasswordResetTokens AdminPasswordResetToken[]
   schoolStaff         SchoolStaff[]
@@ -266,6 +267,8 @@ enum EmailOtpPurpose {
   REGISTER
   RESET_PASSWORD
   RESET_PIN
+  STUDENT_SELF_REGISTER
+  ADMIN_SHARED_STUDENT_CREATE
 }
 
 /** Email verification codes (registration + forgot password). Only hashes are stored. */
@@ -299,6 +302,62 @@ model AdminPasswordResetToken {
   admin User @relation(fields: [adminId], references: [id], onDelete: Cascade)
 
   @@index([adminId])
+  @@index([expiresAt])
+}
+
+
+/// Student ID + password credentials linked 1:1 to an existing Child (Architecture B).
+model ChildStudentCredential {
+  id                    String    @id @default(cuid())
+  childId               String    @unique
+  studentLoginId        String    @unique
+  passwordHash          String
+  emailVerifiedAt       DateTime?
+  registrationEmail     String?
+  mustChangePassword    Boolean   @default(false)
+  isActive              Boolean   @default(true)
+  failedLoginCount      Int       @default(0)
+  lockedUntil           DateTime?
+  passwordChangedAt     DateTime?
+  lastLoginAt           DateTime?
+  sessionVersion        Int       @default(0)
+  createdByUserId       String?
+  accountCreationMethod String?
+  verificationReference String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  child     Child                 @relation(fields: [childId], references: [id], onDelete: Cascade)
+  createdBy User?                 @relation("StudentCredentialCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  sessions  ChildStudentSession[]
+
+  @@index([isActive])
+  @@index([createdByUserId])
+  @@index([accountCreationMethod])
+}
+
+model ChildStudentSession {
+  id                   String              @id @default(cuid())
+  credentialId         String
+  childId              String
+  deviceInstallationId String
+  deviceName           String?
+  platform             String
+  appVersion           String?
+  refreshTokenHash     String
+  status               ParentSessionStatus @default(ACTIVE)
+  createdAt            DateTime            @default(now())
+  lastSeenAt           DateTime            @default(now())
+  expiresAt            DateTime
+  revokedAt            DateTime?
+  revokedReason        String?
+
+  credential ChildStudentCredential @relation(fields: [credentialId], references: [id], onDelete: Cascade)
+  child      Child                  @relation(fields: [childId], references: [id], onDelete: Cascade)
+
+  @@index([credentialId, status])
+  @@index([childId, status])
+  @@index([deviceInstallationId])
   @@index([expiresAt])
 }
 
@@ -351,6 +410,8 @@ model Child {
   friendJoins        FriendConnection[] @relation("FriendInvitee")
   leaderboardReports LeaderboardReport[]
   gradeSubscriptions Subscription[]    @relation("ChildGradeSubscription")
+  studentCredential  ChildStudentCredential?
+  studentSessions    ChildStudentSession[]
 
   @@index([parentId])
   @@index([gradeId])

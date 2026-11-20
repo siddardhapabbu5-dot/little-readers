@@ -189,6 +189,14 @@ export async function loginUser(input: LoginInput) {
   const email = input.email.trim().toLowerCase();
   // Keep the submitted password as-is; verifyLoginPassword handles trim compatibility.
   const password = input.password;
+  const { isAdminDirectSponsorEmail } = await import(
+    "../student-auth/admin-direct-sponsor.js"
+  );
+  if (isAdminDirectSponsorEmail(email)) {
+    throw new AppError("Invalid email or password", 401, {
+      code: "SYSTEM_SPONSOR_LOGIN_BLOCKED",
+    });
+  }
   const user = await prisma.user.findUnique({ where: { email } });
   if (!user || !user.isActive) {
     throw new AppError("Invalid email or password", 401);

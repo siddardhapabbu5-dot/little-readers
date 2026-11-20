@@ -18,7 +18,7 @@ import {
   RewardBanner,
   SectionRow, SkyBackground } from "../../components/kids";
 import { apiRequest, ApiError } from "../../services/api";
-import { getActiveChild } from "../../services/secure";
+import { getActiveChild, getUser } from "../../services/secure";
 import { displayEmoji } from "../../services/emoji";
 import { colors, radii, shadow } from "../../theme";
 
@@ -114,6 +114,7 @@ export default function RewardsTab() {
       void (async () => {
         setLoading(true);
         try {
+          const user = await getUser<{ role?: string }>();
           const child = await getActiveChild<{ id: string; displayName: string }>();
           if (!child) {
             setError("Select a child from Home or Learn first.");
@@ -122,6 +123,12 @@ export default function RewardsTab() {
             return;
           }
           setChildId(child.id);
+          // /learning/progress/* is Parent/User-role gated — Student JWT gets 401 and session wipe.
+          if (user?.role === "STUDENT") {
+            setData(null);
+            setError(null);
+            return;
+          }
           const payload = await apiRequest<ProgressData>(
             `/learning/progress/${child.id}`
           );

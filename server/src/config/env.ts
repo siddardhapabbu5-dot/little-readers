@@ -60,6 +60,21 @@ const envSchema = z.object({
   /** Shown to parents who forgot their registered mobile (OTP login). */
   SUPPORT_EMAIL: z.string().email().default("support@littlereaders.example"),
   /**
+   * Shared mailbox for Admin Create Student Without Personal Email OTP only.
+   */
+  ADMIN_SHARED_STUDENT_OTP_EMAIL: z
+    .string()
+    .email()
+    .default("littlereaders.otp@gmail.com"),
+  /**
+   * Internal non-mailbox identity for Admin Direct Student Creation Sponsor Parent.
+   * Must not be the Admin OTP Gmail. Role must remain PARENT.
+   */
+  ADMIN_DIRECT_STUDENT_SPONSOR_EMAIL: z
+    .string()
+    .email()
+    .default("system.sponsor@internal.learnwise"),
+  /**
    * When true (non-production only), reset emails are logged instead of sent.
    * Production must use RESEND_API_KEY — never claim success without delivery.
    */

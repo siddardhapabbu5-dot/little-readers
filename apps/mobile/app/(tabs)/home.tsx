@@ -102,6 +102,7 @@ export default function HomeTab() {
           }
 
           let active = await getActiveChild<ChildRow>();
+          // /children is Parent/User-only — Student JWT 401 would clear the session.
           if (u.role === "PARENT") {
             const kids = await apiRequest<ChildRow[]>("/children");
             const match = active
@@ -127,16 +128,24 @@ export default function HomeTab() {
               : null;
           setAccess(curriculum?.access ?? null);
           if (active && curriculum && curriculum.access?.entitled !== false) {
-            const q = encodeURIComponent(active.id);
-            const [p, d, w] = await Promise.all([
-              apiRequest<ProgressPayload>(`/learning/progress/${active.id}`),
-              apiRequest<DailyStatus>(`/learning/progress/${q}/daily-challenge`).catch(() => null),
-              apiRequest<ChallengeOverview>(`/challenges/overview?childId=${q}`).catch(() => null),
-            ]);
-            setProgress(p);
             setGroups(curriculum.groups ?? []);
-            setDaily(d);
-            setWeek(w);
+            // Progress + challenges routes are Parent/User-only (401 on Student JWT).
+            // .catch does not help — apiRequest clears the session on 401 before throw.
+            if (u.role === "STUDENT") {
+              setProgress(null);
+              setDaily(null);
+              setWeek(null);
+            } else {
+              const q = encodeURIComponent(active.id);
+              const [p, d, w] = await Promise.all([
+                apiRequest<ProgressPayload>(`/learning/progress/${active.id}`),
+                apiRequest<DailyStatus>(`/learning/progress/${q}/daily-challenge`).catch(() => null),
+                apiRequest<ChallengeOverview>(`/challenges/overview?childId=${q}`).catch(() => null),
+              ]);
+              setProgress(p);
+              setDaily(d);
+              setWeek(w);
+            }
           } else {
             setProgress(null);
             setGroups([]);

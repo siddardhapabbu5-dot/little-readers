@@ -85,6 +85,12 @@ export default function LoginScreen() {
     clearMessages();
     setPassword("");
     setShowPassword(false);
+    // Drop the other role's identity so labels/fields match the selected tab.
+    if (next === "student") {
+      setEmail("");
+    } else {
+      setStudentLoginId("");
+    }
   }
 
   async function persistSession(user: AuthUserPayload, tokens: AuthTokens) {

@@ -9,7 +9,8 @@ import { colors } from "../theme";
 type AuthUser = { id: string; name: string; email: string; role: string };
 
 /**
- * Client route guard. Verifies local session, then refreshes role via GET /auth/me.
+ * Client route guard. Verifies local session, then refreshes role via
+ * GET /student/auth/me (STUDENT) or GET /auth/me (Parent/Admin/etc.).
  * Does not replace backend authorization — API still enforces permissions.
  */
 export function AuthGate({

@@ -458,6 +458,17 @@ export async function grantExtraSeats(input: {
     throw new AppError("seats must be between 1 and 20", 400);
   }
 
+  const { isAdminDirectSponsorUserId } = await import(
+    "../student-auth/admin-direct-sponsor.js"
+  );
+  if (await isAdminDirectSponsorUserId(input.parentUserId)) {
+    throw new AppError(
+      "Extra seats cannot be granted to the system Sponsor Parent.",
+      403,
+      { code: "SYSTEM_SPONSOR_NO_FAMILY_PLAN" }
+    );
+  }
+
   return prisma.$transaction(async (tx) => {
     const subscription = await latestSubscription(input.parentUserId, tx);
     if (!subscription) {
@@ -517,6 +528,16 @@ export async function grantManualSubscription(input: {
     throw new AppError("months must be between 1 and 24", 400);
   }
   const email = input.parentEmail.trim().toLowerCase();
+  const { isAdminDirectSponsorEmail } = await import(
+    "../student-auth/admin-direct-sponsor.js"
+  );
+  if (isAdminDirectSponsorEmail(email)) {
+    throw new AppError(
+      "Family subscription cannot be granted to the system Sponsor Parent. Use per-child grade entitlement instead.",
+      403,
+      { code: "SYSTEM_SPONSOR_NO_FAMILY_PLAN" }
+    );
+  }
   const parent = await prisma.user.findFirst({
     where: { email: { equals: email, mode: "insensitive" } },
     select: { id: true, role: true, email: true, name: true },

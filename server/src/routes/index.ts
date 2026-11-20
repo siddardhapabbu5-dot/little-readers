@@ -38,6 +38,7 @@ import {
 import { parentAuthRouter } from "../parent-auth/parent-auth.routes.js";
 import { adminParentSessionsRouter } from "../parent-auth/admin-parent-sessions.routes.js";
 import { adminAuthRouter } from "../admin-auth/admin-auth.routes.js";
+import { studentAuthRouter } from "../student-auth/student-auth.routes.js";
 import {
   academicAdminRouter,
   academicParentRouter,
@@ -59,6 +60,7 @@ apiRouter.get("/health", (_req, res) => {
 apiRouter.use("/auth", authRouter);
 apiRouter.use("/parent/auth", parentAuthRouter);
 apiRouter.use("/admin/auth", adminAuthRouter);
+apiRouter.use("/student/auth", studentAuthRouter);
 apiRouter.use("/admin/parents", adminParentSessionsRouter);
 apiRouter.use("/admin/academic", academicAdminRouter);
 apiRouter.use("/parent/catalog", academicParentRouter);

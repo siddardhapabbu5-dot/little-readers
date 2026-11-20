@@ -438,7 +438,12 @@ export async function getActiveLearningSession(
 export async function startLearningSession(
   parentId: string,
   input: StartLearningSessionInput,
-  mobile?: { installationId?: string; enforceDevice?: boolean },
+  mobile?: {
+    installationId?: string;
+    enforceDevice?: boolean;
+    /** Optional Architecture B student session id (accepted; reserved for auditing). */
+    studentSessionId?: string;
+  },
   role?: string
 ) {
   await assertChildOwnedByParent(parentId, input.childId, role);

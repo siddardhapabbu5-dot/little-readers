@@ -28,6 +28,7 @@ import { apiRequest, ApiError } from "../../services/api";
 import {
   getActiveChild,
   getOrCreateInstallationId,
+  getUser,
   phoneLabel,
   saveActiveChild,
 } from "../../services/secure";
@@ -93,20 +94,28 @@ export default function LearnTab() {
         setLoading(true);
         setError(null);
         try {
+          const user = await getUser<{ role?: string }>();
           let active = await getActiveChild<ChildRow>();
-          const kids = await apiRequest<ChildRow[]>("/children");
-          if (!active) {
-            active = kids[0] ?? null;
-            if (active) await saveActiveChild(active);
-          } else {
-            const fresh = kids.find((k) => k.id === active!.id);
-            if (fresh) {
-              active = fresh;
-              await saveActiveChild(fresh);
+          // /children is Parent/User-only — never call it with a Student JWT.
+          if (user?.role !== "STUDENT") {
+            const kids = await apiRequest<ChildRow[]>("/children");
+            if (!active) {
+              active = kids[0] ?? null;
+              if (active) await saveActiveChild(active);
+            } else {
+              const fresh = kids.find((k) => k.id === active!.id);
+              if (fresh) {
+                active = fresh;
+                await saveActiveChild(fresh);
+              }
             }
           }
           if (!active) {
-            setError("Add a child on the Parent screen first.");
+            setError(
+              user?.role === "STUDENT"
+                ? "Student profile is missing. Please sign in again."
+                : "Add a child on the Parent screen first."
+            );
             setLoading(false);
             return;
           }

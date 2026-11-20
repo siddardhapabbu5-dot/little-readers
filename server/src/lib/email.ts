@@ -7,7 +7,12 @@ export type EmailDelivery = {
   channel: "resend" | "log" | "test" | "smtp";
 };
 
-export type OtpEmailPurpose = "REGISTER" | "RESET_PASSWORD" | "RESET_PIN";
+export type OtpEmailPurpose =
+  | "REGISTER"
+  | "RESET_PASSWORD"
+  | "RESET_PIN"
+  | "ADMIN_SHARED_STUDENT_CREATE"
+  | "STUDENT_SELF_REGISTER";
 
 /** Vitest-only outbox so tests can read codes without exposing them in API responses. */
 const testOutbox: Array<{ to: string; purpose: OtpEmailPurpose; otp: string }> = [];
@@ -21,6 +26,11 @@ export function takeTestOtpEmail(to: string, purpose: OtpEmailPurpose) {
     }
   }
   return null;
+}
+
+/** Clear vitest OTP outbox between tests. */
+export function clearTestOtpEmails() {
+  testOutbox.length = 0;
 }
 
 let transporter: Transporter | null = null;
@@ -54,6 +64,14 @@ const OTP_TEMPLATES: Record<OtpEmailPurpose, { subject: string; intro: string }>
   RESET_PIN: {
     subject: "LEARN WISE - Parent PIN Reset Code",
     intro: "Use this code to set a new Parent PIN in the LEARN WISE app.",
+  },
+  ADMIN_SHARED_STUDENT_CREATE: {
+    subject: "LEARN WISE - Admin Student Provisioning Code",
+    intro: "Use this code to verify Admin student account creation in LEARN WISE.",
+  },
+  STUDENT_SELF_REGISTER: {
+    subject: "LEARN WISE - Student Registration Code",
+    intro: "Use this code to verify your email and finish student registration.",
   },
 };
 

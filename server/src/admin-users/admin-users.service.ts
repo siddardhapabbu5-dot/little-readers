@@ -79,6 +79,11 @@ export async function setUserActiveStatus(
   });
   if (!target) throw new AppError("User not found", 404);
 
+  const { assertNotAdminDirectSponsorMutation } = await import(
+    "../student-auth/admin-direct-sponsor.js"
+  );
+  assertNotAdminDirectSponsorMutation(target.email);
+
   if (target.role === "SUPER_ADMIN") {
     throw new AppError("Cannot change Super Admin status via this API", 403);
   }

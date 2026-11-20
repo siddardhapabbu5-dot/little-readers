@@ -16,7 +16,7 @@ import { SoftButton, ErrorText } from "../../components/ui";
 import { SectionRow, SkyBackground } from "../../components/kids";
 import { ACTIVITY_ART, art, categoryTheme } from "../../components/illustrations";
 import { apiRequest, ApiError } from "../../services/api";
-import { getActiveChild, saveActiveChild } from "../../services/secure";
+import { getActiveChild, getUser, saveActiveChild } from "../../services/secure";
 import { displayEmoji } from "../../services/emoji";
 import { isOn, startActivity, useActivities } from "../../services/activities";
 import { openLearningActivity, resolveChildLevel } from "../../services/learning-nav";
@@ -59,12 +59,16 @@ export default function GamesTab() {
       void (async () => {
         setLoading(true);
         try {
+          const user = await getUser<{ role?: string }>();
           let active = await getActiveChild<ChildRow>();
-          const kids = await apiRequest<ChildRow[]>("/children");
-          active = active
-            ? kids.find((k) => k.id === active!.id) ?? kids[0]
-            : kids[0] ?? null;
-          if (active) await saveActiveChild(active);
+          // /children is Parent/User-only — Student JWT 401 clears the session.
+          if (user?.role !== "STUDENT") {
+            const kids = await apiRequest<ChildRow[]>("/children");
+            active = active
+              ? kids.find((k) => k.id === active!.id) ?? kids[0]
+              : kids[0] ?? null;
+            if (active) await saveActiveChild(active);
+          }
           setChild(active);
 
           if (active) {
@@ -74,14 +78,16 @@ export default function GamesTab() {
                 active.level ?? "",
                 await apiRequest<Parameters<typeof resolveChildLevel>[1]>("/learning/levels")
               );
-            const [curriculum, dailyStatus] = await Promise.all([
-              apiRequest<{ groups: Group[]; access: GradeAccess | null }>(
-                `/learning/levels/${encodeURIComponent(levelKey)}/groups?childId=${encodeURIComponent(active.id)}`
-              ),
-              apiRequest<DailyStatus>(
-                `/learning/progress/${encodeURIComponent(active.id)}/daily-challenge`
-              ).catch(() => null),
-            ]);
+            const curriculum = await apiRequest<{ groups: Group[]; access: GradeAccess | null }>(
+              `/learning/levels/${encodeURIComponent(levelKey)}/groups?childId=${encodeURIComponent(active.id)}`
+            );
+            // daily-challenge is Parent-role progress API — skip for Student JWT.
+            const dailyStatus =
+              user?.role === "STUDENT"
+                ? null
+                : await apiRequest<DailyStatus>(
+                    `/learning/progress/${encodeURIComponent(active.id)}/daily-challenge`
+                  ).catch(() => null);
             setAccess(curriculum.access ?? null);
             const entitled = curriculum.access?.entitled !== false;
             setCategories(

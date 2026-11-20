@@ -8,11 +8,19 @@ import { resolveTestDatabaseUrl } from "./test-db.js";
 // Must run before the app (and dotenv) load so every test file uses the disposable test database.
 process.env.DATABASE_URL = resolveTestDatabaseUrl();
 process.env.VITEST = "true";
+// Host shells sometimes export NODE_ENV=production; force test mode before env.ts loads.
+process.env.NODE_ENV = "test";
 process.env.OTP_DEV_MODE = "1";
 process.env.SMS_PROVIDER = process.env.SMS_PROVIDER || "console";
 process.env.PAYMENT_ENABLED = process.env.PAYMENT_ENABLED || "false";
 // Suites create family rows at test time; grade-purchase.test.ts sets a past cutoff to cover the real rule.
 process.env.LEGACY_FAMILY_CUTOFF = process.env.LEGACY_FAMILY_CUTOFF || "2100-01-01T00:00:00.000Z";
+if (
+  !process.env.JWT_SECRET ||
+  /change[-_ ]?me|placeholder|dev[-_]?secret/i.test(process.env.JWT_SECRET)
+) {
+  process.env.JWT_SECRET = "vitest_jwt_secret_value_not_for_production_use_32";
+}
 
 /**
  * Grade 1–4 word visibility is restored after every test file: programme activation hides

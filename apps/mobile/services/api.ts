@@ -9,7 +9,7 @@ import {
   markNetworkReachable,
   markNetworkUnreachable,
 } from "./network";
-import { notifyUnauthorized } from "./session";
+import { notifyUnauthorized, shouldClearSessionForUnauthorized } from "./session";
 
 const API_URL =
   process.env.EXPO_PUBLIC_API_URL?.replace(/\/$/, "") ??
@@ -51,13 +51,19 @@ function handleAuthFailure(
   const code = errorCode(body);
   // A wrong Parent PIN is not a dead session; logging out would leave the PIN screen.
   if (code === "PIN_INVALID") return;
-  if (code === "SESSION_REVOKED") {
-    void saveSessionRevokedMessage(
-      body.error ||
-        "You've been logged out because your account was opened on another device."
-    );
-  }
-  notifyUnauthorized();
+  // Compare against the live token so a replaced session (Admin→Student) is not cleared
+  // by a late 401 from the previous bearer.
+  void (async () => {
+    const current = await getToken();
+    if (!shouldClearSessionForUnauthorized(auth, current)) return;
+    if (code === "SESSION_REVOKED") {
+      await saveSessionRevokedMessage(
+        body.error ||
+          "You've been logged out because your account was opened on another device."
+      );
+    }
+    notifyUnauthorized();
+  })();
 }
 
 export const LOGIN_REQUEST_TIMEOUT_MS = 25_000;

@@ -222,7 +222,11 @@ export async function assertChildAccess(userId: string, role: string, childId: s
   return child;
 }
 
-export async function createChild(parentId: string, input: CreateChildInput) {
+export async function createChild(
+  parentId: string,
+  input: CreateChildInput,
+  options?: { skipSeatAssignment?: boolean }
+) {
   const { birthYear, birthDate } = resolveBirthFields(input);
 
   const { level, ageGroup, levelCode } = await resolveLevelAndAgeGroupForCreate({
@@ -258,6 +262,10 @@ export async function createChild(parentId: string, input: CreateChildInput) {
     await tx.learningProgress.create({
       data: { childId: created.id },
     });
+
+    if (options?.skipSeatAssignment) {
+      return { ...created, hasLearningSeat: false };
+    }
 
     const seated = await tryAssignLearningSeat(parentId, created.id, tx);
     return { ...created, hasLearningSeat: seated };
@@ -590,8 +598,18 @@ export async function getChildProgress(userId: string, role: string, childId: st
 
 /** Admin directory: parent accounts with active child counts (real User rows). */
 export async function listParentsForAdmin() {
+  const { adminDirectSponsorEmail } = await import(
+    "../student-auth/admin-direct-sponsor.js"
+  );
+  const systemEmail = adminDirectSponsorEmail();
+
   const parents = await prisma.user.findMany({
-    where: { role: "PARENT", isActive: true },
+    where: {
+      role: "PARENT",
+      isActive: true,
+      // Hide internal Admin-direct system sponsor from customer parent directory.
+      NOT: { email: systemEmail },
+    },
     select: {
       id: true,
       name: true,

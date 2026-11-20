@@ -53,4 +53,69 @@ describe.skipIf(!hasDb)("Profile photo", () => {
     const anon = await request(app).put("/api/auth/me/avatar").send({ image: TINY_JPEG });
     expect(anon.status).toBe(401);
   });
+
+  /**
+   * Root-cause lock: student JWTs are not User tokens. /auth/me/avatar must 401.
+   * Mobile must not call this for STUDENT — the client treats 401 as session death.
+   */
+  it("rejects student JWT on /auth/me/avatar (User-only)", async () => {
+    const { prisma } = await import("../src/lib/prisma.js");
+    const { hashPassword } = await import("../src/lib/password.js");
+    const parent = await prisma.user.findFirst({
+      where: { email: "parent@littlereaders.test" },
+      select: { id: true },
+    });
+    expect(parent).toBeTruthy();
+    const level = await prisma.learningLevel.findFirst({
+      where: { code: "LEVEL_1" },
+      select: { id: true },
+    });
+    const sid = `AVT${Date.now().toString(36).toUpperCase()}`.slice(0, 12);
+    const child = await prisma.child.create({
+      data: {
+        parentId: parent!.id,
+        displayName: "AvatarProbe",
+        birthYear: 2018,
+        levelId: level?.id ?? undefined,
+        hasLearningSeat: false,
+        studentCredential: {
+          create: {
+            studentLoginId: sid,
+            passwordHash: await hashPassword("TempAvatar1!"),
+            mustChangePassword: false,
+            accountCreationMethod: "TEST_AVATAR_PROBE",
+          },
+        },
+      },
+      select: { id: true },
+    });
+    const login = await request(app).post("/api/student/auth/login").send({
+      studentLoginId: sid,
+      password: "TempAvatar1!",
+      installationId: "avatar-probe-install01",
+      platform: "android",
+      deviceName: "test",
+    });
+    expect(login.status).toBe(200);
+    const studentToken = login.body.data.tokens.accessToken as string;
+
+    const getAvatar = await request(app)
+      .get("/api/auth/me/avatar")
+      .set("Authorization", `Bearer ${studentToken}`);
+    expect(getAvatar.status).toBe(401);
+
+    const putAvatar = await request(app)
+      .put("/api/auth/me/avatar")
+      .set("Authorization", `Bearer ${studentToken}`)
+      .send({ image: TINY_JPEG });
+    expect(putAvatar.status).toBe(401);
+
+    // Student me still works — session is valid; only User avatar route rejects.
+    const me = await request(app)
+      .get("/api/student/auth/me")
+      .set("Authorization", `Bearer ${studentToken}`);
+    expect(me.status).toBe(200);
+
+    await prisma.child.delete({ where: { id: child.id } }).catch(() => undefined);
+  });
 });

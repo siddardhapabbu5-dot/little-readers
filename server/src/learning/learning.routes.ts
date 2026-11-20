@@ -28,10 +28,11 @@ import {
   listPublishedLessonsForChild,
 } from "../lessons/lesson.service.js";
 import {
-  requireAuth,
   requireRoles,
   type AuthenticatedRequest,
 } from "../middleware/auth.js";
+import { requireUserOrStudentAuth } from "../middleware/dual-auth.js";
+import type { StudentAuthenticatedRequest } from "../middleware/student-auth.js";
 import { validateBody } from "../middleware/validate.js";
 import { listActivitySettings, setActivityEnabled } from "./activity-settings.js";
 import { getCategoryActivityProgress, getContentReadiness } from "./category-progress.js";
@@ -45,7 +46,7 @@ import { AppError } from "../lib/errors.js";
 
 export const learningRouter = Router();
 
-learningRouter.use(requireAuth);
+learningRouter.use(requireUserOrStudentAuth);
 
 const progressReadRoles = requireRoles(
   "PARENT",
@@ -59,6 +60,8 @@ const parentAdminRoles = requireRoles("PARENT", "ADMIN", "SUPER_ADMIN");
 
 /** Parents see grade content only through a child; admins may browse the catalog without one. */
 function contentChildId(req: AuthenticatedRequest): string | undefined {
+  const student = (req as StudentAuthenticatedRequest).student;
+  if (student) return student.childId;
   const childId = typeof req.query.childId === "string" && req.query.childId ? req.query.childId : undefined;
   const role = req.user!.role;
   if (!childId && role !== "ADMIN" && role !== "SUPER_ADMIN") {
@@ -67,12 +70,20 @@ function contentChildId(req: AuthenticatedRequest): string | undefined {
   return childId;
 }
 
-/** Teachers may only hit /progress* read APIs; everything else stays parent/admin. */
+/** Parent account id for ownership checks — Sponsor Parent for Student JWTs. */
+function actorParentId(req: AuthenticatedRequest): string {
+  const student = (req as StudentAuthenticatedRequest).student;
+  if (student) return student.parentId;
+  return req.user!.id;
+}
+
+/** Teachers may only hit /progress* read APIs; students/parents/admins continue. */
 learningRouter.use((req, res, next) => {
+  if ((req as StudentAuthenticatedRequest).student) return next();
   if (req.path.startsWith("/progress")) {
     return next();
   }
-  return parentAdminRoles(req, res, next);
+  return parentAdminRoles(req as AuthenticatedRequest, res, next);
 });
 
 /** Catalog: all learning levels */
@@ -93,7 +104,7 @@ learningRouter.get(
       const childId = contentChildId(req);
       const data = await listLevelGroups(
         String(req.params.levelKey),
-        req.user!.id,
+        actorParentId(req),
         childId
       );
       res.status(200).json({ data });
@@ -128,7 +139,7 @@ learningRouter.get(
       const childId = contentChildId(req);
       const data = await listCategoryWords(
         String(req.params.id),
-        childId ? { parentId: req.user!.id, childId } : undefined
+        childId ? { parentId: actorParentId(req), childId } : undefined
       );
       res.status(200).json({ data });
     } catch (error) {
@@ -145,7 +156,7 @@ learningRouter.get(
       const childId = contentChildId(req);
       const data = await getVocabularyWordById(
         String(req.params.id),
-        childId ? { parentId: req.user!.id, childId } : undefined
+        childId ? { parentId: actorParentId(req), childId } : undefined
       );
       res.status(200).json({ data });
     } catch (error) {
@@ -282,13 +293,17 @@ learningRouter.get(
   "/sessions/active",
   async (req: AuthenticatedRequest, res, next) => {
     try {
-      const childId = String(req.query.childId ?? "");
+      const student = (req as StudentAuthenticatedRequest).student;
+      const childId = student?.childId ?? String(req.query.childId ?? "");
       if (!childId) {
         res.status(400).json({ error: "childId query parameter is required" });
         return;
       }
+      if (student && req.query.childId && String(req.query.childId) !== student.childId) {
+        throw new AppError("Students may only open their own learning profile", 403);
+      }
       const data = await getActiveLearningSession(
-        req.user!.id,
+        actorParentId(req),
         childId,
         {
           lessonId:
@@ -300,7 +315,7 @@ learningRouter.get(
               ? req.query.categoryId
               : undefined,
         },
-        req.user!.role
+        student ? undefined : req.user!.role
       );
       res.status(200).json({ data });
     } catch (error) {
@@ -314,12 +329,30 @@ learningRouter.post(
   validateBody(startLearningSessionSchema),
   async (req: AuthenticatedRequest, res, next) => {
     try {
+      const student = (req as StudentAuthenticatedRequest).student;
       const installationId = req.get("x-installation-id") ?? undefined;
       const clientPlatform = (req.get("x-client-platform") ?? "").toLowerCase();
       const enforceDevice =
         clientPlatform === "mobile" ||
         clientPlatform === "ios" ||
         clientPlatform === "android";
+      if (student) {
+        if (req.body.childId && req.body.childId !== student.childId) {
+          throw new AppError("Students may only open their own learning profile", 403);
+        }
+        const data = await startLearningSession(
+          student.parentId,
+          { ...req.body, childId: student.childId },
+          {
+            installationId,
+            enforceDevice,
+            studentSessionId: student.sessionId,
+          }
+        );
+        const status = data.resumed ? 200 : 201;
+        res.status(status).json({ data });
+        return;
+      }
       const data = await startLearningSession(
         req.user!.id,
         req.body,
@@ -369,8 +402,9 @@ learningRouter.post(
   validateBody(submitQuestionAttemptSchema),
   async (req: AuthenticatedRequest, res, next) => {
     try {
+      // Student JWT sets req.student only — req.user is undefined (was 500 Internal server error).
       const data = await submitQuestionAttempt(
-        req.user!.id,
+        actorParentId(req),
         String(req.params.sessionId),
         req.body
       );
@@ -387,7 +421,7 @@ learningRouter.post(
   async (req: AuthenticatedRequest, res, next) => {
     try {
       const data = await completeLearningSession(
-        req.user!.id,
+        actorParentId(req),
         String(req.params.sessionId),
         req.body
       );

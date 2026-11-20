@@ -3,9 +3,14 @@ import express from "express";
 import rateLimit from "express-rate-limit";
 import helmet from "helmet";
 import morgan from "morgan";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { env } from "./config/env.js";
 import { errorHandler, notFoundHandler } from "./middleware/errorHandler.js";
 import { apiRouter } from "./routes/index.js";
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const VOCAB_MEDIA = path.resolve(__dirname, "../storage/vocab-media");
 
 export function createApp() {
   const app = express();
@@ -87,6 +92,21 @@ export function createApp() {
   );
 
   app.use("/api", apiRouter);
+
+  // Local/staging vocab media (images + audio). Not auto-published to CDN.
+  // Expo Web loads these cross-origin from the API host — helmet's default
+  // Cross-Origin-Resource-Policy: same-origin blocks that embedding.
+  app.use("/media/vocab", (_req, res, next) => {
+    res.setHeader("Cross-Origin-Resource-Policy", "cross-origin");
+    next();
+  });
+  app.use(
+    "/media/vocab",
+    express.static(VOCAB_MEDIA, {
+      fallthrough: true,
+      maxAge: env.NODE_ENV === "production" ? "1d" : 0,
+    })
+  );
 
   // Webhook registered on apiRouter; rawBody attached above for this path.
   app.use(notFoundHandler);
